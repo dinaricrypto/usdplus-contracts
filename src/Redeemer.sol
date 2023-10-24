@@ -7,10 +7,11 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {UsdPlus} from "./USD+.sol";
 
-/// @notice 1:1 stablecoin minter
-/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/OneToOneMinter.sol)
-contract OneToOneMinter is Ownable {
+/// @notice the one and only, manages requests for USD+ burning
+/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
+contract Redeemer is Ownable {
     // TODO: events
+    // TODO: request/fulfill system
     using SafeERC20 for IERC20;
 
     error PaymentNotAccepted();
@@ -18,20 +19,11 @@ contract OneToOneMinter is Ownable {
     /// @notice USD+
     UsdPlus public immutable usdplus;
 
-    /// @notice treasury for payment tokens
-    address public treasury;
-
     /// @notice is this payment token accepted?
     mapping(IERC20 => bool) public acceptedPayment;
 
     constructor(UsdPlus _usdplus, address initialOwner) Ownable(initialOwner) {
         usdplus = _usdplus;
-    }
-
-    /// @notice set treasury
-    /// @param _treasury treasury
-    function setTreasury(address _treasury) external onlyOwner {
-        treasury = _treasury;
     }
 
     /// @notice set payment token status
@@ -41,14 +33,14 @@ contract OneToOneMinter is Ownable {
         acceptedPayment[payment] = status;
     }
 
-    /// @notice mint USD+ for payment
+    /// @notice burn USD+ for payment
     /// @param to recipient
-    /// @param amount amount of USD+ to mint
+    /// @param amount amount of USD+ to burn
     /// @param payment payment token
-    function issue(address to, uint256 amount, IERC20 payment) external {
+    function redeem(address to, uint256 amount, IERC20 payment) external {
         if (!acceptedPayment[payment]) revert PaymentNotAccepted();
 
-        payment.safeTransferFrom(msg.sender, treasury, amount);
-        usdplus.mint(to, amount);
+        usdplus.burnFrom(msg.sender, amount);
+        payment.safeTransfer(to, amount);
     }
 }

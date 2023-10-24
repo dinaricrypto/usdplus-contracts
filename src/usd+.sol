@@ -21,4 +21,9 @@ contract UsdPlus is ERC20Permit, AccessControl {
     function burn(uint256 value) external onlyRole(BURNER_ROLE) {
         _burn(_msgSender(), value);
     }
+
+    function burnFrom(address account, uint256 value) external onlyRole(BURNER_ROLE) {
+        _spendAllowance(account, _msgSender(), value);
+        _burn(account, value);
+    }
 }
