@@ -93,6 +93,8 @@ contract Redeemer is AccessControl, Nonces {
         usdplus.transferFrom(msg.sender, address(this), amount);
     }
 
+    // TODO: cancel request - fulfiller role
+
     /// @notice fulfill a request to burn USD+ for payment
     /// @param to recipient
     /// @param nonce request nonce

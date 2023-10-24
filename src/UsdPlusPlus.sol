@@ -10,6 +10,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract UsdPlusPlus is ERC4626, ERC20Permit {
     // TODO: continuous yield?
 
+    // TODO: view methods to get locked state
+
     constructor(IERC20 usdplus) ERC4626(usdplus) ERC20Permit("USD++") ERC20("USD++", "USD++") {}
 
     function decimals() public view virtual override(ERC4626, ERC20) returns (uint8) {
@@ -20,4 +22,6 @@ contract UsdPlusPlus is ERC4626, ERC20Permit {
         // TODO: 30d transfer lock on minted USD++, except when burning for original USD+
         super._update(from, to, value);
     }
+
+    // TODO: blacklist
 }

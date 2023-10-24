@@ -37,4 +37,6 @@ contract UsdPlus is ERC20Permit, AccessControl {
         _spendAllowance(account, _msgSender(), value);
         _burn(account, value);
     }
+
+    // TODO: blacklist
 }

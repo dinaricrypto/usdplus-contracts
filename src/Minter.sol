@@ -60,6 +60,7 @@ contract Minter is Ownable {
         if (address(oracle) == address(0)) revert PaymentNotAccepted();
 
         (, int256 price,,,) = oracle.latestRoundData();
+        // TODO: use correct decimals
         return amount * uint256(price);
     }
 
