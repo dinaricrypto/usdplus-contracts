@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.21;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
@@ -10,7 +10,7 @@ import {UsdPlus} from "./USD+.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
-contract Redeemer is Ownable, Nonces {
+contract Redeemer is AccessControl, Nonces {
     // TODO: oracle
     using SafeERC20 for IERC20;
 
@@ -28,6 +28,8 @@ contract Redeemer is Ownable, Nonces {
     error PaymentNotAccepted();
     error InvalidNonce();
 
+    bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
+
     /// @notice USD+
     UsdPlus public immutable usdplus;
 
@@ -38,14 +40,16 @@ contract Redeemer is Ownable, Nonces {
 
     // TODO: enumerable set of active requests?
 
-    constructor(UsdPlus _usdplus, address initialOwner) Ownable(initialOwner) {
+    constructor(UsdPlus _usdplus, address initialOwner) {
+        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+
         usdplus = _usdplus;
     }
 
     /// @notice set payment token status
     /// @param payment payment token
     /// @param status status
-    function setPayment(IERC20 payment, bool status) external onlyOwner {
+    function setPayment(IERC20 payment, bool status) external onlyRole(DEFAULT_ADMIN_ROLE) {
         acceptedPayment[payment] = status;
         emit PaymentSet(payment, status);
     }
@@ -73,7 +77,7 @@ contract Redeemer is Ownable, Nonces {
     /// @notice fulfill a request to burn USD+ for payment
     /// @param to recipient
     /// @param nonce request nonce
-    function fulfill(address to, uint256 nonce) external {
+    function fulfill(address to, uint256 nonce) external onlyRole(FULFILLER_ROLE) {
         Request memory _request = requests[to][nonce];
 
         if (_request.amount == 0) revert InvalidNonce();
