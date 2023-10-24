@@ -8,8 +8,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {UsdPlus} from "./USD+.sol";
 
 /// @notice 1:1 stablecoin minter
-/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/OneToOneMinter.sol)
-contract OneToOneMinter is Ownable {
+/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
+contract Minter is Ownable {
     // TODO: oracle
     // TODO: events
     using SafeERC20 for IERC20;

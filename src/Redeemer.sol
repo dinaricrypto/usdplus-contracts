@@ -9,8 +9,8 @@ import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 import {UsdPlus} from "./USD+.sol";
 
 /// @notice manages requests for USD+ burning
-/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/OneToOneRedeemer.sol)
-contract OneToOneRedeemer is Ownable, Nonces {
+/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
+contract Redeemer is Ownable, Nonces {
     // TODO: oracle
     using SafeERC20 for IERC20;
 
@@ -35,6 +35,8 @@ contract OneToOneRedeemer is Ownable, Nonces {
     mapping(IERC20 => bool) public acceptedPayment;
 
     mapping(address => mapping(uint256 => Request)) public requests;
+
+    // TODO: enumerable set of active requests?
 
     constructor(UsdPlus _usdplus, address initialOwner) Ownable(initialOwner) {
         usdplus = _usdplus;
