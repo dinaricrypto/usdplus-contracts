@@ -19,7 +19,7 @@ contract Redeemer is AccessControl, Nonces {
         IERC20 payment;
     }
 
-    event PaymentSet(IERC20 payment, bool status);
+    event PaymentSet(IERC20 indexed payment, bool status);
     event RequestCreated(address indexed to, uint256 indexed nonce, uint256 amount, IERC20 payment);
     event RequestFulfilled(address indexed to, uint256 indexed nonce, uint256 amount, IERC20 payment);
 

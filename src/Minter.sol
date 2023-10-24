@@ -11,8 +11,10 @@ import {UsdPlus} from "./USD+.sol";
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
 contract Minter is Ownable {
     // TODO: oracle
-    // TODO: events
     using SafeERC20 for IERC20;
+
+    event TreasurySet(address indexed treasury);
+    event PaymentSet(IERC20 indexed payment, bool status);
 
     error PaymentNotAccepted();
 
@@ -33,6 +35,7 @@ contract Minter is Ownable {
     /// @param _treasury treasury
     function setTreasury(address _treasury) external onlyOwner {
         treasury = _treasury;
+        emit TreasurySet(_treasury);
     }
 
     /// @notice set payment token status
@@ -40,6 +43,7 @@ contract Minter is Ownable {
     /// @param status status
     function setPayment(IERC20 payment, bool status) external onlyOwner {
         acceptedPayment[payment] = status;
+        emit PaymentSet(payment, status);
     }
 
     /// @notice mint USD+ for payment
