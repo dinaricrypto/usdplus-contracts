@@ -10,12 +10,16 @@ import {UsdPlus} from "./USD+.sol";
 /// @notice 1:1 stablecoin minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/onetoone_minter.sol)
 contract OneToOneMinter is Ownable {
+    // TODO: events
     using SafeERC20 for IERC20;
 
     error PaymentNotAccepted();
 
     /// @notice USD+
     UsdPlus public usdplus;
+
+    /// @notice treasury for payment tokens
+    address public treasury;
 
     /// @notice is this payment token accepted?
     mapping(IERC20 => bool) public acceptedPayment;
@@ -24,10 +28,17 @@ contract OneToOneMinter is Ownable {
         usdplus = _usdplus;
     }
 
-    /// @notice add payment token
+    /// @notice set treasury
+    /// @param _treasury treasury
+    function setTreasury(address _treasury) external onlyOwner {
+        treasury = _treasury;
+    }
+
+    /// @notice set payment token status
     /// @param payment payment token
-    function addPayment(IERC20 payment) external onlyOwner {
-        acceptedPayment[payment] = true;
+    /// @param status status
+    function setPayment(IERC20 payment, bool status) external onlyOwner {
+        acceptedPayment[payment] = status;
     }
 
     /// @notice mint USD+ for payment
@@ -37,7 +48,7 @@ contract OneToOneMinter is Ownable {
     function issue(address to, uint256 amount, IERC20 payment) external {
         if (!acceptedPayment[payment]) revert PaymentNotAccepted();
 
-        payment.safeTransferFrom(msg.sender, address(this), amount);
+        payment.safeTransferFrom(msg.sender, treasury, amount);
         usdplus.mint(to, amount);
     }
 }
