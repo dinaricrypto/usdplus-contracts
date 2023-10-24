@@ -10,6 +10,7 @@ import {UsdPlus} from "./USD+.sol";
 /// @notice 1:1 stablecoin minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/OneToOneMinter.sol)
 contract OneToOneMinter is Ownable {
+    // TODO: oracle
     // TODO: events
     using SafeERC20 for IERC20;
 
