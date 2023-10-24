@@ -7,7 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/usd++.sol)
-contract usdplusplus is ERC4626, ERC20Permit {
+contract UsdPlusPlus is ERC4626, ERC20Permit {
     constructor(IERC20 usdplus) ERC4626(usdplus) ERC20Permit("USD++") ERC20("USD++", "USD++") {}
 
     function decimals() public view virtual override(ERC4626, ERC20) returns (uint8) {
