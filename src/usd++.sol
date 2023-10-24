@@ -8,8 +8,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/usd++.sol)
 contract UsdPlusPlus is ERC4626, ERC20Permit {
-    // TODO: continuous yield?
     // TODO: 30d transfer lock on minted USD++, except when burning for original USD+
+    // TODO: continuous yield?
 
     constructor(IERC20 usdplus) ERC4626(usdplus) ERC20Permit("USD++") ERC20("USD++", "USD++") {}
 

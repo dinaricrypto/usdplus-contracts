@@ -7,11 +7,22 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/usd+.sol)
 contract UsdPlus is ERC20Permit, AccessControl {
+    event TreasurySet(address indexed treasury);
+
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
+    /// @notice treasury for digital assets backing USD+
+    address public treasury;
+
     constructor(address initialOwner) ERC20("USD+", "USD+") ERC20Permit("USD+") {
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+    }
+
+    /// @notice set treasury address
+    function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        treasury = _treasury;
+        emit TreasurySet(_treasury);
     }
 
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
