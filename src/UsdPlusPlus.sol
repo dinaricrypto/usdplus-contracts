@@ -5,10 +5,11 @@ import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.so
 import {ERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/usd++.sol)
-contract UsdPlusPlus is ERC4626, ERC20Permit {
+contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
 
     struct Lock {
@@ -22,6 +23,8 @@ contract UsdPlusPlus is ERC4626, ERC20Permit {
         uint128 assets;
         uint128 shares;
     }
+
+    event LockDurationSet(uint48 duration);
 
     error ValueOverflow();
     error LockTimeTooShort(uint256 wait);
@@ -37,10 +40,23 @@ contract UsdPlusPlus is ERC4626, ERC20Permit {
 
     mapping(address => LockTotals) private _cachedLockTotals;
 
-    constructor(IERC20 usdplus) ERC4626(usdplus) ERC20Permit("USD++") ERC20("USD++", "USD++") {}
+    constructor(IERC20 usdplus, address initialOwner)
+        ERC4626(usdplus)
+        ERC20Permit("USD++")
+        ERC20("USD++", "USD++")
+        Ownable(initialOwner)
+    {}
 
     function decimals() public view virtual override(ERC4626, ERC20) returns (uint8) {
         return ERC4626.decimals();
+    }
+
+    // ------------------ Admin ------------------
+
+    /// @notice set lock duration
+    function setLockDuration(uint48 duration) external onlyOwner {
+        lockDuration = duration;
+        emit LockDurationSet(duration);
     }
 
     // ------------------ Lock ------------------
