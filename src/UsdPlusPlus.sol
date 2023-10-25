@@ -199,6 +199,8 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
+        // TODO: blacklist
+
         // transfer lock on recently minted USD++, minting and burning handled in _deposit and _withdraw
         if (from != address(0) && to != address(0)) {
             groomLockQueue(_locks[from], from);
@@ -210,6 +212,4 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
 
         super._update(from, to, value);
     }
-
-    // TODO: blacklist
 }
