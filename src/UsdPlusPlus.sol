@@ -8,7 +8,7 @@ import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEnde
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @notice stablecoin yield vault
-/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/usd++.sol)
+/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
 contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
 

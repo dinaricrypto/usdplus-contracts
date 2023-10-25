@@ -5,7 +5,7 @@ import {ERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @notice stablecoin
-/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/usd+.sol)
+/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
 contract UsdPlus is ERC20Permit, AccessControl {
     event TreasurySet(address indexed treasury);
 
