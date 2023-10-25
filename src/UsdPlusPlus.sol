@@ -10,6 +10,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
 contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
+    // TODO: continuous yield?
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
 
     struct Lock {
@@ -30,8 +31,6 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     error LockTimeTooShort(uint256 wait);
     error ValueLocked(uint256 freeValue);
 
-    // TODO: continuous yield?
-
     uint48 public lockDuration = 30 days;
 
     // dequeue of locks per account
@@ -51,16 +50,6 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         return ERC4626.decimals();
     }
 
-    // ------------------ Admin ------------------
-
-    /// @notice set lock duration
-    function setLockDuration(uint48 duration) external onlyOwner {
-        lockDuration = duration;
-        emit LockDurationSet(duration);
-    }
-
-    // ------------------ Lock ------------------
-
     /// @notice locked USD++ for account
     function sharesLocked(address account) external view returns (uint256) {
         return _cachedLockTotals[account].shares;
@@ -75,6 +64,16 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         }
         return schedule;
     }
+
+    // ------------------ Admin ------------------
+
+    /// @notice set lock duration
+    function setLockDuration(uint48 duration) external onlyOwner {
+        lockDuration = duration;
+        emit LockDurationSet(duration);
+    }
+
+    // ------------------ Lock System ------------------
 
     /// @dev pack lock data into a single bytes32
     function packLockData(Lock memory lock) internal pure returns (bytes32) {
