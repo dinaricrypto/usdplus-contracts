@@ -31,12 +31,14 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     error LockTimeTooShort(uint256 wait);
     error ValueLocked(uint256 freeValue);
 
+    /// @notice lock duration in seconds
     uint48 public lockDuration = 30 days;
 
     // dequeue of locks per account
     // back == most recent lock
     mapping(address => DoubleEndedQueue.Bytes32Deque) private _locks;
 
+    // cached lock totals per account
     mapping(address => LockTotals) private _cachedLockTotals;
 
     constructor(IERC20 usdplus, address initialOwner)
@@ -92,7 +94,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         if (shares > type(uint104).max) revert ValueOverflow();
 
         // TODO: reduce gas by not loading locktotals twice, not peeking twice
-        groomLockQueue(_locks[account], account);
+        groomLockQueue(account);
 
         // ensure new lock ends after previous lock
         // this means that if lockDuration is changed, users may have to wait before they can mint more USD++
@@ -108,17 +110,21 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     }
 
     /// @dev remove expired locks and update cached totals
-    function groomLockQueue(DoubleEndedQueue.Bytes32Deque storage queue, address account) internal {
+    function groomLockQueue(address account) internal {
+        DoubleEndedQueue.Bytes32Deque storage locks = _locks[account];
+
         // remove expired locks
         uint128 assetsDecrement;
         uint128 sharesDecrement;
-        while (queue.length() > 0) {
-            Lock memory lock = unpackLockData(queue.front());
+        while (locks.length() > 0) {
+            Lock memory lock = unpackLockData(locks.front());
+            // if lock is not expired, stop
             if (lock.endTime > block.timestamp) break;
             assetsDecrement += lock.assets;
             sharesDecrement += lock.shares;
-            queue.popFront();
+            locks.popFront();
         }
+        // update cached totals
         if (assetsDecrement > 0) {
             LockTotals memory cachedTotals = _cachedLockTotals[account];
             _cachedLockTotals[account] =
@@ -126,14 +132,14 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         }
     }
 
-    function consumeLocks(DoubleEndedQueue.Bytes32Deque storage locks, address account, uint256 shares)
-        internal
-        returns (uint128)
-    {
-        if (shares > type(uint128).max) revert ValueOverflow();
+    /// @dev consume locks and update cached totals
+    function consumeLocks(address account, uint256 sharesToConsume) internal returns (uint128) {
+        if (sharesToConsume > type(uint128).max) revert ValueOverflow();
+
+        DoubleEndedQueue.Bytes32Deque storage locks = _locks[account];
 
         uint128 assetsDue;
-        uint128 sharesRemaining = uint128(shares);
+        uint128 sharesRemaining = uint128(sharesToConsume);
         while (sharesRemaining > 0) {
             Lock memory lock = unpackLockData(locks.popFront());
             if (lock.shares > sharesRemaining) {
@@ -153,7 +159,8 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
             }
         }
         LockTotals memory cachedTotals = _cachedLockTotals[account];
-        _cachedLockTotals[account] = LockTotals(cachedTotals.assets - assetsDue, cachedTotals.shares - uint128(shares));
+        _cachedLockTotals[account] =
+            LockTotals(cachedTotals.assets - assetsDue, cachedTotals.shares - uint128(sharesToConsume));
         return assetsDue;
     }
 
@@ -168,7 +175,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         virtual
         override
     {
-        groomLockQueue(_locks[owner], owner);
+        groomLockQueue(owner);
 
         // if locked shares, determine how many assets to withdraw
         uint256 assetsToWithdraw;
@@ -186,7 +193,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
                     assetsToWithdraw += assets * freeShares / shares;
                 }
                 // if burning locked shares, redeem for original USD+
-                assetsToWithdraw += consumeLocks(_locks[owner], owner, shares - freeShares);
+                assetsToWithdraw += consumeLocks(owner, shares - freeShares);
             } else {
                 // if not burning locked shares, withdraw at normal rate
                 assetsToWithdraw = assets;
@@ -202,7 +209,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
 
         // transfer lock on recently minted USD++, minting and burning handled in _deposit and _withdraw
         if (from != address(0) && to != address(0)) {
-            groomLockQueue(_locks[from], from);
+            groomLockQueue(from);
 
             // revert if not enough free shares
             uint256 freeShares = balanceOf(from) - _cachedLockTotals[from].shares;
