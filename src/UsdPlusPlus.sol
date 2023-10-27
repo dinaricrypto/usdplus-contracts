@@ -90,7 +90,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         return Lock(uint48(packedInt >> 208), uint104(packedInt >> 104), uint104(packedInt));
     }
 
-    /// @dev add lock to heap and update cached totals
+    /// @dev add lock to queue and update cached totals
     function addLock(address account, uint256 assets, uint256 shares) internal {
         if (assets > type(uint104).max) revert ValueOverflow();
         if (shares > type(uint104).max) revert ValueOverflow();
