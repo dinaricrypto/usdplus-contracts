@@ -50,6 +50,8 @@ contract UsdPlusPlusTest is Test {
     function testPostMintLocks() public {
         // TODO: multiple locks
         // TODO: fuzz
+        // TODO: fetch schedule
+        // TODO: manual lock refresh
 
         // deposit USD+ for USD++
         vm.startPrank(USER);

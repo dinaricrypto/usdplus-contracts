@@ -11,7 +11,6 @@ contract UsdPlusTest is Test {
     UsdPlus usdplus;
 
     address public constant ADMIN = address(0x1234);
-    address public constant TREASURY = address(0x1235);
     address public constant MINTER = address(0x1236);
     address public constant BURNER = address(0x1237);
     address public constant USER = address(0x1238);
@@ -20,31 +19,31 @@ contract UsdPlusTest is Test {
         usdplus = new UsdPlus(ADMIN);
     }
 
-    function testTreasury() public {
+    function testTreasury(address treasury) public {
         // non-admin cannot set treasury
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), usdplus.DEFAULT_ADMIN_ROLE()
             )
         );
-        usdplus.setTreasury(TREASURY);
+        usdplus.setTreasury(treasury);
 
         // admin can set treasury
         vm.prank(ADMIN);
         vm.expectEmit(true, true, true, true);
-        emit TreasurySet(TREASURY);
-        usdplus.setTreasury(TREASURY);
-        assertEq(usdplus.treasury(), TREASURY);
+        emit TreasurySet(treasury);
+        usdplus.setTreasury(treasury);
+        assertEq(usdplus.treasury(), treasury);
     }
 
-    function testMint() public {
+    function testMint(uint256 amount) public {
         // non-minter cannot mint
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), usdplus.MINTER_ROLE()
             )
         );
-        usdplus.mint(address(USER), 100);
+        usdplus.mint(address(USER), amount);
 
         // grant minter role
         vm.startPrank(ADMIN);
@@ -53,18 +52,18 @@ contract UsdPlusTest is Test {
 
         // minter can mint
         vm.prank(MINTER);
-        usdplus.mint(address(USER), 100);
-        assertEq(usdplus.balanceOf(address(USER)), 100);
+        usdplus.mint(address(USER), amount);
+        assertEq(usdplus.balanceOf(address(USER)), amount);
     }
 
-    function testBurn() public {
+    function testBurn(uint256 amount) public {
         // mint USD+ to user for testing
         vm.startPrank(ADMIN);
         usdplus.grantRole(usdplus.MINTER_ROLE(), MINTER);
         vm.stopPrank();
 
         vm.prank(MINTER);
-        usdplus.mint(address(USER), 100);
+        usdplus.mint(address(USER), amount);
 
         // non-burner cannot burn
         vm.expectRevert(
@@ -73,7 +72,7 @@ contract UsdPlusTest is Test {
             )
         );
         vm.prank(address(USER));
-        usdplus.burn(100);
+        usdplus.burn(amount);
 
         // grant burner role
         vm.startPrank(ADMIN);
@@ -82,22 +81,22 @@ contract UsdPlusTest is Test {
 
         // burner can burn
         vm.prank(address(USER));
-        usdplus.burn(100);
+        usdplus.burn(amount);
         assertEq(usdplus.balanceOf(address(USER)), 0);
     }
 
-    function testBurnFrom() public {
+    function testBurnFrom(uint256 amount) public {
         // mint USD+ to user for testing
         vm.startPrank(ADMIN);
         usdplus.grantRole(usdplus.MINTER_ROLE(), MINTER);
         vm.stopPrank();
 
         vm.prank(MINTER);
-        usdplus.mint(address(USER), 100);
+        usdplus.mint(address(USER), amount);
 
         // user approves burner
         vm.prank(address(USER));
-        usdplus.approve(address(BURNER), 100);
+        usdplus.approve(address(BURNER), amount);
 
         // non-burner cannot burn
         vm.expectRevert(
@@ -106,7 +105,7 @@ contract UsdPlusTest is Test {
             )
         );
         vm.prank(address(BURNER));
-        usdplus.burnFrom(address(USER), 100);
+        usdplus.burnFrom(address(USER), amount);
 
         // grant burner role
         vm.startPrank(ADMIN);
@@ -115,7 +114,7 @@ contract UsdPlusTest is Test {
 
         // burner can burn
         vm.prank(address(BURNER));
-        usdplus.burnFrom(address(USER), 100);
+        usdplus.burnFrom(address(USER), amount);
         assertEq(usdplus.balanceOf(address(USER)), 0);
     }
 }
