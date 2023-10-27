@@ -21,17 +21,60 @@ contract UsdPlusPlusTest is Test {
 
         // mint USD+ to user for testing
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(this));
-        usdplus.mint(address(USER), 1000);
+        usdplus.mint(address(USER), 100 ether);
+        usdplus.mint(address(this), 100 ether);
+
+        // seed USD++ with USD+
+        usdplus.approve(address(usdplusplus), 100 ether);
+        usdplusplus.deposit(100 ether, address(this));
     }
 
-    function test_setLockDuration() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        usdplusplus.setLockDuration(5 days);
+    function testDeploymentConfig() public {
+        assertEq(usdplusplus.lockDuration(), 30 days);
+        assertEq(usdplusplus.decimals(), 18);
+    }
 
+    function testSetLockDuration(uint48 duration) public {
+        // non-admin cannot set lock duration
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        usdplusplus.setLockDuration(duration);
+
+        // admin can set lock duration
         vm.prank(ADMIN);
         vm.expectEmit(true, true, true, true);
-        emit LockDurationSet(5 days);
-        usdplusplus.setLockDuration(5 days);
-        assertEq(usdplusplus.lockDuration(), 5 days);
+        emit LockDurationSet(duration);
+        usdplusplus.setLockDuration(duration);
+        assertEq(usdplusplus.lockDuration(), duration);
+    }
+
+    function testPostMintLocks() public {
+        // TODO: multiple locks
+        // TODO: fuzz
+
+        // deposit USD+ for USD++
+        vm.startPrank(USER);
+        usdplus.approve(address(usdplusplus), 100 ether);
+        usdplusplus.deposit(100 ether, USER);
+        vm.stopPrank();
+        assertEq(usdplusplus.sharesLocked(address(USER)), 100 ether);
+
+        // yield 1%
+        usdplus.mint(address(usdplusplus), 2 ether);
+        assertEq(usdplusplus.convertToAssets(usdplusplus.totalSupply()), 202 ether - 1);
+
+        // user can redeem now for original value
+        vm.prank(USER);
+        usdplusplus.redeem(50 ether, USER, USER);
+        assertEq(usdplus.balanceOf(address(USER)), 50 ether);
+        assertEq(usdplusplus.sharesLocked(address(USER)), 50 ether);
+
+        // move forward 30 days
+        vm.warp(block.timestamp + 30 days);
+
+        // user can redeem after lock duration for yield
+        vm.prank(USER);
+        usdplusplus.redeem(50 ether, USER, USER);
+        assertLt(usdplus.balanceOf(address(USER)), 100 ether + 1 ether - 1);
+        assertEq(usdplusplus.sharesLocked(address(USER)), 0);
     }
 }

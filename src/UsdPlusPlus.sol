@@ -5,7 +5,9 @@ import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.so
 import {ERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+// import {console} from "forge-std/console.sol";
 
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
@@ -53,6 +55,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     }
 
     /// @notice locked USD++ for account
+    /// @dev Warning: can be stale, call refreshLocks to update
     function sharesLocked(address account) external view returns (uint256) {
         return _cachedLockTotals[account].shares;
     }
@@ -94,7 +97,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         if (shares > type(uint104).max) revert ValueOverflow();
 
         // TODO: reduce gas by not loading locktotals twice, not peeking twice
-        groomLockQueue(account);
+        refreshLocks(account);
 
         // ensure new lock ends after previous lock
         // this means that if lockDuration is changed, users may have to wait before they can mint more USD++
@@ -110,7 +113,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     }
 
     /// @dev remove expired locks and update cached totals
-    function groomLockQueue(address account) internal {
+    function refreshLocks(address account) public {
         DoubleEndedQueue.Bytes32Deque storage locks = _locks[account];
 
         // remove expired locks
@@ -144,14 +147,14 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
             Lock memory lock = unpackLockData(locks.popFront());
             if (lock.shares > sharesRemaining) {
                 // partially consume lock and return to queue
-                uint128 assets = uint128(lock.assets) * sharesRemaining / lock.shares;
+                uint128 assets = uint128(Math.mulDiv(lock.assets, sharesRemaining, lock.shares));
                 assetsDue += assets;
-                sharesRemaining = 0;
                 locks.pushFront(
                     packLockData(
                         Lock(lock.endTime, uint104(lock.assets - assets), uint104(lock.shares - sharesRemaining))
                     )
                 );
+                sharesRemaining = 0;
             } else {
                 // fully consume lock
                 assetsDue += lock.assets;
@@ -175,7 +178,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         virtual
         override
     {
-        groomLockQueue(owner);
+        refreshLocks(owner);
 
         // if locked shares, determine how many assets to withdraw
         uint256 assetsToWithdraw;
@@ -190,7 +193,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
             if (shares > freeShares) {
                 if (freeShares > 0) {
                     // if burning free shares, withdraw at normal rate
-                    assetsToWithdraw += assets * freeShares / shares;
+                    assetsToWithdraw += Math.mulDiv(assets, freeShares, shares);
                 }
                 // if burning locked shares, redeem for original USD+
                 assetsToWithdraw += consumeLocks(owner, shares - freeShares);
@@ -209,7 +212,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
 
         // transfer lock on recently minted USD++, minting and burning handled in _deposit and _withdraw
         if (from != address(0) && to != address(0)) {
-            groomLockQueue(from);
+            refreshLocks(from);
 
             // revert if not enough free shares
             uint256 freeShares = balanceOf(from) - _cachedLockTotals[from].shares;
