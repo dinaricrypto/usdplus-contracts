@@ -1,7 +1,13 @@
 {
   "name": "@dinari/usdplus-contracts",
   "version": "0.1.0",
+  "packageManager": "yarn@3.6.4",
   "scripts": {
-    "build": "forge build"
+    "test": "forge test -f $(grep RPC_ARBITRUM .env | cut -d '=' -f2) -vvv",
+    "coverage": "forge coverage -f $(grep RPC_ARBITRUM .env | cut -d '=' -f2) --report lcov && genhtml --branch-coverage --dark-mode -o ./coverage/ lcov.info",
+    "metrics": "solidity-code-metrics ./src/**/*.sol --html > metrics.html"
+  },
+  "devDependencies": {
+    "solidity-code-metrics": "^0.0.25"
   }
 }
