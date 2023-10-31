@@ -22,16 +22,16 @@ contract Redeemer is AccessControl, Nonces {
 
     event PaymentOracleSet(IERC20 indexed payment, AggregatorV3Interface oracle);
     event RequestCreated(
-        address indexed to, uint256 indexed nonce, IERC20 payment, uint256 burnAmount, uint256 paymentAmount
+        address indexed to, uint256 indexed ticket, IERC20 payment, uint256 burnAmount, uint256 paymentAmount
     );
     event RequestFulfilled(
-        address indexed to, uint256 indexed nonce, IERC20 payment, uint256 burnAmount, uint256 paymentAmount
+        address indexed to, uint256 indexed ticket, IERC20 payment, uint256 burnAmount, uint256 paymentAmount
     );
 
     error ZeroAddress();
     error ZeroAmount();
     error PaymentNotAccepted();
-    error InvalidNonce();
+    error InvalidTicket();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
 
@@ -77,18 +77,19 @@ contract Redeemer is AccessControl, Nonces {
     /// @param to recipient
     /// @param amount amount of USD+ to burn
     /// @param payment payment token
-    function request(address to, uint256 amount, IERC20 payment) external returns (uint256 nonce) {
+    /// @return ticket recipient request ticket number
+    function request(address to, uint256 amount, IERC20 payment) external returns (uint256 ticket) {
         if (to == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
 
         uint256 paymentAmount = redemptionAmount(payment, amount);
         if (paymentAmount == 0) revert ZeroAmount();
 
-        nonce = _useNonce(to);
+        ticket = _useNonce(to);
 
-        requests[to][nonce] = Request({payment: payment, burnAmount: amount, paymentAmount: paymentAmount});
+        requests[to][ticket] = Request({payment: payment, burnAmount: amount, paymentAmount: paymentAmount});
 
-        emit RequestCreated(to, nonce, payment, amount, paymentAmount);
+        emit RequestCreated(to, ticket, payment, amount, paymentAmount);
 
         usdplus.transferFrom(msg.sender, address(this), amount);
     }
@@ -97,15 +98,15 @@ contract Redeemer is AccessControl, Nonces {
 
     /// @notice fulfill a request to burn USD+ for payment
     /// @param to recipient
-    /// @param nonce request nonce
-    function fulfill(address to, uint256 nonce) external onlyRole(FULFILLER_ROLE) {
-        Request memory _request = requests[to][nonce];
+    /// @param ticket recipient request ticket number
+    function fulfill(address to, uint256 ticket) external onlyRole(FULFILLER_ROLE) {
+        Request memory _request = requests[to][ticket];
 
-        if (_request.burnAmount == 0) revert InvalidNonce();
+        if (_request.burnAmount == 0) revert InvalidTicket();
 
-        delete requests[to][nonce];
+        delete requests[to][ticket];
 
-        emit RequestFulfilled(to, nonce, _request.payment, _request.burnAmount, _request.paymentAmount);
+        emit RequestFulfilled(to, ticket, _request.payment, _request.burnAmount, _request.paymentAmount);
 
         usdplus.burn(_request.burnAmount);
         _request.payment.safeTransferFrom(msg.sender, to, _request.paymentAmount);
