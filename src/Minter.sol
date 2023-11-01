@@ -4,18 +4,19 @@ pragma solidity 0.8.21;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import {UsdPlus} from "./UsdPlus.sol";
 
-/// @notice stablecoin minter
+/// @notice USD+ minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
 contract Minter is Ownable {
     using SafeERC20 for IERC20;
 
-    event TreasurySet(address indexed treasury);
-    event PaymentOracleSet(IERC20 indexed payment, AggregatorV3Interface oracle);
-    event Issued(address indexed to, IERC20 indexed payment, uint256 paymentAmount, uint256 issueAmount);
+    event PaymentRecipientSet(address indexed paymentRecipient);
+    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
+    event Issued(address indexed to, IERC20 indexed paymentToken, uint256 paymentAmount, uint256 issueAmount);
 
     error ZeroAddress();
     error PaymentNotAccepted();
@@ -23,58 +24,59 @@ contract Minter is Ownable {
     /// @notice USD+
     UsdPlus public immutable usdplus;
 
-    /// @notice treasury for payment tokens
-    address public treasury;
+    /// @notice receiver of payment tokens
+    address public paymentRecipient;
 
     /// @notice is this payment token accepted?
-    mapping(IERC20 => AggregatorV3Interface) public paymentOracle;
+    mapping(IERC20 paymentToken => AggregatorV3Interface oracle) public paymentTokenOracle;
 
-    constructor(UsdPlus _usdplus, address initialOwner) Ownable(initialOwner) {
+    constructor(UsdPlus _usdplus, address _paymentRecipient, address initialOwner) Ownable(initialOwner) {
         usdplus = _usdplus;
+        paymentRecipient = _paymentRecipient;
     }
 
     // ------------------ Admin ------------------
 
-    /// @notice set treasury
-    /// @param _treasury treasury
-    function setTreasury(address _treasury) external onlyOwner {
-        treasury = _treasury;
-        emit TreasurySet(_treasury);
+    /// @notice set payment recipient
+    function setPaymentRecipient(address _paymentRecipient) external onlyOwner {
+        paymentRecipient = _paymentRecipient;
+        emit PaymentRecipientSet(_paymentRecipient);
     }
 
     /// @notice set payment token oracle
-    /// @param payment payment token
+    /// @param paymentToken payment token
     /// @param oracle oracle
-    function setPaymentOracle(IERC20 payment, AggregatorV3Interface oracle) external onlyOwner {
-        paymentOracle[payment] = oracle;
-        emit PaymentOracleSet(payment, oracle);
+    function setPaymentTokenOracle(IERC20 paymentToken, AggregatorV3Interface oracle) external onlyOwner {
+        paymentTokenOracle[paymentToken] = oracle;
+        emit PaymentTokenOracleSet(paymentToken, oracle);
     }
 
     // ------------------ Mint ------------------
 
     /// @notice calculate USD+ amount to mint for payment
-    /// @param payment payment token
+    /// @param paymentToken payment token
     /// @param amount amount of payment token
-    function issueAmount(IERC20 payment, uint256 amount) public view returns (uint256) {
-        AggregatorV3Interface oracle = paymentOracle[payment];
+    function issueAmount(IERC20 paymentToken, uint256 amount) public view returns (uint256) {
+        AggregatorV3Interface oracle = paymentTokenOracle[paymentToken];
         if (address(oracle) == address(0)) revert PaymentNotAccepted();
 
+        uint8 oracleDecimals = oracle.decimals();
         (, int256 price,,,) = oracle.latestRoundData();
-        // TODO: use correct decimals
-        return amount * uint256(price);
+
+        return Math.mulDiv(amount, uint256(price), 10 ** uint256(oracleDecimals));
     }
 
     /// @notice mint USD+ for payment
     /// @param to recipient
-    /// @param payment payment token
+    /// @param paymentToken payment token
     /// @param amount amount of USD+ to mint
-    function issue(address to, IERC20 payment, uint256 amount) external {
+    function issue(address to, IERC20 paymentToken, uint256 amount) external {
         if (to == address(0)) revert ZeroAddress();
 
-        uint256 _issueAmount = issueAmount(payment, amount);
-        emit Issued(to, payment, amount, _issueAmount);
+        uint256 _issueAmount = issueAmount(paymentToken, amount);
+        emit Issued(to, paymentToken, amount, _issueAmount);
 
-        payment.safeTransferFrom(msg.sender, treasury, amount);
+        paymentToken.safeTransferFrom(msg.sender, paymentRecipient, amount);
         usdplus.mint(to, _issueAmount);
     }
 }
