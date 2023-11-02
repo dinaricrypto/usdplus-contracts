@@ -11,12 +11,13 @@ contract UsdPlusTest is Test {
     UsdPlus usdplus;
 
     address public constant ADMIN = address(0x1234);
+    address public constant TREASURY = address(0x1235);
     address public constant MINTER = address(0x1236);
     address public constant BURNER = address(0x1237);
     address public constant USER = address(0x1238);
 
     function setUp() public {
-        usdplus = new UsdPlus(ADMIN);
+        usdplus = new UsdPlus(TREASURY, ADMIN);
     }
 
     function testTreasury(address treasury) public {

@@ -22,7 +22,7 @@ contract MinterTest is Test {
     address constant usdcPriceOracle = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
     function setUp() public {
-        usdplus = new UsdPlus(ADMIN);
+        usdplus = new UsdPlus(TREASURY, ADMIN);
         minter = new Minter(usdplus, TREASURY, ADMIN);
         paymentToken = new ERC20Mock();
 
