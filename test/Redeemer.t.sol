@@ -156,29 +156,4 @@ contract RedeemerTest is Test {
         vm.prank(FULFILLER);
         redeemer.fulfill(USER, 0);
     }
-
-    // function test_issue(uint256 amount) public {
-    //     vm.assume(amount < type(uint256).max / 2);
-
-    //     vm.startPrank(ADMIN);
-    //     usdplus.grantRole(usdplus.MINTER_ROLE(), address(redeemer));
-    //     vm.stopPrank();
-
-    //     // payment token oracle not set
-    //     vm.expectRevert(abi.encodeWithSelector(Minter.PaymentNotAccepted.selector));
-    //     redeemer.issue(USER, paymentToken, amount);
-
-    //     vm.prank(ADMIN);
-    //     redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
-
-    //     vm.prank(USER);
-    //     paymentToken.approve(address(redeemer), amount);
-
-    //     uint256 issueEstimate = redeemer.issueAmount(paymentToken, amount);
-
-    //     vm.expectEmit(true, true, true, true);
-    //     emit Issued(USER, paymentToken, amount, issueEstimate);
-    //     vm.prank(USER);
-    //     redeemer.issue(USER, paymentToken, amount);
-    // }
 }
