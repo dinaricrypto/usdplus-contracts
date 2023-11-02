@@ -70,11 +70,16 @@ contract MinterTest is Test {
 
     function test_issueToZeroAddressReverts(uint256 amount) public {
         vm.expectRevert(abi.encodeWithSelector(Minter.ZeroAddress.selector));
-        minter.issue(address(0), usdplus, amount);
+        minter.issue(address(0), paymentToken, amount);
+    }
+
+    function test_issueZeroAmountReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(Minter.ZeroAmount.selector));
+        minter.issue(USER, paymentToken, 0);
     }
 
     function test_issue(uint256 amount) public {
-        vm.assume(amount < type(uint256).max / 2);
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.startPrank(ADMIN);
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
@@ -95,6 +100,7 @@ contract MinterTest is Test {
         vm.expectEmit(true, true, true, true);
         emit Issued(USER, paymentToken, amount, issueEstimate);
         vm.prank(USER);
-        minter.issue(USER, paymentToken, amount);
+        uint256 issued = minter.issue(USER, paymentToken, amount);
+        assertEq(issued, issueEstimate);
     }
 }

@@ -19,6 +19,7 @@ contract Minter is Ownable {
     event Issued(address indexed to, IERC20 indexed paymentToken, uint256 paymentAmount, uint256 issueAmount);
 
     error ZeroAddress();
+    error ZeroAmount();
     error PaymentNotAccepted();
 
     /// @notice USD+
@@ -69,14 +70,18 @@ contract Minter is Ownable {
     /// @notice mint USD+ for payment
     /// @param to recipient
     /// @param paymentToken payment token
-    /// @param amount amount of USD+ to mint
-    function issue(address to, IERC20 paymentToken, uint256 amount) external {
+    /// @param amount amount of payment token to spend
+    /// @return issued amount of USD+ minted
+    function issue(address to, IERC20 paymentToken, uint256 amount) external returns (uint256) {
         if (to == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
 
         uint256 _issueAmount = issueAmount(paymentToken, amount);
         emit Issued(to, paymentToken, amount, _issueAmount);
 
         paymentToken.safeTransferFrom(msg.sender, paymentRecipient, amount);
         usdplus.mint(to, _issueAmount);
+
+        return _issueAmount;
     }
 }
