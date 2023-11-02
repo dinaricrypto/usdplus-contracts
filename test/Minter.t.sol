@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import "../src/Minter.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract MinterTest is Test {
     event PaymentRecipientSet(address indexed paymentRecipient);
@@ -13,6 +14,7 @@ contract MinterTest is Test {
 
     UsdPlus usdplus;
     Minter minter;
+    ERC20Mock paymentToken;
 
     address public constant ADMIN = address(0x1234);
     address public constant TREASURY = address(0x1235);
@@ -22,6 +24,9 @@ contract MinterTest is Test {
     function setUp() public {
         usdplus = new UsdPlus(ADMIN);
         minter = new Minter(usdplus, TREASURY, ADMIN);
+        paymentToken = new ERC20Mock();
+
+        paymentToken.mint(USER, type(uint256).max);
     }
 
     function test_setPaymentRecipient(address recipient) public {
@@ -37,17 +42,17 @@ contract MinterTest is Test {
         assertEq(minter.paymentRecipient(), recipient);
     }
 
-    function test_setPaymentTokenOracle(address oracle) public {
+    function test_setPaymentTokenOracle(IERC20 token, address oracle) public {
         // non-admin cannot set payment token oracle
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        minter.setPaymentTokenOracle(usdplus, AggregatorV3Interface(oracle));
+        minter.setPaymentTokenOracle(token, AggregatorV3Interface(oracle));
 
         // admin can set payment token oracle
         vm.expectEmit(true, true, true, true);
-        emit PaymentTokenOracleSet(usdplus, AggregatorV3Interface(oracle));
+        emit PaymentTokenOracleSet(token, AggregatorV3Interface(oracle));
         vm.prank(ADMIN);
-        minter.setPaymentTokenOracle(usdplus, AggregatorV3Interface(oracle));
-        assertEq(address(minter.paymentTokenOracle(usdplus)), oracle);
+        minter.setPaymentTokenOracle(token, AggregatorV3Interface(oracle));
+        assertEq(address(minter.paymentTokenOracle(token)), oracle);
     }
 
     function test_issueAmount(uint256 amount) public {
@@ -55,17 +60,41 @@ contract MinterTest is Test {
 
         // payment token oracle not set
         vm.expectRevert(abi.encodeWithSelector(Minter.PaymentNotAccepted.selector));
-        minter.issueAmount(usdplus, amount);
+        minter.issueAmount(paymentToken, amount);
 
         vm.prank(ADMIN);
-        minter.setPaymentTokenOracle(usdplus, AggregatorV3Interface(usdcPriceOracle));
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        minter.issueAmount(usdplus, amount);
+        minter.issueAmount(paymentToken, amount);
     }
 
-    // function test_issue() public {
-    //     vm.prank(ADMIN);
-    //     usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
+    function test_issueToZeroAddressReverts(uint256 amount) public {
+        vm.expectRevert(abi.encodeWithSelector(Minter.ZeroAddress.selector));
+        minter.issue(address(0), usdplus, amount);
+    }
 
-    // }
+    function test_issue(uint256 amount) public {
+        vm.assume(amount < type(uint256).max / 2);
+
+        vm.startPrank(ADMIN);
+        usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
+        vm.stopPrank();
+
+        // payment token oracle not set
+        vm.expectRevert(abi.encodeWithSelector(Minter.PaymentNotAccepted.selector));
+        minter.issue(USER, paymentToken, amount);
+
+        vm.prank(ADMIN);
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        vm.prank(USER);
+        paymentToken.approve(address(minter), amount);
+
+        uint256 issueEstimate = minter.issueAmount(paymentToken, amount);
+
+        vm.expectEmit(true, true, true, true);
+        emit Issued(USER, paymentToken, amount, issueEstimate);
+        vm.prank(USER);
+        minter.issue(USER, paymentToken, amount);
+    }
 }
