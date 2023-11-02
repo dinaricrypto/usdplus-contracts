@@ -5,6 +5,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import {UsdPlus} from "./UsdPlus.sol";
@@ -15,17 +16,17 @@ contract Redeemer is AccessControl, Nonces {
     using SafeERC20 for IERC20;
 
     struct Request {
-        IERC20 payment;
+        IERC20 paymentToken;
         uint256 burnAmount;
         uint256 paymentAmount;
     }
 
-    event PaymentOracleSet(IERC20 indexed payment, AggregatorV3Interface oracle);
+    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
     event RequestCreated(
-        address indexed to, uint256 indexed ticket, IERC20 payment, uint256 burnAmount, uint256 paymentAmount
+        address indexed to, uint256 indexed ticket, IERC20 paymentToken, uint256 burnAmount, uint256 paymentAmount
     );
     event RequestFulfilled(
-        address indexed to, uint256 indexed ticket, IERC20 payment, uint256 burnAmount, uint256 paymentAmount
+        address indexed to, uint256 indexed ticket, IERC20 paymentToken, uint256 burnAmount, uint256 paymentAmount
     );
 
     error ZeroAddress();
@@ -39,7 +40,7 @@ contract Redeemer is AccessControl, Nonces {
     UsdPlus public immutable usdplus;
 
     /// @notice is this payment token accepted?
-    mapping(IERC20 => AggregatorV3Interface) public paymentOracle;
+    mapping(IERC20 => AggregatorV3Interface) public paymentTokenOracle;
 
     mapping(address => mapping(uint256 => Request)) public requests;
 
@@ -54,9 +55,12 @@ contract Redeemer is AccessControl, Nonces {
     /// @notice set payment token oracle
     /// @param payment payment token
     /// @param oracle oracle
-    function setPaymentOracle(IERC20 payment, AggregatorV3Interface oracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        paymentOracle[payment] = oracle;
-        emit PaymentOracleSet(payment, oracle);
+    function setPaymentTokenOracle(IERC20 payment, AggregatorV3Interface oracle)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        paymentTokenOracle[payment] = oracle;
+        emit PaymentTokenOracleSet(payment, oracle);
     }
 
     // ----------------- Requests -----------------
@@ -65,31 +69,33 @@ contract Redeemer is AccessControl, Nonces {
     /// @param payment payment token
     /// @param amount amount of USD+
     function redemptionAmount(IERC20 payment, uint256 amount) public view returns (uint256) {
-        AggregatorV3Interface oracle = paymentOracle[payment];
+        AggregatorV3Interface oracle = paymentTokenOracle[payment];
         if (address(oracle) == address(0)) revert PaymentNotAccepted();
 
+        uint8 oracleDecimals = oracle.decimals();
         (, int256 price,,,) = oracle.latestRoundData();
-        // TODO: use correct units for price math
-        return amount / uint256(price);
+
+        return Math.mulDiv(amount, 10 ** uint256(oracleDecimals), uint256(price));
     }
 
     /// @notice create a request to burn USD+ for payment
     /// @param to recipient
+    /// @param paymentToken payment token
     /// @param amount amount of USD+ to burn
-    /// @param payment payment token
     /// @return ticket recipient request ticket number
-    function request(address to, uint256 amount, IERC20 payment) external returns (uint256 ticket) {
+    /// @dev exchange rate fixed at time of request creation
+    function request(address to, IERC20 paymentToken, uint256 amount) external returns (uint256 ticket) {
         if (to == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
 
-        uint256 paymentAmount = redemptionAmount(payment, amount);
+        uint256 paymentAmount = redemptionAmount(paymentToken, amount);
         if (paymentAmount == 0) revert ZeroAmount();
 
         ticket = _useNonce(to);
 
-        requests[to][ticket] = Request({payment: payment, burnAmount: amount, paymentAmount: paymentAmount});
+        requests[to][ticket] = Request({paymentToken: paymentToken, burnAmount: amount, paymentAmount: paymentAmount});
 
-        emit RequestCreated(to, ticket, payment, amount, paymentAmount);
+        emit RequestCreated(to, ticket, paymentToken, amount, paymentAmount);
 
         usdplus.transferFrom(msg.sender, address(this), amount);
     }
@@ -106,9 +112,9 @@ contract Redeemer is AccessControl, Nonces {
 
         delete requests[to][ticket];
 
-        emit RequestFulfilled(to, ticket, _request.payment, _request.burnAmount, _request.paymentAmount);
+        emit RequestFulfilled(to, ticket, _request.paymentToken, _request.burnAmount, _request.paymentAmount);
 
         usdplus.burn(_request.burnAmount);
-        _request.payment.safeTransferFrom(msg.sender, to, _request.paymentAmount);
+        _request.paymentToken.safeTransferFrom(msg.sender, to, _request.paymentAmount);
     }
 }
