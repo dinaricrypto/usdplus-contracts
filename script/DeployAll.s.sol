@@ -51,10 +51,11 @@ contract DeployAllScript is Script {
 
         Minter minter = new Minter(
             usdplus,
+            cfg.treasury,
             cfg.owner
         );
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
-        minter.setPaymentOracle(usdc, cfg.paymentTokenOracle);
+        minter.setPaymentTokenOracle(usdc, cfg.paymentTokenOracle);
 
         Redeemer redeemer = new Redeemer(
             usdplus,
@@ -62,7 +63,7 @@ contract DeployAllScript is Script {
         );
         usdplus.grantRole(usdplus.BURNER_ROLE(), address(redeemer));
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.redemptionFulfiller);
-        redeemer.setPaymentOracle(usdc, cfg.paymentTokenOracle);
+        redeemer.setPaymentTokenOracle(usdc, cfg.paymentTokenOracle);
 
         vm.stopBroadcast();
     }
