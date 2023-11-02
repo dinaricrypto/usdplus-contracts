@@ -16,7 +16,7 @@ contract UsdPlusPlusTest is Test {
     address public constant USER = address(0x1235);
 
     function setUp() public {
-        usdplus = new UsdPlus(address(this));
+        usdplus = new UsdPlus(address(this), address(this));
         usdplusplus = new UsdPlusPlus(usdplus, ADMIN);
 
         // mint USD+ to user for testing

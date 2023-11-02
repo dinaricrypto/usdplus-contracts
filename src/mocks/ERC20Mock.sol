@@ -4,31 +4,23 @@ pragma solidity 0.8.21;
 import {ERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-/// @notice stablecoin
-/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
-contract UsdPlus is ERC20Permit, AccessControl {
-    event TreasurySet(address indexed treasury);
-
+contract ERC20Mock is ERC20Permit, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
-    /// @notice treasury for digital assets backing USD+
-    address public treasury;
+    uint8 private immutable _decimals;
 
-    constructor(address _treasury, address initialOwner) ERC20("USD+", "USD+") ERC20Permit("USD+") {
+    constructor(string memory name_, string memory symbol_, uint8 decimals_, address initialOwner)
+        ERC20(name_, symbol_)
+        ERC20Permit(name_)
+    {
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
-        treasury = _treasury;
+        _decimals = decimals_;
     }
 
-    // ------------------ Admin ------------------
-
-    /// @notice set treasury address
-    function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        treasury = _treasury;
-        emit TreasurySet(_treasury);
+    function decimals() public view override returns (uint8) {
+        return _decimals;
     }
-
-    // ------------------ Minting/Burning ------------------
 
     /// @notice mint USD+ to account
     function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
