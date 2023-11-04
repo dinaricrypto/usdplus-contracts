@@ -41,7 +41,7 @@ contract MintEarnRedeem is Script {
         // mint payment token
         uint256 amount = 10_000 * 10 ** cfg.usdc.decimals();
         cfg.usdc.mint(deployer, amount);
-        // cfg.usdc.mint(user, amount);
+        cfg.usdc.mint(user, amount);
         console.log("user %s USDC", cfg.usdc.balanceOf(user));
         console.log("reserve %s USDC", cfg.usdc.balanceOf(deployer));
 
