@@ -37,10 +37,12 @@ contract DeployAllScript is Script {
         /// ------------------ payment token ------------------
 
         ERC20Mock usdc = new ERC20Mock("USD Coin - Dinari", "USDC", 6, cfg.owner);
+        usdc.grantRole(usdc.MINTER_ROLE(), cfg.owner);
 
         /// ------------------ usd+ ------------------
 
         UsdPlus usdplus = new UsdPlus(cfg.treasury, cfg.owner);
+        usdplus.grantRole(usdplus.MINTER_ROLE(), cfg.owner);
 
         new UsdPlusPlus(
             usdplus,
