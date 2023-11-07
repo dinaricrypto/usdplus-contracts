@@ -7,6 +7,7 @@ import {UsdPlus} from "../src/UsdPlus.sol";
 import {UsdPlusPlus} from "../src/UsdPlusPlus.sol";
 import {Minter} from "../src/Minter.sol";
 import {Redeemer} from "../src/Redeemer.sol";
+import {Multicall} from "../src/Multicall.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract MintEarnRedeem is Script {
@@ -16,6 +17,7 @@ contract MintEarnRedeem is Script {
         UsdPlusPlus usdPlusPlus;
         Minter minter;
         Redeemer redeemer;
+        Multicall multicall;
     }
 
     function run() external {
@@ -30,7 +32,8 @@ contract MintEarnRedeem is Script {
             usdPlus: UsdPlus(vm.envAddress("USDPLUS")),
             usdPlusPlus: UsdPlusPlus(vm.envAddress("USDPLUSPLUS")),
             minter: Minter(vm.envAddress("MINTER")),
-            redeemer: Redeemer(vm.envAddress("REDEEMER"))
+            redeemer: Redeemer(vm.envAddress("REDEEMER")),
+            multicall: Multicall(vm.envAddress("MULTICALL"))
         });
 
         console.log("deployer: %s", deployer);
