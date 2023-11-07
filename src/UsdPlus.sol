@@ -3,11 +3,13 @@ pragma solidity 0.8.21;
 
 import {ERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
 contract UsdPlus is ERC20Permit, AccessControl {
     event TreasurySet(address indexed treasury);
+    event TransferRestrictorSet(ITransferRestrictor indexed transferRestrictor);
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
@@ -15,9 +17,15 @@ contract UsdPlus is ERC20Permit, AccessControl {
     /// @notice treasury for digital assets backing USD+
     address public treasury;
 
-    constructor(address _treasury, address initialOwner) ERC20("USD+", "USD+") ERC20Permit("USD+") {
+    ITransferRestrictor public transferRestrictor;
+
+    constructor(address _treasury, ITransferRestrictor _transferRestrictor, address initialOwner)
+        ERC20("USD+", "USD+")
+        ERC20Permit("USD+")
+    {
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         treasury = _treasury;
+        transferRestrictor = _transferRestrictor;
     }
 
     // ------------------ Admin ------------------
@@ -26,6 +34,12 @@ contract UsdPlus is ERC20Permit, AccessControl {
     function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         treasury = _treasury;
         emit TreasurySet(_treasury);
+    }
+
+    /// @notice set transfer restrictor
+    function setTransferRestrictor(ITransferRestrictor _transferRestrictor) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        transferRestrictor = _transferRestrictor;
+        emit TransferRestrictorSet(_transferRestrictor);
     }
 
     // ------------------ Minting/Burning ------------------
@@ -46,5 +60,26 @@ contract UsdPlus is ERC20Permit, AccessControl {
         _burn(account, value);
     }
 
-    // TODO: blacklist
+    // ------------------ Transfer Restriction ------------------
+
+    function _update(address from, address to, uint256 value) internal virtual override {
+        checkTransferRestricted(from, to);
+
+        super._update(from, to, value);
+    }
+
+    function checkTransferRestricted(address from, address to) public view {
+        ITransferRestrictor _transferRestrictor = transferRestrictor;
+        if (address(_transferRestrictor) != address(0)) {
+            _transferRestrictor.requireNotRestricted(from, to);
+        }
+    }
+
+    function isBlacklisted(address account) external view returns (bool) {
+        ITransferRestrictor _transferRestrictor = transferRestrictor;
+        if (address(_transferRestrictor) != address(0)) {
+            return _transferRestrictor.isBlacklisted(account);
+        }
+        return false;
+    }
 }

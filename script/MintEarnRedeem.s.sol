@@ -90,9 +90,9 @@ contract MintEarnRedeem is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // fulfill redemption request
-        (,, uint256 paymentAmount) = cfg.redeemer.requests(user, ticket);
+        (,, uint256 paymentAmount,) = cfg.redeemer.requests(ticket);
         cfg.usdc.approve(address(cfg.redeemer), paymentAmount);
-        cfg.redeemer.fulfill(user, ticket);
+        cfg.redeemer.fulfill(ticket);
         uint256 usdcBalance = cfg.usdc.balanceOf(user);
         console.log("user %s USDC", usdcBalance);
 

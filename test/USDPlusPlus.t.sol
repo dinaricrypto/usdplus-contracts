@@ -3,12 +3,14 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
+import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import {UsdPlusPlus} from "../src/UsdPlusPlus.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract UsdPlusPlusTest is Test {
     event LockDurationSet(uint48 duration);
 
+    TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
     UsdPlusPlus usdplusplus;
 
@@ -16,7 +18,8 @@ contract UsdPlusPlusTest is Test {
     address public constant USER = address(0x1235);
 
     function setUp() public {
-        usdplus = new UsdPlus(address(this), address(this));
+        transferRestrictor = new TransferRestrictor(address(this));
+        usdplus = new UsdPlus(address(this), transferRestrictor, address(this));
         usdplusplus = new UsdPlusPlus(usdplus, ADMIN);
 
         // mint USD+ to user for testing
@@ -29,12 +32,12 @@ contract UsdPlusPlusTest is Test {
         usdplusplus.deposit(100 ether, address(this));
     }
 
-    function testDeploymentConfig() public {
+    function test_deploymentConfig() public {
         assertEq(usdplusplus.lockDuration(), 30 days);
         assertEq(usdplusplus.decimals(), 18);
     }
 
-    function testSetLockDuration(uint48 duration) public {
+    function test_setLockDuration(uint48 duration) public {
         // non-admin cannot set lock duration
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
         usdplusplus.setLockDuration(duration);
@@ -47,7 +50,7 @@ contract UsdPlusPlusTest is Test {
         assertEq(usdplusplus.lockDuration(), duration);
     }
 
-    function testPostMintLocks() public {
+    function test_postMintLocks() public {
         // TODO: multiple locks
         // TODO: fuzz
         // TODO: fetch schedule
@@ -78,5 +81,45 @@ contract UsdPlusPlusTest is Test {
         usdplusplus.redeem(50 ether, USER, USER);
         assertLt(usdplus.balanceOf(address(USER)), 100 ether + 1 ether - 1);
         assertEq(usdplusplus.sharesLocked(address(USER)), 0);
+    }
+
+    function test_transferReverts(address to, uint104 amount) public {
+        vm.assume(to != address(0));
+
+        usdplus.mint(USER, amount);
+
+        vm.startPrank(USER);
+        usdplus.approve(address(usdplusplus), amount);
+        usdplusplus.deposit(amount, USER);
+        vm.stopPrank();
+        uint256 usdplusplusBalance = usdplusplus.balanceOf(USER);
+
+        // restrict from
+        transferRestrictor.restrict(USER);
+        assertEq(usdplusplus.isBlacklisted(USER), true);
+
+        vm.expectRevert(TransferRestrictor.AccountRestricted.selector);
+        vm.prank(USER);
+        usdplusplus.transfer(to, usdplusplusBalance);
+
+        // restrict to
+        transferRestrictor.unrestrict(USER);
+        transferRestrictor.restrict(to);
+        assertEq(usdplusplus.isBlacklisted(to), true);
+
+        vm.expectRevert(TransferRestrictor.AccountRestricted.selector);
+        vm.prank(USER);
+        usdplusplus.transfer(to, usdplusplusBalance);
+
+        // remove restrictor
+        usdplus.setTransferRestrictor(TransferRestrictor(address(0)));
+        assertEq(usdplusplus.isBlacklisted(to), false);
+
+        // move forward 30 days
+        vm.warp(block.timestamp + 30 days);
+
+        // transfer succeeds
+        vm.prank(USER);
+        usdplusplus.transfer(to, usdplusplusBalance);
     }
 }
