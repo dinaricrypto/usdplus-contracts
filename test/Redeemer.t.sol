@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
+import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/Redeemer.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
@@ -16,6 +17,7 @@ contract RedeemerTest is Test {
         address indexed to, uint256 indexed ticket, IERC20 paymentToken, uint256 burnAmount, uint256 paymentAmount
     );
 
+    TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
     Redeemer redeemer;
     ERC20Mock paymentToken;
@@ -26,7 +28,8 @@ contract RedeemerTest is Test {
     address constant usdcPriceOracle = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
     function setUp() public {
-        usdplus = new UsdPlus(address(this), ADMIN);
+        transferRestrictor = new TransferRestrictor(ADMIN);
+        usdplus = new UsdPlus(address(this), transferRestrictor, ADMIN);
         redeemer = new Redeemer(usdplus, ADMIN);
         paymentToken = new ERC20Mock();
 

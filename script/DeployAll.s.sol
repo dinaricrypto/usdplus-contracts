@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 import "forge-std/Script.sol";
 import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
+import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {UsdPlusPlus} from "../src/UsdPlusPlus.sol";
 import {Minter} from "../src/Minter.sol";
@@ -40,7 +41,9 @@ contract DeployAllScript is Script {
 
         /// ------------------ usd+ ------------------
 
-        UsdPlus usdplus = new UsdPlus(cfg.treasury, cfg.owner);
+        TransferRestrictor transferRestrictor = new TransferRestrictor(cfg.owner);
+
+        UsdPlus usdplus = new UsdPlus(cfg.treasury, transferRestrictor, cfg.owner);
 
         new UsdPlusPlus(
             usdplus,
