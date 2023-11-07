@@ -61,12 +61,12 @@ contract RedeemerTest is Test {
 
         // payment token oracle not set
         vm.expectRevert(abi.encodeWithSelector(Redeemer.PaymentNotAccepted.selector));
-        redeemer.redemptionAmount(paymentToken, amount);
+        redeemer.previewRedemptionAmount(paymentToken, amount);
 
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        redeemer.redemptionAmount(paymentToken, amount);
+        redeemer.previewRedemptionAmount(paymentToken, amount);
     }
 
     function test_requestToZeroAddressReverts(uint256 amount) public {
@@ -88,7 +88,7 @@ contract RedeemerTest is Test {
         vm.prank(USER);
         usdplus.approve(address(redeemer), amount);
 
-        uint256 redemptionEstimate = redeemer.redemptionAmount(paymentToken, amount);
+        uint256 redemptionEstimate = redeemer.previewRedemptionAmount(paymentToken, amount);
 
         // reverts if redemption amount is 0
         if (redemptionEstimate == 0) {
@@ -118,7 +118,7 @@ contract RedeemerTest is Test {
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        uint256 redemptionEstimate = redeemer.redemptionAmount(paymentToken, amount);
+        uint256 redemptionEstimate = redeemer.previewRedemptionAmount(paymentToken, amount);
         vm.assume(redemptionEstimate > 0);
 
         vm.prank(USER);
