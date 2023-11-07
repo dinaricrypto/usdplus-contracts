@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
 
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
@@ -42,7 +43,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     // cached lock totals per account
     mapping(address => LockTotals) private _cachedLockTotals;
 
-    constructor(IERC20 usdplus, address initialOwner)
+    constructor(UsdPlus usdplus, address initialOwner)
         ERC4626(usdplus)
         ERC20Permit("USD++")
         ERC20("USD++", "USD++")
@@ -207,7 +208,8 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
-        // TODO: blacklist
+        // check if transfer is allowed
+        UsdPlus(asset()).checkTransferRestricted(from, to);
 
         // transfer lock on recently minted USD++, minting and burning handled in _deposit and _withdraw
         if (from != address(0) && to != address(0)) {
@@ -219,5 +221,9 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         }
 
         super._update(from, to, value);
+    }
+
+    function isBlacklisted(address account) external view returns (bool) {
+        return UsdPlus(asset()).isBlacklisted(account);
     }
 }

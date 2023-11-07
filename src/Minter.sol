@@ -56,30 +56,30 @@ contract Minter is Ownable {
 
     /// @notice calculate USD+ amount to mint for payment
     /// @param paymentToken payment token
-    /// @param amount amount of payment token
-    function issueAmount(IERC20 paymentToken, uint256 amount) public view returns (uint256) {
+    /// @param paymentTokenAmount amount of payment token
+    function previewIssueAmount(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
         AggregatorV3Interface oracle = paymentTokenOracle[paymentToken];
         if (address(oracle) == address(0)) revert PaymentNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
         (, int256 price,,,) = oracle.latestRoundData();
 
-        return Math.mulDiv(amount, uint256(price), 10 ** uint256(oracleDecimals));
+        return Math.mulDiv(paymentTokenAmount, uint256(price), 10 ** uint256(oracleDecimals));
     }
 
     /// @notice mint USD+ for payment
     /// @param to recipient
     /// @param paymentToken payment token
-    /// @param amount amount of payment token to spend
+    /// @param paymentTokenAmount amount of payment token to spend
     /// @return issued amount of USD+ minted
-    function issue(address to, IERC20 paymentToken, uint256 amount) external returns (uint256) {
+    function issue(address to, IERC20 paymentToken, uint256 paymentTokenAmount) external returns (uint256) {
         if (to == address(0)) revert ZeroAddress();
-        if (amount == 0) revert ZeroAmount();
+        if (paymentTokenAmount == 0) revert ZeroAmount();
 
-        uint256 _issueAmount = issueAmount(paymentToken, amount);
-        emit Issued(to, paymentToken, amount, _issueAmount);
+        uint256 _issueAmount = previewIssueAmount(paymentToken, paymentTokenAmount);
+        emit Issued(to, paymentToken, paymentTokenAmount, _issueAmount);
 
-        paymentToken.safeTransferFrom(msg.sender, paymentRecipient, amount);
+        paymentToken.safeTransferFrom(msg.sender, paymentRecipient, paymentTokenAmount);
         usdplus.mint(to, _issueAmount);
 
         return _issueAmount;

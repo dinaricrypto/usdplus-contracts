@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
+import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/Minter.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
@@ -12,6 +13,7 @@ contract MinterTest is Test {
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
     event Issued(address indexed to, IERC20 indexed paymentToken, uint256 paymentAmount, uint256 issueAmount);
 
+    TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
     Minter minter;
     ERC20Mock paymentToken;
@@ -22,7 +24,8 @@ contract MinterTest is Test {
     address constant usdcPriceOracle = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
     function setUp() public {
-        usdplus = new UsdPlus(TREASURY, ADMIN);
+        transferRestrictor = new TransferRestrictor(ADMIN);
+        usdplus = new UsdPlus(TREASURY, transferRestrictor, ADMIN);
         minter = new Minter(usdplus, TREASURY, ADMIN);
         paymentToken = new ERC20Mock();
 
@@ -60,12 +63,12 @@ contract MinterTest is Test {
 
         // payment token oracle not set
         vm.expectRevert(abi.encodeWithSelector(Minter.PaymentNotAccepted.selector));
-        minter.issueAmount(paymentToken, amount);
+        minter.previewIssueAmount(paymentToken, amount);
 
         vm.prank(ADMIN);
         minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        minter.issueAmount(paymentToken, amount);
+        minter.previewIssueAmount(paymentToken, amount);
     }
 
     function test_issueToZeroAddressReverts(uint256 amount) public {
@@ -95,7 +98,7 @@ contract MinterTest is Test {
         vm.prank(USER);
         paymentToken.approve(address(minter), amount);
 
-        uint256 issueEstimate = minter.issueAmount(paymentToken, amount);
+        uint256 issueEstimate = minter.previewIssueAmount(paymentToken, amount);
 
         vm.expectEmit(true, true, true, true);
         emit Issued(USER, paymentToken, amount, issueEstimate);
