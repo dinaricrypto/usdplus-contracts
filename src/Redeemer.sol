@@ -68,7 +68,7 @@ contract Redeemer is AccessControl {
     /// @notice calculate payment amount for USD+ burn
     /// @param payment payment token
     /// @param amount amount of USD+
-    function redemptionAmount(IERC20 payment, uint256 amount) public view returns (uint256) {
+    function previewRedemptionAmount(IERC20 payment, uint256 amount) public view returns (uint256) {
         AggregatorV3Interface oracle = paymentTokenOracle[payment];
         if (address(oracle) == address(0)) revert PaymentNotAccepted();
 
@@ -88,7 +88,7 @@ contract Redeemer is AccessControl {
         if (to == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
 
-        uint256 paymentAmount = redemptionAmount(paymentToken, amount);
+        uint256 paymentAmount = previewRedemptionAmount(paymentToken, amount);
         if (paymentAmount == 0) revert ZeroAmount();
 
         unchecked {

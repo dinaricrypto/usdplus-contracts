@@ -63,12 +63,12 @@ contract MinterTest is Test {
 
         // payment token oracle not set
         vm.expectRevert(abi.encodeWithSelector(Minter.PaymentNotAccepted.selector));
-        minter.issueAmount(paymentToken, amount);
+        minter.previewIssueAmount(paymentToken, amount);
 
         vm.prank(ADMIN);
         minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        minter.issueAmount(paymentToken, amount);
+        minter.previewIssueAmount(paymentToken, amount);
     }
 
     function test_issueToZeroAddressReverts(uint256 amount) public {
@@ -98,7 +98,7 @@ contract MinterTest is Test {
         vm.prank(USER);
         paymentToken.approve(address(minter), amount);
 
-        uint256 issueEstimate = minter.issueAmount(paymentToken, amount);
+        uint256 issueEstimate = minter.previewIssueAmount(paymentToken, amount);
 
         vm.expectEmit(true, true, true, true);
         emit Issued(USER, paymentToken, amount, issueEstimate);
