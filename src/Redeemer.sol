@@ -15,6 +15,7 @@ contract Redeemer is AccessControl {
     using SafeERC20 for IERC20;
 
     struct Request {
+        address requester;
         address to;
         IERC20 paymentToken;
         uint256 paymentAmount;
@@ -25,6 +26,7 @@ contract Redeemer is AccessControl {
     event RequestCreated(
         uint256 indexed ticket, address indexed to, IERC20 paymentToken, uint256 paymentAmount, uint256 burnAmount
     );
+    event RequestCancelled(uint256 indexed ticket, address indexed to);
     event RequestFulfilled(
         uint256 indexed ticket, address indexed to, IERC20 paymentToken, uint256 paymentAmount, uint256 burnAmount
     );
@@ -82,7 +84,7 @@ contract Redeemer is AccessControl {
     /// @param to recipient
     /// @param paymentToken payment token
     /// @param amount amount of USD+ to burn
-    /// @return ticket recipient request ticket number
+    /// @return ticket request ticket number
     /// @dev exchange rate fixed at time of request creation
     function request(address to, IERC20 paymentToken, uint256 amount) external returns (uint256 ticket) {
         if (to == address(0)) revert ZeroAddress();
@@ -95,18 +97,36 @@ contract Redeemer is AccessControl {
             ticket = nextTicket++;
         }
 
-        requests[ticket] =
-            Request({to: to, paymentToken: paymentToken, paymentAmount: paymentAmount, burnAmount: amount});
+        requests[ticket] = Request({
+            requester: msg.sender,
+            to: to,
+            paymentToken: paymentToken,
+            paymentAmount: paymentAmount,
+            burnAmount: amount
+        });
 
         emit RequestCreated(ticket, to, paymentToken, paymentAmount, amount);
 
         usdplus.transferFrom(msg.sender, address(this), amount);
     }
 
-    // TODO: cancel request - fulfiller role
+    /// @notice cancel a request to burn USD+ for payment
+    /// @param ticket request ticket number
+    function cancel(uint256 ticket) external onlyRole(FULFILLER_ROLE) {
+        Request memory _request = requests[ticket];
+
+        if (_request.to == address(0)) revert InvalidTicket();
+
+        delete requests[ticket];
+
+        emit RequestCancelled(ticket, _request.to);
+
+        // return USD+ to requester
+        usdplus.transfer(_request.requester, _request.burnAmount);
+    }
 
     /// @notice fulfill a request to burn USD+ for payment
-    /// @param ticket recipient request ticket number
+    /// @param ticket request ticket number
     function fulfill(uint256 ticket) external onlyRole(FULFILLER_ROLE) {
         Request memory _request = requests[ticket];
 
