@@ -14,6 +14,7 @@ import {UsdPlusPlus} from "./UsdPlusPlus.sol";
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
 contract Minter is Ownable {
     using SafeERC20 for IERC20;
+    using SafeERC20 for UsdPlus;
 
     event PaymentRecipientSet(address indexed paymentRecipient);
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
@@ -110,7 +111,7 @@ contract Minter is Ownable {
         returns (uint256)
     {
         uint256 _issueAmount = issue(address(this), owner, paymentToken, paymentTokenAmount);
-        usdplus.approve(address(usdplusplus), _issueAmount);
+        usdplus.safeIncreaseAllowance(address(usdplusplus), _issueAmount);
         return usdplusplus.deposit(_issueAmount, receiver);
     }
 }

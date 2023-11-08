@@ -36,15 +36,15 @@ contract MinterTest is Test {
     }
 
     function test_setPaymentRecipient(address recipient) public {
-        // non-admin cannot set payment recipient
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
-        minter.setPaymentRecipient(recipient);
-
         if (recipient == address(0)) {
             vm.expectRevert(Minter.ZeroAddress.selector);
             minter.setPaymentRecipient(recipient);
             return;
         }
+
+        // non-admin cannot set payment recipient
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        minter.setPaymentRecipient(recipient);
 
         // admin can set payment recipient
         vm.expectEmit(true, true, true, true);
