@@ -52,7 +52,7 @@ contract MintEarnRedeemBundled is Script {
 
         // mint usd+ and stake for usd++
         cfg.usdc.approve(address(cfg.minter), amount);
-        cfg.minter.issueAndDeposit(user, user, cfg.usdc, amount);
+        cfg.minter.issueAndDeposit(user, cfg.usdc, amount);
         uint256 usdplusplusBalance = cfg.usdPlusPlus.balanceOf(user);
         console.log("user %s USD++", usdplusplusBalance);
 

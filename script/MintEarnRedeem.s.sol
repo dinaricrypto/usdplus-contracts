@@ -52,7 +52,7 @@ contract MintEarnRedeem is Script {
 
         // mint usd+
         cfg.usdc.approve(address(cfg.minter), amount);
-        cfg.minter.issue(user, user, cfg.usdc, amount);
+        cfg.minter.issue(user, cfg.usdc, amount);
         uint256 usdplusBalance = cfg.usdPlus.balanceOf(user);
         console.log("user %s USD+", usdplusBalance);
 

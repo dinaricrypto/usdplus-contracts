@@ -80,21 +80,17 @@ contract Minter is Ownable {
 
     /// @notice mint USD+ for payment
     /// @param receiver recipient
-    /// @param owner owner of payment token
     /// @param paymentToken payment token
     /// @param paymentTokenAmount amount of payment token to spend
     /// @return amount of USD+ minted
-    function issue(address receiver, address owner, IERC20 paymentToken, uint256 paymentTokenAmount)
-        public
-        returns (uint256)
-    {
+    function issue(address receiver, IERC20 paymentToken, uint256 paymentTokenAmount) public returns (uint256) {
         if (receiver == address(0)) revert ZeroAddress();
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
         uint256 _issueAmount = previewIssueAmount(paymentToken, paymentTokenAmount);
         emit Issued(receiver, paymentToken, paymentTokenAmount, _issueAmount);
 
-        paymentToken.safeTransferFrom(owner, paymentRecipient, paymentTokenAmount);
+        paymentToken.safeTransferFrom(msg.sender, paymentRecipient, paymentTokenAmount);
         usdplus.mint(receiver, _issueAmount);
 
         return _issueAmount;
@@ -102,15 +98,14 @@ contract Minter is Ownable {
 
     /// @notice mint USD+ for payment and deposit in USD++
     /// @param receiver recipient
-    /// @param owner owner of payment token
     /// @param paymentToken payment token
     /// @param paymentTokenAmount amount of payment token to spend
     /// @return amount of USD++ minted
-    function issueAndDeposit(address receiver, address owner, IERC20 paymentToken, uint256 paymentTokenAmount)
+    function issueAndDeposit(address receiver, IERC20 paymentToken, uint256 paymentTokenAmount)
         external
         returns (uint256)
     {
-        uint256 _issueAmount = issue(address(this), owner, paymentToken, paymentTokenAmount);
+        uint256 _issueAmount = issue(address(this), paymentToken, paymentTokenAmount);
         usdplus.safeIncreaseAllowance(address(usdplusplus), _issueAmount);
         return usdplusplus.deposit(_issueAmount, receiver);
     }
