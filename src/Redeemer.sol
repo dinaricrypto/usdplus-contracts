@@ -76,6 +76,7 @@ contract Redeemer is AccessControl {
         if (address(oracle) == address(0)) revert PaymentNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
+        // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();
 
         return Math.mulDiv(amount, 10 ** uint256(oracleDecimals), uint256(price));
