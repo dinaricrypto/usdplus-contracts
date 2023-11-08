@@ -1,5 +1,5 @@
 #!/bin/sh
 
-source .env
+source .env-test
 
-forge script script/MintEarnRedeemBundled.s.sol:MintEarnRedeemBundled --rpc-url $TEST_RPC_URL -vvv
+forge script script/MintEarnRedeemBundled.s.sol:MintEarnRedeemBundled --rpc-url $RPC_URL -vvv
