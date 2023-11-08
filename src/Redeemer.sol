@@ -158,8 +158,9 @@ contract Redeemer is AccessControl {
     /// @param owner owner of stUSD+
     /// @param paymentToken payment token
     /// @param amount amount of stUSD+ to redeem
-    function redeemAndRequest(address receiver, address owner, IERC20 paymentToken, uint256 amount) external {
+    /// @return ticket request ticket number
+    function redeemAndRequest(address receiver, address owner, IERC20 paymentToken, uint256 amount) external returns (uint256 ticket) {
         uint256 _redeemAmount = usdplusplus.redeem(amount, address(this), owner);
-        request(receiver, address(this), paymentToken, _redeemAmount);
+        return request(receiver, address(this), paymentToken, _redeemAmount);
     }
 }
