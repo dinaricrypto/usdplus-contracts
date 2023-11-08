@@ -14,6 +14,7 @@ contract RedeemerTest is Test {
     event RequestCreated(
         uint256 indexed ticket, address indexed to, IERC20 paymentToken, uint256 paymentAmount, uint256 burnAmount
     );
+    event RequestCancelled(uint256 indexed ticket, address indexed to);
     event RequestFulfilled(
         uint256 indexed ticket, address indexed to, IERC20 paymentToken, uint256 paymentAmount, uint256 burnAmount
     );
@@ -108,8 +109,42 @@ contract RedeemerTest is Test {
         vm.prank(USER);
         uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
 
-        (,, uint256 paymentAmount,) = redeemer.requests(ticket);
+        (,,, uint256 paymentAmount,) = redeemer.requests(ticket);
         assertEq(paymentAmount, redemptionEstimate);
+    }
+
+    function test_cancelInvalidTicketReverts(uint256 ticket) public {
+        vm.expectRevert(abi.encodeWithSelector(Redeemer.InvalidTicket.selector));
+        vm.prank(FULFILLER);
+        redeemer.cancel(ticket);
+    }
+
+    function test_cancel(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        uint256 redemptionEstimate = redeemer.previewRedemptionAmount(paymentToken, amount);
+        vm.assume(redemptionEstimate > 0);
+
+        vm.startPrank(USER);
+        usdplus.approve(address(redeemer), amount);
+        uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
+        vm.stopPrank();
+
+        // not fulfiller
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), redeemer.FULFILLER_ROLE()
+            )
+        );
+        redeemer.cancel(ticket);
+
+        vm.expectEmit(true, true, true, true);
+        emit RequestCancelled(ticket, USER);
+        vm.prank(FULFILLER);
+        redeemer.cancel(ticket);
     }
 
     function test_fulfillInvalidTicketReverts(uint256 ticket) public {
@@ -127,11 +162,10 @@ contract RedeemerTest is Test {
         uint256 redemptionEstimate = redeemer.previewRedemptionAmount(paymentToken, amount);
         vm.assume(redemptionEstimate > 0);
 
-        vm.prank(USER);
+        vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
-
-        vm.prank(USER);
         uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
+        vm.stopPrank();
 
         // not fulfiller
         vm.expectRevert(
@@ -154,12 +188,12 @@ contract RedeemerTest is Test {
         usdplus.grantRole(usdplus.BURNER_ROLE(), address(redeemer));
         vm.stopPrank();
 
-        vm.prank(FULFILLER);
+        vm.startPrank(FULFILLER);
         paymentToken.approve(address(redeemer), redemptionEstimate);
 
         vm.expectEmit(true, true, true, true);
         emit RequestFulfilled(ticket, USER, paymentToken, redemptionEstimate, amount);
-        vm.prank(FULFILLER);
         redeemer.fulfill(ticket);
+        vm.stopPrank();
     }
 }
