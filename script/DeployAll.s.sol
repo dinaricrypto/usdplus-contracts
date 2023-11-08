@@ -62,7 +62,7 @@ contract DeployAllScript is Script {
         minter.setPaymentTokenOracle(usdc, cfg.paymentTokenOracle);
 
         Redeemer redeemer = new Redeemer(
-            usdplus,
+            usdplusplus,
             cfg.owner
         );
         usdplus.grantRole(usdplus.BURNER_ROLE(), address(redeemer));

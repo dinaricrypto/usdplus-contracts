@@ -52,7 +52,7 @@ contract MintEarnRedeem is Script {
 
         // mint usd+
         cfg.usdc.approve(address(cfg.minter), amount);
-        cfg.minter.issue(user, cfg.usdc, amount);
+        cfg.minter.issue(user, user, cfg.usdc, amount);
         uint256 usdplusBalance = cfg.usdPlus.balanceOf(user);
         console.log("user %s USD+", usdplusBalance);
 
@@ -82,7 +82,7 @@ contract MintEarnRedeem is Script {
 
         // redeem for usdc
         cfg.usdPlus.approve(address(cfg.redeemer), usdplusBalanceAfter);
-        uint256 ticket = cfg.redeemer.request(user, cfg.usdc, usdplusBalanceAfter);
+        uint256 ticket = cfg.redeemer.request(user, user, cfg.usdc, usdplusBalanceAfter);
 
         vm.stopBroadcast();
 

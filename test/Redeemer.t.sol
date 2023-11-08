@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
+import {UsdPlusPlus} from "../src/UsdPlusPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/Redeemer.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
@@ -19,6 +20,7 @@ contract RedeemerTest is Test {
 
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
+    UsdPlusPlus usdplusplus;
     Redeemer redeemer;
     ERC20Mock paymentToken;
 
@@ -30,7 +32,8 @@ contract RedeemerTest is Test {
     function setUp() public {
         transferRestrictor = new TransferRestrictor(ADMIN);
         usdplus = new UsdPlus(address(this), transferRestrictor, ADMIN);
-        redeemer = new Redeemer(usdplus, ADMIN);
+        usdplusplus = new UsdPlusPlus(usdplus, ADMIN);
+        redeemer = new Redeemer(usdplusplus, ADMIN);
         paymentToken = new ERC20Mock();
 
         vm.startPrank(ADMIN);
@@ -74,12 +77,12 @@ contract RedeemerTest is Test {
 
     function test_requestToZeroAddressReverts(uint256 amount) public {
         vm.expectRevert(abi.encodeWithSelector(Redeemer.ZeroAddress.selector));
-        redeemer.request(address(0), paymentToken, amount);
+        redeemer.request(address(0), USER, paymentToken, amount);
     }
 
     function test_requestZeroAmountReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Redeemer.ZeroAmount.selector));
-        redeemer.request(USER, paymentToken, 0);
+        redeemer.request(USER, USER, paymentToken, 0);
     }
 
     function test_request(uint256 amount) public {
@@ -96,14 +99,14 @@ contract RedeemerTest is Test {
         // reverts if redemption amount is 0
         if (redemptionEstimate == 0) {
             vm.expectRevert(abi.encodeWithSelector(Redeemer.ZeroAmount.selector));
-            redeemer.request(USER, paymentToken, amount);
+            redeemer.request(USER, USER, paymentToken, amount);
             return;
         }
 
         vm.expectEmit(true, true, true, true);
         emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
         vm.prank(USER);
-        uint256 ticket = redeemer.request(USER, paymentToken, amount);
+        uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
 
         (,, uint256 paymentAmount,) = redeemer.requests(ticket);
         assertEq(paymentAmount, redemptionEstimate);
@@ -128,7 +131,7 @@ contract RedeemerTest is Test {
         usdplus.approve(address(redeemer), amount);
 
         vm.prank(USER);
-        uint256 ticket = redeemer.request(USER, paymentToken, amount);
+        uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
 
         // not fulfiller
         vm.expectRevert(
