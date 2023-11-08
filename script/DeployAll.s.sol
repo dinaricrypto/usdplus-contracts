@@ -8,7 +8,6 @@ import {UsdPlus} from "../src/UsdPlus.sol";
 import {UsdPlusPlus} from "../src/UsdPlusPlus.sol";
 import {Minter} from "../src/Minter.sol";
 import {Redeemer} from "../src/Redeemer.sol";
-import {Multicall} from "../src/Multicall.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract DeployAllScript is Script {
@@ -47,7 +46,7 @@ contract DeployAllScript is Script {
 
         UsdPlus usdplus = new UsdPlus(cfg.treasury, transferRestrictor, cfg.owner);
 
-        new UsdPlusPlus(
+        UsdPlusPlus usdplusplus = new UsdPlusPlus(
             usdplus,
             cfg.owner
         );
@@ -55,7 +54,7 @@ contract DeployAllScript is Script {
         /// ------------------ usd+ minter/redeemer ------------------
 
         Minter minter = new Minter(
-            usdplus,
+            usdplusplus,
             cfg.treasury,
             cfg.owner
         );
@@ -69,10 +68,6 @@ contract DeployAllScript is Script {
         usdplus.grantRole(usdplus.BURNER_ROLE(), address(redeemer));
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.redemptionFulfiller);
         redeemer.setPaymentTokenOracle(usdc, cfg.paymentTokenOracle);
-
-        /// ------------------ multicall ------------------
-
-        new Multicall();
 
         vm.stopBroadcast();
     }

@@ -8,6 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import {UsdPlus} from "./UsdPlus.sol";
+import {UsdPlusPlus} from "./UsdPlusPlus.sol";
 
 /// @notice USD+ minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
@@ -25,14 +26,18 @@ contract Minter is Ownable {
     /// @notice USD+
     UsdPlus public immutable usdplus;
 
+    /// @notice stUSD+
+    UsdPlusPlus public immutable usdplusplus;
+
     /// @notice receiver of payment tokens
     address public paymentRecipient;
 
     /// @notice is this payment token accepted?
     mapping(IERC20 paymentToken => AggregatorV3Interface oracle) public paymentTokenOracle;
 
-    constructor(UsdPlus _usdplus, address _paymentRecipient, address initialOwner) Ownable(initialOwner) {
-        usdplus = _usdplus;
+    constructor(UsdPlusPlus _usdplusplus, address _paymentRecipient, address initialOwner) Ownable(initialOwner) {
+        usdplusplus = _usdplusplus;
+        usdplus = UsdPlus(_usdplusplus.asset());
         paymentRecipient = _paymentRecipient;
     }
 
@@ -71,8 +76,8 @@ contract Minter is Ownable {
     /// @param to recipient
     /// @param paymentToken payment token
     /// @param paymentTokenAmount amount of payment token to spend
-    /// @return issued amount of USD+ minted
-    function issue(address to, IERC20 paymentToken, uint256 paymentTokenAmount) external returns (uint256) {
+    /// @return amount of USD+ minted
+    function issue(address to, IERC20 paymentToken, uint256 paymentTokenAmount) public returns (uint256) {
         if (to == address(0)) revert ZeroAddress();
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
@@ -83,5 +88,16 @@ contract Minter is Ownable {
         usdplus.mint(to, _issueAmount);
 
         return _issueAmount;
+    }
+
+    /// @notice mint USD+ for payment and stake in USD++
+    /// @param to recipient
+    /// @param paymentToken payment token
+    /// @param paymentTokenAmount amount of payment token to spend
+    /// @return amount of USD++ minted
+    function issueAndStake(address to, IERC20 paymentToken, uint256 paymentTokenAmount) external returns (uint256) {
+        uint256 _issueAmount = issue(address(this), paymentToken, paymentTokenAmount);
+        usdplus.approve(address(usdplusplus), _issueAmount);
+        return usdplusplus.deposit(_issueAmount, to);
     }
 }
