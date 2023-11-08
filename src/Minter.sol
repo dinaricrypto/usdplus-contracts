@@ -36,6 +36,8 @@ contract Minter is Ownable {
     mapping(IERC20 paymentToken => AggregatorV3Interface oracle) public paymentTokenOracle;
 
     constructor(UsdPlusPlus _usdplusplus, address _paymentRecipient, address initialOwner) Ownable(initialOwner) {
+        if (_paymentRecipient == address(0)) revert ZeroAddress();
+
         usdplusplus = _usdplusplus;
         usdplus = UsdPlus(_usdplusplus.asset());
         paymentRecipient = _paymentRecipient;
@@ -44,9 +46,11 @@ contract Minter is Ownable {
     // ------------------ Admin ------------------
 
     /// @notice set payment recipient
-    function setPaymentRecipient(address _paymentRecipient) external onlyOwner {
-        paymentRecipient = _paymentRecipient;
-        emit PaymentRecipientSet(_paymentRecipient);
+    function setPaymentRecipient(address newPaymentRecipient) external onlyOwner {
+        if (newPaymentRecipient == address(0)) revert ZeroAddress();
+
+        paymentRecipient = newPaymentRecipient;
+        emit PaymentRecipientSet(newPaymentRecipient);
     }
 
     /// @notice set payment token oracle
@@ -67,6 +71,7 @@ contract Minter is Ownable {
         if (address(oracle) == address(0)) revert PaymentNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
+        // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();
 
         return Math.mulDiv(paymentTokenAmount, uint256(price), 10 ** uint256(oracleDecimals));

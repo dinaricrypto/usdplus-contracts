@@ -14,6 +14,7 @@ import {UsdPlusPlus} from "./UsdPlusPlus.sol";
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
 contract Redeemer is AccessControl {
     using SafeERC20 for IERC20;
+    using SafeERC20 for UsdPlus;
 
     struct Request {
         address owner;
@@ -80,6 +81,7 @@ contract Redeemer is AccessControl {
         if (address(oracle) == address(0)) revert PaymentNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
+        // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();
 
         return Math.mulDiv(amount, 10 ** uint256(oracleDecimals), uint256(price));
@@ -117,7 +119,7 @@ contract Redeemer is AccessControl {
         emit RequestCreated(ticket, receiver, paymentToken, paymentAmount, amount);
 
         if (owner != address(this)) {
-            usdplus.transferFrom(owner, address(this), amount);
+            usdplus.safeTransferFrom(owner, address(this), amount);
         }
     }
 
@@ -133,7 +135,7 @@ contract Redeemer is AccessControl {
         emit RequestCancelled(ticket, _request.receiver);
 
         // return USD+ to requester
-        usdplus.transfer(_request.owner, _request.burnAmount);
+        usdplus.safeTransfer(_request.owner, _request.burnAmount);
     }
 
     /// @notice fulfill a request to burn USD+ for payment token

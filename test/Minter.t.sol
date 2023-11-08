@@ -40,6 +40,12 @@ contract MinterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
         minter.setPaymentRecipient(recipient);
 
+        if (recipient == address(0)) {
+            vm.expectRevert(Minter.ZeroAddress.selector);
+            minter.setPaymentRecipient(recipient);
+            return;
+        }
+
         // admin can set payment recipient
         vm.expectEmit(true, true, true, true);
         emit PaymentRecipientSet(recipient);
