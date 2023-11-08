@@ -13,6 +13,7 @@ import {UsdPlus} from "./UsdPlus.sol";
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
 contract Redeemer is AccessControl {
     using SafeERC20 for IERC20;
+    using SafeERC20 for UsdPlus;
 
     struct Request {
         address requester;
@@ -107,7 +108,7 @@ contract Redeemer is AccessControl {
 
         emit RequestCreated(ticket, to, paymentToken, paymentAmount, amount);
 
-        usdplus.transferFrom(msg.sender, address(this), amount);
+        usdplus.safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /// @notice cancel a request to burn USD+ for payment
@@ -122,7 +123,7 @@ contract Redeemer is AccessControl {
         emit RequestCancelled(ticket, _request.to);
 
         // return USD+ to requester
-        usdplus.transfer(_request.requester, _request.burnAmount);
+        usdplus.safeTransfer(_request.requester, _request.burnAmount);
     }
 
     /// @notice fulfill a request to burn USD+ for payment
