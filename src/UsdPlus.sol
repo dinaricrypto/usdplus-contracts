@@ -28,6 +28,10 @@ contract UsdPlus is ERC20Permit, AccessControl {
         treasury = _treasury;
         transferRestrictor = _transferRestrictor;
     }
+    
+    function decimals() public pure override returns (uint8) {
+        return 6;
+    }
 
     // ------------------ Admin ------------------
 

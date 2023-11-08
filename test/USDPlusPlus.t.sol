@@ -34,7 +34,7 @@ contract UsdPlusPlusTest is Test {
 
     function test_deploymentConfig() public {
         assertEq(usdplusplus.lockDuration(), 30 days);
-        assertEq(usdplusplus.decimals(), 18);
+        assertEq(usdplusplus.decimals(), 6);
     }
 
     function test_setLockDuration(uint48 duration) public {
