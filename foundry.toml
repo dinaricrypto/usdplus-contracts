@@ -5,14 +5,5 @@ libs = [
     "lib",
     "node_modules",
 ]
-remappings = [
-    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
-    "chainlink/=lib/chainlink/",
-    "ds-test/=lib/openzeppelin-contracts/lib/forge-std/lib/ds-test/src/",
-    "erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/",
-    "forge-std/=lib/openzeppelin-contracts/lib/forge-std/src/",
-    "openzeppelin-contracts/=lib/openzeppelin-contracts/",
-    "solidity-code-metrics/=node_modules/solidity-code-metrics/",
-]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
