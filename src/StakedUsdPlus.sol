@@ -125,6 +125,7 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
             if (lock.endTime > block.timestamp) break;
             assetsDecrement += lock.assets;
             sharesDecrement += lock.shares;
+            // slither-disable-next-line unused-return
             locks.popFront();
         }
         // update cached totals
@@ -141,7 +142,7 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
 
         DoubleEndedQueue.Bytes32Deque storage locks = _locks[account];
 
-        uint128 assetsDue;
+        uint128 assetsDue = 0;
         uint128 sharesRemaining = uint128(sharesToConsume);
         while (sharesRemaining > 0) {
             Lock memory lock = unpackLockData(locks.popFront());
@@ -181,7 +182,7 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
         refreshLocks(owner);
 
         // if locked shares, determine how many assets to withdraw
-        uint256 assetsToWithdraw;
+        uint256 assetsToWithdraw = 0;
 
         // check if enough free shares
         uint128 lockedShares = _cachedLockTotals[owner].shares;

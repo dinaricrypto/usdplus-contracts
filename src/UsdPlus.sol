@@ -24,6 +24,7 @@ contract UsdPlus is ERC20Permit, AccessControl {
         ERC20Permit("USD+")
     {
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+        // slither-disable-next-line missing-zero-check
         treasury = _treasury;
         transferRestrictor = _transferRestrictor;
     }
@@ -31,15 +32,16 @@ contract UsdPlus is ERC20Permit, AccessControl {
     // ------------------ Admin ------------------
 
     /// @notice set treasury address
-    function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        treasury = _treasury;
-        emit TreasurySet(_treasury);
+    function setTreasury(address newTreasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // slither-disable-next-line missing-zero-check
+        treasury = newTreasury;
+        emit TreasurySet(newTreasury);
     }
 
     /// @notice set transfer restrictor
-    function setTransferRestrictor(ITransferRestrictor _transferRestrictor) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        transferRestrictor = _transferRestrictor;
-        emit TransferRestrictorSet(_transferRestrictor);
+    function setTransferRestrictor(ITransferRestrictor newTransferRestrictor) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        transferRestrictor = newTransferRestrictor;
+        emit TransferRestrictorSet(newTransferRestrictor);
     }
 
     // ------------------ Minting/Burning ------------------
