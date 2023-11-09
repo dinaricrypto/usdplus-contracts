@@ -8,7 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import {UsdPlus} from "./UsdPlus.sol";
-import {UsdPlusPlus} from "./UsdPlusPlus.sol";
+import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 
 /// @notice USD+ minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
@@ -22,13 +22,13 @@ contract Minter is Ownable {
 
     error ZeroAddress();
     error ZeroAmount();
-    error PaymentNotAccepted();
+    error PaymentTokenNotAccepted();
 
     /// @notice USD+
     UsdPlus public immutable usdplus;
 
     /// @notice stUSD+
-    UsdPlusPlus public immutable usdplusplus;
+    StakedUsdPlus public immutable stakedUsdplus;
 
     /// @notice receiver of payment tokens
     address public paymentRecipient;
@@ -36,11 +36,11 @@ contract Minter is Ownable {
     /// @notice is this payment token accepted?
     mapping(IERC20 paymentToken => AggregatorV3Interface oracle) public paymentTokenOracle;
 
-    constructor(UsdPlusPlus _usdplusplus, address _paymentRecipient, address initialOwner) Ownable(initialOwner) {
+    constructor(StakedUsdPlus _stakedUsdplus, address _paymentRecipient, address initialOwner) Ownable(initialOwner) {
         if (_paymentRecipient == address(0)) revert ZeroAddress();
 
-        usdplusplus = _usdplusplus;
-        usdplus = UsdPlus(_usdplusplus.asset());
+        stakedUsdplus = _stakedUsdplus;
+        usdplus = UsdPlus(_stakedUsdplus.asset());
         paymentRecipient = _paymentRecipient;
     }
 
@@ -69,7 +69,7 @@ contract Minter is Ownable {
     /// @param paymentTokenAmount amount of payment token
     function previewIssueAmount(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
         AggregatorV3Interface oracle = paymentTokenOracle[paymentToken];
-        if (address(oracle) == address(0)) revert PaymentNotAccepted();
+        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
         // slither-disable-next-line unused-return
@@ -106,7 +106,8 @@ contract Minter is Ownable {
         returns (uint256)
     {
         uint256 _issueAmount = issue(address(this), paymentToken, paymentTokenAmount);
-        usdplus.safeIncreaseAllowance(address(usdplusplus), _issueAmount);
-        return usdplusplus.deposit(_issueAmount, receiver);
+        StakedUsdPlus _stakedUsdplus = stakedUsdplus;
+        usdplus.safeIncreaseAllowance(address(_stakedUsdplus), _issueAmount);
+        return _stakedUsdplus.deposit(_issueAmount, receiver);
     }
 }

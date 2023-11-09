@@ -8,7 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import {UsdPlus} from "./UsdPlus.sol";
-import {UsdPlusPlus} from "./UsdPlusPlus.sol";
+import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
@@ -35,7 +35,7 @@ contract Redeemer is AccessControl {
 
     error ZeroAddress();
     error ZeroAmount();
-    error PaymentNotAccepted();
+    error PaymentTokenNotAccepted();
     error InvalidTicket();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
@@ -44,7 +44,7 @@ contract Redeemer is AccessControl {
     UsdPlus public immutable usdplus;
 
     /// @notice stUSD+
-    UsdPlusPlus public immutable usdplusplus;
+    StakedUsdPlus public immutable stakedUsdplus;
 
     /// @notice is this payment token accepted?
     mapping(IERC20 => AggregatorV3Interface) public paymentTokenOracle;
@@ -53,11 +53,11 @@ contract Redeemer is AccessControl {
 
     uint256 public nextTicket;
 
-    constructor(UsdPlusPlus _usdplusplus, address initialOwner) {
+    constructor(StakedUsdPlus _stakedUsdplus, address initialOwner) {
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
 
-        usdplusplus = _usdplusplus;
-        usdplus = UsdPlus(_usdplusplus.asset());
+        stakedUsdplus = _stakedUsdplus;
+        usdplus = UsdPlus(_stakedUsdplus.asset());
     }
 
     /// @notice set payment token oracle
@@ -78,7 +78,7 @@ contract Redeemer is AccessControl {
     /// @param amount amount of USD+
     function previewRedemptionAmount(IERC20 payment, uint256 amount) public view returns (uint256) {
         AggregatorV3Interface oracle = paymentTokenOracle[payment];
-        if (address(oracle) == address(0)) revert PaymentNotAccepted();
+        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
         // slither-disable-next-line unused-return
@@ -165,7 +165,7 @@ contract Redeemer is AccessControl {
         external
         returns (uint256 ticket)
     {
-        uint256 _redeemAmount = usdplusplus.redeem(amount, address(this), owner);
+        uint256 _redeemAmount = stakedUsdplus.redeem(amount, address(this), owner);
         return request(receiver, address(this), paymentToken, _redeemAmount);
     }
 }

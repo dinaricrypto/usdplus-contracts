@@ -3,7 +3,7 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
-import {UsdPlusPlus} from "../src/UsdPlusPlus.sol";
+import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/Redeemer.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
@@ -21,7 +21,7 @@ contract RedeemerTest is Test {
 
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
-    UsdPlusPlus usdplusplus;
+    StakedUsdPlus stakedUsdplus;
     Redeemer redeemer;
     ERC20Mock paymentToken;
 
@@ -33,8 +33,8 @@ contract RedeemerTest is Test {
     function setUp() public {
         transferRestrictor = new TransferRestrictor(ADMIN);
         usdplus = new UsdPlus(address(this), transferRestrictor, ADMIN);
-        usdplusplus = new UsdPlusPlus(usdplus, ADMIN);
-        redeemer = new Redeemer(usdplusplus, ADMIN);
+        stakedUsdplus = new StakedUsdPlus(usdplus, ADMIN);
+        redeemer = new Redeemer(stakedUsdplus, ADMIN);
         paymentToken = new ERC20Mock();
 
         vm.startPrank(ADMIN);
@@ -67,7 +67,7 @@ contract RedeemerTest is Test {
         vm.assume(amount < type(uint256).max / 2);
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(Redeemer.PaymentNotAccepted.selector));
+        vm.expectRevert(abi.encodeWithSelector(Redeemer.PaymentTokenNotAccepted.selector));
         redeemer.previewRedemptionAmount(paymentToken, amount);
 
         vm.prank(ADMIN);

@@ -4,7 +4,7 @@ pragma solidity 0.8.21;
 import "forge-std/Script.sol";
 import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
-import {UsdPlusPlus} from "../src/UsdPlusPlus.sol";
+import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {Minter} from "../src/Minter.sol";
 import {Redeemer} from "../src/Redeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -13,7 +13,7 @@ contract MintEarnRedeem is Script {
     struct DeployConfig {
         ERC20Mock usdc;
         UsdPlus usdPlus;
-        UsdPlusPlus usdPlusPlus;
+        StakedUsdPlus stakedUsdplus;
         Minter minter;
         Redeemer redeemer;
     }
@@ -28,7 +28,7 @@ contract MintEarnRedeem is Script {
         DeployConfig memory cfg = DeployConfig({
             usdc: ERC20Mock(vm.envAddress("USDC")),
             usdPlus: UsdPlus(vm.envAddress("USDPLUS")),
-            usdPlusPlus: UsdPlusPlus(vm.envAddress("USDPLUSPLUS")),
+            stakedUsdplus: StakedUsdPlus(vm.envAddress("STAKEDUSDPLUS")),
             minter: Minter(vm.envAddress("MINTER")),
             redeemer: Redeemer(vm.envAddress("REDEEMER"))
         });
@@ -57,10 +57,10 @@ contract MintEarnRedeem is Script {
         console.log("user %s USD+", usdplusBalance);
 
         // stake usd+
-        cfg.usdPlus.approve(address(cfg.usdPlusPlus), usdplusBalance);
-        cfg.usdPlusPlus.deposit(usdplusBalance, user);
-        uint256 usdplusplusBalance = cfg.usdPlusPlus.balanceOf(user);
-        console.log("user %s USD++", usdplusplusBalance);
+        cfg.usdPlus.approve(address(cfg.stakedUsdplus), usdplusBalance);
+        cfg.stakedUsdplus.deposit(usdplusBalance, user);
+        uint256 stakedUsdplusBalance = cfg.stakedUsdplus.balanceOf(user);
+        console.log("user %s USD++", stakedUsdplusBalance);
 
         vm.stopBroadcast();
 
@@ -68,7 +68,7 @@ contract MintEarnRedeem is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // yield 1% usd+
-        cfg.usdPlus.mint(address(cfg.usdPlusPlus), amount / 100);
+        cfg.usdPlus.mint(address(cfg.stakedUsdplus), amount / 100);
 
         vm.stopBroadcast();
 
@@ -76,7 +76,7 @@ contract MintEarnRedeem is Script {
         vm.startBroadcast(userPrivateKey);
 
         // unstake usd+
-        cfg.usdPlusPlus.redeem(usdplusplusBalance, user, user);
+        cfg.stakedUsdplus.redeem(stakedUsdplusBalance, user, user);
         uint256 usdplusBalanceAfter = cfg.usdPlus.balanceOf(user);
         console.log("user %s USD+", usdplusBalanceAfter);
 
