@@ -20,7 +20,7 @@ contract DeployAllScript is Script {
 
     function run() external {
         // load env variables
-        uint256 deployerPrivateKey = vm.envUint("DEPLOY_KEY");
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
         DeployConfig memory cfg = DeployConfig({
