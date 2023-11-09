@@ -8,15 +8,17 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import {UsdPlus} from "./UsdPlus.sol";
+import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 
 /// @notice USD+ minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
 contract Minter is Ownable {
     using SafeERC20 for IERC20;
+    using SafeERC20 for UsdPlus;
 
     event PaymentRecipientSet(address indexed paymentRecipient);
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
-    event Issued(address indexed to, IERC20 indexed paymentToken, uint256 paymentAmount, uint256 issueAmount);
+    event Issued(address indexed receiver, IERC20 indexed paymentToken, uint256 paymentAmount, uint256 issueAmount);
 
     error ZeroAddress();
     error ZeroAmount();
@@ -25,17 +27,20 @@ contract Minter is Ownable {
     /// @notice USD+
     UsdPlus public immutable usdplus;
 
+    /// @notice stUSD+
+    StakedUsdPlus public immutable stakedUsdplus;
+
     /// @notice receiver of payment tokens
     address public paymentRecipient;
 
     /// @notice is this payment token accepted?
     mapping(IERC20 paymentToken => AggregatorV3Interface oracle) public paymentTokenOracle;
 
-    constructor(UsdPlus _usdplus, address _paymentRecipient, address initialOwner) Ownable(initialOwner) {
-        if (address(_usdplus) == address(0)) revert ZeroAddress();
+    constructor(StakedUsdPlus _stakedUsdplus, address _paymentRecipient, address initialOwner) Ownable(initialOwner) {
         if (_paymentRecipient == address(0)) revert ZeroAddress();
 
-        usdplus = _usdplus;
+        stakedUsdplus = _stakedUsdplus;
+        usdplus = UsdPlus(_stakedUsdplus.asset());
         paymentRecipient = _paymentRecipient;
     }
 
@@ -74,20 +79,35 @@ contract Minter is Ownable {
     }
 
     /// @notice mint USD+ for payment
-    /// @param to recipient
+    /// @param receiver recipient
     /// @param paymentToken payment token
     /// @param paymentTokenAmount amount of payment token to spend
-    /// @return issued amount of USD+ minted
-    function issue(address to, IERC20 paymentToken, uint256 paymentTokenAmount) external returns (uint256) {
-        if (to == address(0)) revert ZeroAddress();
+    /// @return amount of USD+ minted
+    function issue(address receiver, IERC20 paymentToken, uint256 paymentTokenAmount) public returns (uint256) {
+        if (receiver == address(0)) revert ZeroAddress();
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
         uint256 _issueAmount = previewIssueAmount(paymentToken, paymentTokenAmount);
-        emit Issued(to, paymentToken, paymentTokenAmount, _issueAmount);
+        emit Issued(receiver, paymentToken, paymentTokenAmount, _issueAmount);
 
         paymentToken.safeTransferFrom(msg.sender, paymentRecipient, paymentTokenAmount);
-        usdplus.mint(to, _issueAmount);
+        usdplus.mint(receiver, _issueAmount);
 
         return _issueAmount;
+    }
+
+    /// @notice mint USD+ for payment and deposit in USD++
+    /// @param receiver recipient
+    /// @param paymentToken payment token
+    /// @param paymentTokenAmount amount of payment token to spend
+    /// @return amount of USD++ minted
+    function issueAndDeposit(address receiver, IERC20 paymentToken, uint256 paymentTokenAmount)
+        external
+        returns (uint256)
+    {
+        uint256 _issueAmount = issue(address(this), paymentToken, paymentTokenAmount);
+        StakedUsdPlus _stakedUsdplus = stakedUsdplus;
+        usdplus.safeIncreaseAllowance(address(_stakedUsdplus), _issueAmount);
+        return _stakedUsdplus.deposit(_issueAmount, receiver);
     }
 }

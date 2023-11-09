@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
+import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/Redeemer.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
@@ -20,6 +21,7 @@ contract RedeemerTest is Test {
 
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
+    StakedUsdPlus stakedUsdplus;
     Redeemer redeemer;
     ERC20Mock paymentToken;
 
@@ -31,7 +33,8 @@ contract RedeemerTest is Test {
     function setUp() public {
         transferRestrictor = new TransferRestrictor(ADMIN);
         usdplus = new UsdPlus(address(this), transferRestrictor, ADMIN);
-        redeemer = new Redeemer(usdplus, ADMIN);
+        stakedUsdplus = new StakedUsdPlus(usdplus, ADMIN);
+        redeemer = new Redeemer(stakedUsdplus, ADMIN);
         paymentToken = new ERC20Mock();
 
         vm.startPrank(ADMIN);
@@ -75,12 +78,12 @@ contract RedeemerTest is Test {
 
     function test_requestToZeroAddressReverts(uint256 amount) public {
         vm.expectRevert(abi.encodeWithSelector(Redeemer.ZeroAddress.selector));
-        redeemer.request(address(0), paymentToken, amount);
+        redeemer.request(address(0), USER, paymentToken, amount);
     }
 
     function test_requestZeroAmountReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Redeemer.ZeroAmount.selector));
-        redeemer.request(USER, paymentToken, 0);
+        redeemer.request(USER, USER, paymentToken, 0);
     }
 
     function test_request(uint256 amount) public {
@@ -97,14 +100,41 @@ contract RedeemerTest is Test {
         // reverts if redemption amount is 0
         if (redemptionEstimate == 0) {
             vm.expectRevert(abi.encodeWithSelector(Redeemer.ZeroAmount.selector));
-            redeemer.request(USER, paymentToken, amount);
+            redeemer.request(USER, USER, paymentToken, amount);
             return;
         }
 
         vm.expectEmit(true, true, true, true);
         emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
         vm.prank(USER);
-        uint256 ticket = redeemer.request(USER, paymentToken, amount);
+        uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
+
+        (,,, uint256 paymentAmount,) = redeemer.requests(ticket);
+        assertEq(paymentAmount, redemptionEstimate);
+    }
+
+    function test_redeemAndRequest(uint104 amount) public {
+        vm.assume(amount > 0);
+
+        vm.startPrank(USER);
+        usdplus.approve(address(stakedUsdplus), amount);
+        uint256 stakedAmount = stakedUsdplus.deposit(amount, USER);
+        vm.stopPrank();
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        uint256 redemptionEstimate =
+            redeemer.previewRedemptionAmount(paymentToken, stakedUsdplus.previewRedeem(stakedAmount));
+        vm.assume(redemptionEstimate > 0);
+
+        vm.prank(USER);
+        stakedUsdplus.approve(address(redeemer), stakedAmount);
+
+        vm.expectEmit(true, true, true, true);
+        emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
+        vm.prank(USER);
+        uint256 ticket = redeemer.redeemAndRequest(USER, USER, paymentToken, stakedAmount);
 
         (,,, uint256 paymentAmount,) = redeemer.requests(ticket);
         assertEq(paymentAmount, redemptionEstimate);
@@ -127,7 +157,7 @@ contract RedeemerTest is Test {
 
         vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
-        uint256 ticket = redeemer.request(USER, paymentToken, amount);
+        uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
         vm.stopPrank();
 
         // not fulfiller
@@ -161,7 +191,7 @@ contract RedeemerTest is Test {
 
         vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
-        uint256 ticket = redeemer.request(USER, paymentToken, amount);
+        uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
         vm.stopPrank();
 
         // not fulfiller

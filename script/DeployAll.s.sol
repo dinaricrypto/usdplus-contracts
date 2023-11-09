@@ -38,6 +38,7 @@ contract DeployAllScript is Script {
         /// ------------------ payment token ------------------
 
         ERC20Mock usdc = new ERC20Mock("USD Coin - Dinari", "USDC", 6, cfg.owner);
+        usdc.grantRole(usdc.MINTER_ROLE(), cfg.owner);
 
         /// ------------------ usd+ ------------------
 
@@ -45,7 +46,7 @@ contract DeployAllScript is Script {
 
         UsdPlus usdplus = new UsdPlus(cfg.treasury, transferRestrictor, cfg.owner);
 
-        new StakedUsdPlus(
+        StakedUsdPlus stakedusdplus = new StakedUsdPlus(
             usdplus,
             cfg.owner
         );
@@ -53,7 +54,7 @@ contract DeployAllScript is Script {
         /// ------------------ usd+ minter/redeemer ------------------
 
         Minter minter = new Minter(
-            usdplus,
+            stakedusdplus,
             cfg.treasury,
             cfg.owner
         );
@@ -61,7 +62,7 @@ contract DeployAllScript is Script {
         minter.setPaymentTokenOracle(usdc, cfg.paymentTokenOracle);
 
         Redeemer redeemer = new Redeemer(
-            usdplus,
+            stakedusdplus,
             cfg.owner
         );
         usdplus.grantRole(usdplus.BURNER_ROLE(), address(redeemer));

@@ -93,6 +93,7 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
 
     /// @dev add lock to queue and update cached totals
     function addLock(address account, uint256 assets, uint256 shares) internal {
+        // TODO: update maxDeposit to precheck these limits
         if (assets > type(uint104).max) revert ValueOverflow();
         if (shares > type(uint104).max) revert ValueOverflow();
 
@@ -117,8 +118,8 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
         DoubleEndedQueue.Bytes32Deque storage locks = _locks[account];
 
         // remove expired locks
-        uint128 assetsDecrement;
-        uint128 sharesDecrement;
+        uint128 assetsDecrement = 0;
+        uint128 sharesDecrement = 0;
         while (locks.length() > 0) {
             Lock memory lock = unpackLockData(locks.front());
             // if lock is not expired, stop

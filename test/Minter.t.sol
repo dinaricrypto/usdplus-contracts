@@ -3,6 +3,7 @@ pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
+import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/Minter.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -15,6 +16,7 @@ contract MinterTest is Test {
 
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
+    StakedUsdPlus stakedUsdplus;
     Minter minter;
     ERC20Mock paymentToken;
 
@@ -26,7 +28,8 @@ contract MinterTest is Test {
     function setUp() public {
         transferRestrictor = new TransferRestrictor(ADMIN);
         usdplus = new UsdPlus(TREASURY, transferRestrictor, ADMIN);
-        minter = new Minter(usdplus, TREASURY, ADMIN);
+        stakedUsdplus = new StakedUsdPlus(usdplus, ADMIN);
+        minter = new Minter(stakedUsdplus, TREASURY, ADMIN);
         paymentToken = new ERC20Mock();
 
         paymentToken.mint(USER, type(uint256).max);
@@ -112,5 +115,22 @@ contract MinterTest is Test {
         vm.prank(USER);
         uint256 issued = minter.issue(USER, paymentToken, amount);
         assertEq(issued, issueEstimate);
+    }
+
+    function test_issueAndStake(uint104 amount) public {
+        vm.assume(amount > 0);
+
+        vm.startPrank(ADMIN);
+        usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
+        vm.stopPrank();
+
+        vm.prank(ADMIN);
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        vm.prank(USER);
+        paymentToken.approve(address(minter), amount);
+
+        vm.prank(USER);
+        minter.issueAndDeposit(USER, paymentToken, amount);
     }
 }
