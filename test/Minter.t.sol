@@ -114,5 +114,3 @@ contract MinterTest is Test {
         assertEq(issued, issueEstimate);
     }
 }
-
-// magnatyrannis
