@@ -124,7 +124,8 @@ contract RedeemerTest is Test {
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        uint256 redemptionEstimate = redeemer.previewRedemptionAmount(paymentToken, stakedUsdplus.previewRedeem(stakedAmount));
+        uint256 redemptionEstimate =
+            redeemer.previewRedemptionAmount(paymentToken, stakedUsdplus.previewRedeem(stakedAmount));
         vm.assume(redemptionEstimate > 0);
 
         vm.prank(USER);
