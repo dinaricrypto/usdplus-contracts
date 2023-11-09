@@ -33,6 +33,13 @@ contract MinterTest is Test {
     }
 
     function test_setPaymentRecipient(address recipient) public {
+        if (recipient == address(0)) {
+            vm.expectRevert(Minter.ZeroAddress.selector);
+            vm.prank(ADMIN);
+            minter.setPaymentRecipient(recipient);
+            return;
+        }
+
         // non-admin cannot set payment recipient
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
         minter.setPaymentRecipient(recipient);
@@ -58,11 +65,11 @@ contract MinterTest is Test {
         assertEq(address(minter.paymentTokenOracle(token)), oracle);
     }
 
-    function test_issueAmount(uint256 amount) public {
+    function test_previewIssueAmount(uint256 amount) public {
         vm.assume(amount < type(uint256).max / 2);
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(Minter.PaymentNotAccepted.selector));
+        vm.expectRevert(abi.encodeWithSelector(Minter.PaymentTokenNotAccepted.selector));
         minter.previewIssueAmount(paymentToken, amount);
 
         vm.prank(ADMIN);
@@ -89,7 +96,7 @@ contract MinterTest is Test {
         vm.stopPrank();
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(Minter.PaymentNotAccepted.selector));
+        vm.expectRevert(abi.encodeWithSelector(Minter.PaymentTokenNotAccepted.selector));
         minter.issue(USER, paymentToken, amount);
 
         vm.prank(ADMIN);
@@ -107,3 +114,5 @@ contract MinterTest is Test {
         assertEq(issued, issueEstimate);
     }
 }
+
+// magnatyrannis

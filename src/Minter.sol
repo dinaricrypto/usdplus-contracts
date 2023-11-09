@@ -20,7 +20,7 @@ contract Minter is Ownable {
 
     error ZeroAddress();
     error ZeroAmount();
-    error PaymentNotAccepted();
+    error PaymentTokenNotAccepted();
 
     /// @notice USD+
     UsdPlus public immutable usdplus;
@@ -64,7 +64,7 @@ contract Minter is Ownable {
     /// @param paymentTokenAmount amount of payment token
     function previewIssueAmount(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
         AggregatorV3Interface oracle = paymentTokenOracle[paymentToken];
-        if (address(oracle) == address(0)) revert PaymentNotAccepted();
+        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
         // slither-disable-next-line unused-return

@@ -11,7 +11,7 @@ import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
 
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
-contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
+contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
     // TODO: continuous yield?
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
 
@@ -45,8 +45,8 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
 
     constructor(UsdPlus usdplus, address initialOwner)
         ERC4626(usdplus)
-        ERC20Permit("USD++")
-        ERC20("USD++", "USD++")
+        ERC20Permit("stUSD+")
+        ERC20("stUSD+", "stUSD+")
         Ownable(initialOwner)
     {}
 
@@ -54,7 +54,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         return ERC4626.decimals();
     }
 
-    /// @notice locked USD++ for account
+    /// @notice locked stUSD+ for account
     /// @dev Warning: can be stale, call refreshLocks to update
     function sharesLocked(address account) external view returns (uint256) {
         return _cachedLockTotals[account].shares;
@@ -100,7 +100,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         refreshLocks(account);
 
         // ensure new lock ends after previous lock
-        // this means that if lockDuration is changed, users may have to wait before they can mint more USD++
+        // this means that if lockDuration is changed, users may have to wait before they can mint more stUSD+
         uint48 endTime = uint48(block.timestamp) + lockDuration;
         if (_locks[account].length() > 0) {
             Lock memory prevLock = unpackLockData(_locks[account].back());
@@ -212,7 +212,7 @@ contract UsdPlusPlus is ERC4626, ERC20Permit, Ownable {
         // check if transfer is allowed
         UsdPlus(asset()).checkTransferRestricted(from, to);
 
-        // transfer lock on recently minted USD++, minting and burning handled in _deposit and _withdraw
+        // transfer lock on recently minted stUSD+, minting and burning handled in _deposit and _withdraw
         if (from != address(0) && to != address(0)) {
             refreshLocks(from);
 

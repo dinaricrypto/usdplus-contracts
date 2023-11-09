@@ -34,7 +34,7 @@ contract Redeemer is AccessControl {
 
     error ZeroAddress();
     error ZeroAmount();
-    error PaymentNotAccepted();
+    error PaymentTokenNotAccepted();
     error InvalidTicket();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
@@ -73,7 +73,7 @@ contract Redeemer is AccessControl {
     /// @param amount amount of USD+
     function previewRedemptionAmount(IERC20 payment, uint256 amount) public view returns (uint256) {
         AggregatorV3Interface oracle = paymentTokenOracle[payment];
-        if (address(oracle) == address(0)) revert PaymentNotAccepted();
+        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
         // slither-disable-next-line unused-return
