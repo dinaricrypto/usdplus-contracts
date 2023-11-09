@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
-import {UsdPlusPlus} from "../src/UsdPlusPlus.sol";
+import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {Minter} from "../src/Minter.sol";
 import {Redeemer} from "../src/Redeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -45,7 +45,7 @@ contract DeployAllScript is Script {
 
         UsdPlus usdplus = new UsdPlus(cfg.treasury, transferRestrictor, cfg.owner);
 
-        new UsdPlusPlus(
+        new StakedUsdPlus(
             usdplus,
             cfg.owner
         );
