@@ -113,6 +113,32 @@ contract RedeemerTest is Test {
         assertEq(paymentAmount, redemptionEstimate);
     }
 
+    function test_redeemAndRequest(uint104 amount) public {
+        vm.assume(amount > 0);
+
+        vm.startPrank(USER);
+        usdplus.approve(address(stakedUsdplus), amount);
+        uint256 stakedAmount = stakedUsdplus.deposit(amount, USER);
+        vm.stopPrank();
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        uint256 redemptionEstimate = redeemer.previewRedemptionAmount(paymentToken, stakedUsdplus.previewRedeem(stakedAmount));
+        vm.assume(redemptionEstimate > 0);
+
+        vm.prank(USER);
+        stakedUsdplus.approve(address(redeemer), stakedAmount);
+
+        vm.expectEmit(true, true, true, true);
+        emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
+        vm.prank(USER);
+        uint256 ticket = redeemer.redeemAndRequest(USER, USER, paymentToken, stakedAmount);
+
+        (,,, uint256 paymentAmount,) = redeemer.requests(ticket);
+        assertEq(paymentAmount, redemptionEstimate);
+    }
+
     function test_cancelInvalidTicketReverts(uint256 ticket) public {
         vm.expectRevert(abi.encodeWithSelector(Redeemer.InvalidTicket.selector));
         vm.prank(FULFILLER);
