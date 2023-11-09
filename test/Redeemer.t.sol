@@ -64,7 +64,7 @@ contract RedeemerTest is Test {
         vm.assume(amount < type(uint256).max / 2);
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(Redeemer.PaymentNotAccepted.selector));
+        vm.expectRevert(abi.encodeWithSelector(Redeemer.PaymentTokenNotAccepted.selector));
         redeemer.previewRedemptionAmount(paymentToken, amount);
 
         vm.prank(ADMIN);

@@ -34,7 +34,7 @@ contract StakedUsdPlusTest is Test {
 
     function test_deploymentConfig() public {
         assertEq(stakedusdplus.lockDuration(), 30 days);
-        assertEq(stakedusdplus.decimals(), 18);
+        assertEq(stakedusdplus.decimals(), 6);
     }
 
     function test_setLockDuration(uint48 duration) public {
