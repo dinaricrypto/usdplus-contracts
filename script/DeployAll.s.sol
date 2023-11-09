@@ -2,31 +2,33 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Script.sol";
-import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {Minter} from "../src/Minter.sol";
 import {Redeemer} from "../src/Redeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract DeployAllScript is Script {
     struct DeployConfig {
         address owner;
         address treasury;
         address redemptionFulfiller;
+        IERC20 usdc;
         AggregatorV3Interface paymentTokenOracle;
     }
 
     function run() external {
         // load env variables
-        uint256 deployerPrivateKey = vm.envUint("DEPLOY_KEY");
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
         DeployConfig memory cfg = DeployConfig({
             owner: deployer,
             treasury: vm.envAddress("TREASURY"),
             redemptionFulfiller: vm.envAddress("FULFILLER"),
+            usdc: IERC20(vm.envAddress("USDC")),
             paymentTokenOracle: AggregatorV3Interface(vm.envAddress("USDCORACLE"))
         });
 
@@ -34,11 +36,6 @@ contract DeployAllScript is Script {
 
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
-
-        /// ------------------ payment token ------------------
-
-        ERC20Mock usdc = new ERC20Mock("USD Coin - Dinari", "USDC", 6, cfg.owner);
-        usdc.grantRole(usdc.MINTER_ROLE(), cfg.owner);
 
         /// ------------------ usd+ ------------------
 
@@ -59,7 +56,7 @@ contract DeployAllScript is Script {
             cfg.owner
         );
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
-        minter.setPaymentTokenOracle(usdc, cfg.paymentTokenOracle);
+        minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
         Redeemer redeemer = new Redeemer(
             stakedusdplus,
@@ -67,7 +64,7 @@ contract DeployAllScript is Script {
         );
         usdplus.grantRole(usdplus.BURNER_ROLE(), address(redeemer));
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.redemptionFulfiller);
-        redeemer.setPaymentTokenOracle(usdc, cfg.paymentTokenOracle);
+        redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
         vm.stopBroadcast();
     }
