@@ -31,17 +31,18 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, AccessControlDefaul
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.UsdPlus")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant UsdPlusStorageLocation = 0x531780929781d75f94b208ae2c2a4530451c739f715a1a03bbbb934f354cbb00;
+    bytes32 private constant USDPLUS_STORAGE_LOCATION =
+        0x531780929781d75f94b208ae2c2a4530451c739f715a1a03bbbb934f354cbb00;
 
     function _getUsdPlusStorage() private pure returns (UsdPlusStorage storage $) {
         assembly {
-            $.slot := UsdPlusStorageLocation
+            $.slot := USDPLUS_STORAGE_LOCATION
         }
     }
 
     /// ------------------ Initialization ------------------
 
-    function initialize(address _treasury, ITransferRestrictor _transferRestrictor, address initialOwner)
+    function initialize(address initialTreasury, ITransferRestrictor initialTransferRestrictor, address initialOwner)
         public
         initializer
     {
@@ -50,8 +51,8 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, AccessControlDefaul
         __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
 
         UsdPlusStorage storage $ = _getUsdPlusStorage();
-        $._treasury = _treasury;
-        $._transferRestrictor = _transferRestrictor;
+        $._treasury = initialTreasury;
+        $._transferRestrictor = initialTransferRestrictor;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor

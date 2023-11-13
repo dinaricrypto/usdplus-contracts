@@ -54,12 +54,12 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.StakedUsdPlus")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant StakedUsdPlusStorageLocation =
+    bytes32 private constant STAKEDUSDPLUS_STORAGE_LOCATION =
         0x55622f4ceaf6efbae448afb8d927192678a3150e362c93b086be700c2f9c9400;
 
     function _getStakedUsdPlusStorage() private pure returns (StakedUsdPlusStorage storage $) {
         assembly {
-            $.slot := StakedUsdPlusStorageLocation
+            $.slot := STAKEDUSDPLUS_STORAGE_LOCATION
         }
     }
 
