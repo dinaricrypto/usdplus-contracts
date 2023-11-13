@@ -6,6 +6,6 @@ libs = [
     "node_modules",
 ]
 solc_version = '0.8.23'
-# via_ir = true
+via_ir = true
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

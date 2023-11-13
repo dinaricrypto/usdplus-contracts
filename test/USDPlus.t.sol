@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor, ITransferRestrictor} from "../src/TransferRestrictor.sol";
+import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract UsdPlusTest is Test {
@@ -21,7 +22,12 @@ contract UsdPlusTest is Test {
 
     function setUp() public {
         transferRestrictor = new TransferRestrictor(ADMIN);
-        usdplus = new UsdPlus(TREASURY, transferRestrictor, ADMIN);
+        UsdPlus usdplusImpl = new UsdPlus();
+        usdplus = UsdPlus(
+            address(
+                new ERC1967Proxy(address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN)))
+            )
+        );
     }
 
     function test_treasury(address treasury) public {

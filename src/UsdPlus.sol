@@ -1,50 +1,114 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.23;
 
-import {ERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {
+    ERC20PermitUpgradeable,
+    ERC20Upgradeable
+} from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
-contract UsdPlus is ERC20Permit, AccessControl {
+contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
+    /// ------------------ Types ------------------
+
     event TreasurySet(address indexed treasury);
     event TransferRestrictorSet(ITransferRestrictor indexed transferRestrictor);
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
-    /// @notice treasury for digital assets backing USD+
-    address public treasury;
+    /// ------------------ Storage ------------------
 
-    ITransferRestrictor public transferRestrictor;
+    struct UsdPlusStorage {
+        // treasury for digital assets backing USD+
+        address _treasury;
+        // transfer restrictor
+        ITransferRestrictor _transferRestrictor;
+    }
 
-    constructor(address _treasury, ITransferRestrictor _transferRestrictor, address initialOwner)
-        ERC20("USD+", "USD+")
-        ERC20Permit("USD+")
+    // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.UsdPlus")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant UsdPlusStorageLocation = 0x531780929781d75f94b208ae2c2a4530451c739f715a1a03bbbb934f354cbb00;
+
+    function _getUsdPlusStorage() private pure returns (UsdPlusStorage storage $) {
+        assembly {
+            $.slot := UsdPlusStorageLocation
+        }
+    }
+
+    /// ------------------ Initialization ------------------
+
+    function initialize(address _treasury, ITransferRestrictor _transferRestrictor, address initialOwner)
+        public
+        initializer
     {
-        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
-        // slither-disable-next-line missing-zero-check
-        treasury = _treasury;
-        transferRestrictor = _transferRestrictor;
+        __ERC20_init("USD+", "USD+");
+        __ERC20Permit_init("USD+");
+        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
+
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        $._treasury = _treasury;
+        $._transferRestrictor = _transferRestrictor;
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+
+    /// ------------------ Getters ------------------
+
+    /// @notice treasury for digital assets backing USD+
+    function treasury() public view returns (address) {
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        return $._treasury;
+    }
+
+    /// @notice transfer restrictor
+    function transferRestrictor() public view returns (ITransferRestrictor) {
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        return $._transferRestrictor;
     }
 
     function decimals() public pure override returns (uint8) {
         return 6;
     }
 
+    function checkTransferRestricted(address from, address to) public view {
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        ITransferRestrictor _transferRestrictor = $._transferRestrictor;
+        if (address(_transferRestrictor) != address(0)) {
+            _transferRestrictor.requireNotRestricted(from, to);
+        }
+    }
+
+    function isBlacklisted(address account) external view returns (bool) {
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        ITransferRestrictor _transferRestrictor = $._transferRestrictor;
+        if (address(_transferRestrictor) != address(0)) {
+            return _transferRestrictor.isBlacklisted(account);
+        }
+        return false;
+    }
+
     // ------------------ Admin ------------------
 
     /// @notice set treasury address
     function setTreasury(address newTreasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // slither-disable-next-line missing-zero-check
-        treasury = newTreasury;
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        $._treasury = newTreasury;
         emit TreasurySet(newTreasury);
     }
 
     /// @notice set transfer restrictor
     function setTransferRestrictor(ITransferRestrictor newTransferRestrictor) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        transferRestrictor = newTransferRestrictor;
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        $._transferRestrictor = newTransferRestrictor;
         emit TransferRestrictorSet(newTransferRestrictor);
     }
 
@@ -72,20 +136,5 @@ contract UsdPlus is ERC20Permit, AccessControl {
         checkTransferRestricted(from, to);
 
         super._update(from, to, value);
-    }
-
-    function checkTransferRestricted(address from, address to) public view {
-        ITransferRestrictor _transferRestrictor = transferRestrictor;
-        if (address(_transferRestrictor) != address(0)) {
-            _transferRestrictor.requireNotRestricted(from, to);
-        }
-    }
-
-    function isBlacklisted(address account) external view returns (bool) {
-        ITransferRestrictor _transferRestrictor = transferRestrictor;
-        if (address(_transferRestrictor) != address(0)) {
-            return _transferRestrictor.isBlacklisted(account);
-        }
-        return false;
     }
 }
