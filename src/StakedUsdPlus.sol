@@ -1,18 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
-import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import {ERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {ERC4626Upgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import {
+    ERC20PermitUpgradeable,
+    ERC20Upgradeable
+} from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {OwnableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {DoubleEndedQueue} from "openzeppelin-contracts/contracts/utils/structs/DoubleEndedQueue.sol";
+import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
 
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
-contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
+contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, OwnableUpgradeable {
     // TODO: continuous yield?
+
+    /// ------------------ Types ------------------
+
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
 
     struct Lock {
@@ -33,39 +41,73 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
     error LockTimeTooShort(uint256 wait);
     error ValueLocked(uint256 freeValue);
 
+    /// ------------------ Storage ------------------
+
+    struct StakedUsdPlusStorage {
+        // lock duration in seconds
+        uint48 _lockDuration;
+        // dequeue of locks per account
+        // back == most recent lock
+        mapping(address => DoubleEndedQueue.Bytes32Deque) _locks;
+        // cached lock totals per account
+        mapping(address => LockTotals) _cachedLockTotals;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.StakedUsdPlus")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant STAKEDUSDPLUS_STORAGE_LOCATION =
+        0x55622f4ceaf6efbae448afb8d927192678a3150e362c93b086be700c2f9c9400;
+
+    function _getStakedUsdPlusStorage() private pure returns (StakedUsdPlusStorage storage $) {
+        assembly {
+            $.slot := STAKEDUSDPLUS_STORAGE_LOCATION
+        }
+    }
+
+    /// ------------------ Initialization ------------------
+
+    function initialize(UsdPlus usdplus, address initialOwner) public initializer {
+        __ERC4626_init(usdplus);
+        __ERC20Permit_init("stUSD+");
+        __ERC20_init("stUSD+", "stUSD+");
+        __Ownable_init_unchained(initialOwner);
+
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        $._lockDuration = 30 days;
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    /// ------------------ Getters ------------------
+
     /// @notice lock duration in seconds
-    uint48 public lockDuration = 30 days;
+    function lockDuration() public view returns (uint48) {
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        return $._lockDuration;
+    }
 
-    // dequeue of locks per account
-    // back == most recent lock
-    mapping(address => DoubleEndedQueue.Bytes32Deque) private _locks;
-
-    // cached lock totals per account
-    mapping(address => LockTotals) private _cachedLockTotals;
-
-    constructor(UsdPlus usdplus, address initialOwner)
-        ERC4626(usdplus)
-        ERC20Permit("stUSD+")
-        ERC20("stUSD+", "stUSD+")
-        Ownable(initialOwner)
-    {}
-
-    function decimals() public view virtual override(ERC4626, ERC20) returns (uint8) {
-        return ERC4626.decimals();
+    function decimals() public view virtual override(ERC4626Upgradeable, ERC20Upgradeable) returns (uint8) {
+        return ERC4626Upgradeable.decimals();
     }
 
     /// @notice locked stUSD+ for account
     /// @dev Warning: can be stale, call refreshLocks to update
     function sharesLocked(address account) external view returns (uint256) {
-        return _cachedLockTotals[account].shares;
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        return $._cachedLockTotals[account].shares;
     }
 
     /// @notice complete lock schedule for account
     function getLockSchedule(address account) external view returns (Lock[] memory) {
-        uint256 n = _locks[account].length();
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        uint256 n = $._locks[account].length();
         Lock[] memory schedule = new Lock[](n);
         for (uint256 i = 0; i < n; i++) {
-            schedule[i] = unpackLockData(_locks[account].at(i));
+            schedule[i] = unpackLockData($._locks[account].at(i));
         }
         return schedule;
     }
@@ -74,7 +116,8 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
 
     /// @notice set lock duration
     function setLockDuration(uint48 duration) external onlyOwner {
-        lockDuration = duration;
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        $._lockDuration = duration;
         emit LockDurationSet(duration);
     }
 
@@ -102,20 +145,22 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
 
         // ensure new lock ends after previous lock
         // this means that if lockDuration is changed, users may have to wait before they can mint more stUSD+
-        uint48 endTime = uint48(block.timestamp) + lockDuration;
-        if (_locks[account].length() > 0) {
-            Lock memory prevLock = unpackLockData(_locks[account].back());
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        uint48 endTime = uint48(block.timestamp) + $._lockDuration;
+        if ($._locks[account].length() > 0) {
+            Lock memory prevLock = unpackLockData($._locks[account].back());
             if (endTime < prevLock.endTime) revert LockTimeTooShort(prevLock.endTime - endTime);
         }
-        _locks[account].pushBack(packLockData(Lock(endTime, uint104(assets), uint104(shares))));
-        LockTotals memory cachedTotals = _cachedLockTotals[account];
-        _cachedLockTotals[account] =
+        $._locks[account].pushBack(packLockData(Lock(endTime, uint104(assets), uint104(shares))));
+        LockTotals memory cachedTotals = $._cachedLockTotals[account];
+        $._cachedLockTotals[account] =
             LockTotals(uint128(cachedTotals.assets + assets), uint128(cachedTotals.shares + shares));
     }
 
     /// @dev remove expired locks and update cached totals
     function refreshLocks(address account) public {
-        DoubleEndedQueue.Bytes32Deque storage locks = _locks[account];
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        DoubleEndedQueue.Bytes32Deque storage locks = $._locks[account];
 
         // remove expired locks
         uint128 assetsDecrement = 0;
@@ -131,8 +176,8 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
         }
         // update cached totals
         if (assetsDecrement > 0) {
-            LockTotals memory cachedTotals = _cachedLockTotals[account];
-            _cachedLockTotals[account] =
+            LockTotals memory cachedTotals = $._cachedLockTotals[account];
+            $._cachedLockTotals[account] =
                 LockTotals(cachedTotals.assets - assetsDecrement, cachedTotals.shares - sharesDecrement);
         }
     }
@@ -141,7 +186,8 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
     function consumeLocks(address account, uint256 sharesToConsume) internal returns (uint128) {
         if (sharesToConsume > type(uint128).max) revert ValueOverflow();
 
-        DoubleEndedQueue.Bytes32Deque storage locks = _locks[account];
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        DoubleEndedQueue.Bytes32Deque storage locks = $._locks[account];
 
         uint128 assetsDue = 0;
         uint128 sharesRemaining = uint128(sharesToConsume);
@@ -163,8 +209,8 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
                 sharesRemaining -= lock.shares;
             }
         }
-        LockTotals memory cachedTotals = _cachedLockTotals[account];
-        _cachedLockTotals[account] =
+        LockTotals memory cachedTotals = $._cachedLockTotals[account];
+        $._cachedLockTotals[account] =
             LockTotals(cachedTotals.assets - assetsDue, cachedTotals.shares - uint128(sharesToConsume));
         return assetsDue;
     }
@@ -182,11 +228,13 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
     {
         refreshLocks(owner);
 
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+
         // if locked shares, determine how many assets to withdraw
         uint256 assetsToWithdraw = 0;
 
         // check if enough free shares
-        uint128 lockedShares = _cachedLockTotals[owner].shares;
+        uint128 lockedShares = $._cachedLockTotals[owner].shares;
         if (lockedShares == 0) {
             // if no locked shares, withdraw at normal rate
             assetsToWithdraw = assets;
@@ -218,7 +266,8 @@ contract StakedUsdPlus is ERC4626, ERC20Permit, Ownable {
             refreshLocks(from);
 
             // revert if not enough free shares
-            uint256 freeShares = balanceOf(from) - _cachedLockTotals[from].shares;
+            StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+            uint256 freeShares = balanceOf(from) - $._cachedLockTotals[from].shares;
             if (value > freeShares) revert ValueLocked(freeShares);
         }
 

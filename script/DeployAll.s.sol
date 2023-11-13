@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 import "forge-std/Script.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
@@ -9,6 +9,7 @@ import {Minter} from "../src/Minter.sol";
 import {Redeemer} from "../src/Redeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployAllScript is Script {
     struct DeployConfig {
@@ -41,11 +42,18 @@ contract DeployAllScript is Script {
 
         TransferRestrictor transferRestrictor = new TransferRestrictor(cfg.owner);
 
-        UsdPlus usdplus = new UsdPlus(cfg.treasury, transferRestrictor, cfg.owner);
+        UsdPlus usdplusImpl = new UsdPlus();
+        UsdPlus usdplus = UsdPlus(
+            address(
+                new ERC1967Proxy(address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner)))
+            )
+        );
 
-        StakedUsdPlus stakedusdplus = new StakedUsdPlus(
-            usdplus,
-            cfg.owner
+        StakedUsdPlus stakedusdplusImpl = new StakedUsdPlus();
+        StakedUsdPlus stakedusdplus = StakedUsdPlus(
+            address(
+                new ERC1967Proxy(address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, cfg.owner)))
+            )
         );
 
         /// ------------------ usd+ minter/redeemer ------------------

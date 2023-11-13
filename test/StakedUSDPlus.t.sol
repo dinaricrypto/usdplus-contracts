@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.21;
+pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
+import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract StakedUsdPlusTest is Test {
@@ -19,8 +20,18 @@ contract StakedUsdPlusTest is Test {
 
     function setUp() public {
         transferRestrictor = new TransferRestrictor(address(this));
-        usdplus = new UsdPlus(address(this), transferRestrictor, address(this));
-        stakedusdplus = new StakedUsdPlus(usdplus, ADMIN);
+        UsdPlus usdplusImpl = new UsdPlus();
+        usdplus = UsdPlus(
+            address(
+                new ERC1967Proxy(address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, address(this))))
+            )
+        );
+        StakedUsdPlus stakedusdplusImpl = new StakedUsdPlus();
+        stakedusdplus = StakedUsdPlus(
+            address(
+                new ERC1967Proxy(address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, ADMIN)))
+            )
+        );
 
         // mint USD+ to user for testing
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(this));
