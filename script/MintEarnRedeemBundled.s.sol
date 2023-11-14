@@ -50,18 +50,18 @@ contract MintEarnRedeemBundled is Script {
         // send txs as user
         vm.startBroadcast(userPrivateKey);
 
-        // mint usd+ and stake for usd++
+        // mint usd+ and stake for stUSD+
         cfg.usdc.approve(address(cfg.minter), amount);
         cfg.minter.issueAndDeposit(user, cfg.usdc, amount);
         uint256 stakedUsdplusBalance = cfg.stakedUsdplus.balanceOf(user);
-        console.log("user %s USD++", stakedUsdplusBalance);
+        console.log("user %s stUSD+", stakedUsdplusBalance);
 
         vm.stopBroadcast();
 
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
-        // yield 1% usd+ to usd++
+        // yield 1% usd+ to stUSD+
         cfg.usdPlus.mint(address(cfg.stakedUsdplus), amount / 100);
 
         vm.stopBroadcast();
@@ -71,7 +71,7 @@ contract MintEarnRedeemBundled is Script {
 
         // unstake usd+ and redeem for usdc
         // cfg.usdPlus.approve(address(cfg.redeemer), usdplusBalanceAfter);
-        uint256 ticket = cfg.redeemer.redeemAndRequest(user, user, cfg.usdc, stakedUsdplusBalance);
+        uint256 ticket = cfg.redeemer.unstakeAndRequest(user, user, cfg.usdc, stakedUsdplusBalance);
 
         vm.stopBroadcast();
 

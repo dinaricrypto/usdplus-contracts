@@ -74,17 +74,28 @@ contract Redeemer is AccessControl {
     // ----------------- Requests -----------------
 
     /// @notice calculate payment amount for USD+ burn
-    /// @param payment payment token
-    /// @param amount amount of USD+
-    function previewRedemptionAmount(IERC20 payment, uint256 amount) public view returns (uint256) {
-        AggregatorV3Interface oracle = paymentTokenOracle[payment];
+    /// @param paymentToken payment token
+    /// @param usdplusAmount amount of USD+
+    function previewRedeem(IERC20 paymentToken, uint256 usdplusAmount) public view returns (uint256) {
+        AggregatorV3Interface oracle = paymentTokenOracle[paymentToken];
         if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
         // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();
 
-        return Math.mulDiv(amount, 10 ** uint256(oracleDecimals), uint256(price));
+        return Math.mulDiv(usdplusAmount, 10 ** uint256(oracleDecimals), uint256(price));
+    }
+
+    /// @notice calculate payment amount for stUSD+ unstake and USD+ burn
+    /// @param paymentToken payment token
+    /// @param stakedUsdplusAmount amount of stUSD+
+    function previewUnstakeAndRedeem(IERC20 paymentToken, uint256 stakedUsdplusAmount)
+        external
+        view
+        returns (uint256)
+    {
+        return previewRedeem(paymentToken, stakedUsdplus.previewRedeem(stakedUsdplusAmount));
     }
 
     /// @notice create a request to burn USD+ for payment token
@@ -101,7 +112,7 @@ contract Redeemer is AccessControl {
         if (receiver == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
 
-        uint256 paymentAmount = previewRedemptionAmount(paymentToken, amount);
+        uint256 paymentAmount = previewRedeem(paymentToken, amount);
         if (paymentAmount == 0) revert ZeroAmount();
 
         unchecked {
@@ -161,7 +172,7 @@ contract Redeemer is AccessControl {
     /// @param paymentToken payment token
     /// @param amount amount of stUSD+ to redeem
     /// @return ticket request ticket number
-    function redeemAndRequest(address receiver, address owner, IERC20 paymentToken, uint256 amount)
+    function unstakeAndRequest(address receiver, address owner, IERC20 paymentToken, uint256 amount)
         external
         returns (uint256 ticket)
     {

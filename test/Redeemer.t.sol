@@ -79,12 +79,12 @@ contract RedeemerTest is Test {
 
         // payment token oracle not set
         vm.expectRevert(abi.encodeWithSelector(Redeemer.PaymentTokenNotAccepted.selector));
-        redeemer.previewRedemptionAmount(paymentToken, amount);
+        redeemer.previewRedeem(paymentToken, amount);
 
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        redeemer.previewRedemptionAmount(paymentToken, amount);
+        redeemer.previewRedeem(paymentToken, amount);
     }
 
     function test_requestToZeroAddressReverts(uint256 amount) public {
@@ -106,7 +106,7 @@ contract RedeemerTest is Test {
         vm.prank(USER);
         usdplus.approve(address(redeemer), amount);
 
-        uint256 redemptionEstimate = redeemer.previewRedemptionAmount(paymentToken, amount);
+        uint256 redemptionEstimate = redeemer.previewRedeem(paymentToken, amount);
 
         // reverts if redemption amount is 0
         if (redemptionEstimate == 0) {
@@ -124,7 +124,7 @@ contract RedeemerTest is Test {
         assertEq(paymentAmount, redemptionEstimate);
     }
 
-    function test_redeemAndRequest(uint104 amount) public {
+    function test_unstakeAndRequest(uint104 amount) public {
         vm.assume(amount > 0);
 
         vm.startPrank(USER);
@@ -135,8 +135,7 @@ contract RedeemerTest is Test {
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        uint256 redemptionEstimate =
-            redeemer.previewRedemptionAmount(paymentToken, stakedUsdplus.previewRedeem(stakedAmount));
+        uint256 redemptionEstimate = redeemer.previewUnstakeAndRedeem(paymentToken, stakedAmount);
         vm.assume(redemptionEstimate > 0);
 
         vm.prank(USER);
@@ -145,7 +144,7 @@ contract RedeemerTest is Test {
         vm.expectEmit(true, true, true, true);
         emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
         vm.prank(USER);
-        uint256 ticket = redeemer.redeemAndRequest(USER, USER, paymentToken, stakedAmount);
+        uint256 ticket = redeemer.unstakeAndRequest(USER, USER, paymentToken, stakedAmount);
 
         (,,, uint256 paymentAmount,) = redeemer.requests(ticket);
         assertEq(paymentAmount, redemptionEstimate);
@@ -163,7 +162,7 @@ contract RedeemerTest is Test {
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        uint256 redemptionEstimate = redeemer.previewRedemptionAmount(paymentToken, amount);
+        uint256 redemptionEstimate = redeemer.previewRedeem(paymentToken, amount);
         vm.assume(redemptionEstimate > 0);
 
         vm.startPrank(USER);
@@ -197,7 +196,7 @@ contract RedeemerTest is Test {
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        uint256 redemptionEstimate = redeemer.previewRedemptionAmount(paymentToken, amount);
+        uint256 redemptionEstimate = redeemer.previewRedeem(paymentToken, amount);
         vm.assume(redemptionEstimate > 0);
 
         vm.startPrank(USER);
