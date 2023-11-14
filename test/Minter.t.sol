@@ -79,17 +79,17 @@ contract MinterTest is Test {
         assertEq(address(minter.paymentTokenOracle(token)), oracle);
     }
 
-    function test_previewIssueAmount(uint256 amount) public {
+    function test_previewIssue(uint256 amount) public {
         vm.assume(amount < type(uint256).max / 2);
 
         // payment token oracle not set
         vm.expectRevert(abi.encodeWithSelector(Minter.PaymentTokenNotAccepted.selector));
-        minter.previewIssueAmount(paymentToken, amount);
+        minter.previewIssue(paymentToken, amount);
 
         vm.prank(ADMIN);
         minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
-        minter.previewIssueAmount(paymentToken, amount);
+        minter.previewIssue(paymentToken, amount);
     }
 
     function test_issueToZeroAddressReverts(uint256 amount) public {
@@ -119,7 +119,7 @@ contract MinterTest is Test {
         vm.prank(USER);
         paymentToken.approve(address(minter), amount);
 
-        uint256 issueEstimate = minter.previewIssueAmount(paymentToken, amount);
+        uint256 issueEstimate = minter.previewIssue(paymentToken, amount);
 
         vm.expectEmit(true, true, true, true);
         emit Issued(USER, paymentToken, amount, issueEstimate);
@@ -128,7 +128,7 @@ contract MinterTest is Test {
         assertEq(issued, issueEstimate);
     }
 
-    function test_issueAndStake(uint104 amount) public {
+    function test_issueAndDeposit(uint104 amount) public {
         vm.assume(amount > 0);
 
         vm.startPrank(ADMIN);
@@ -141,7 +141,10 @@ contract MinterTest is Test {
         vm.prank(USER);
         paymentToken.approve(address(minter), amount);
 
+        uint256 issueEstimate = minter.previewIssueAndDeposit(paymentToken, amount);
+
         vm.prank(USER);
-        minter.issueAndDeposit(USER, paymentToken, amount);
+        uint256 issued = minter.issueAndDeposit(USER, paymentToken, amount);
+        assertEq(issued, issueEstimate);
     }
 }

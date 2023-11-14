@@ -67,7 +67,7 @@ contract Minter is Ownable {
     /// @notice calculate USD+ amount to mint for payment
     /// @param paymentToken payment token
     /// @param paymentTokenAmount amount of payment token
-    function previewIssueAmount(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
+    function previewIssue(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
         AggregatorV3Interface oracle = paymentTokenOracle[paymentToken];
         if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
 
@@ -76,6 +76,13 @@ contract Minter is Ownable {
         (, int256 price,,,) = oracle.latestRoundData();
 
         return Math.mulDiv(paymentTokenAmount, uint256(price), 10 ** uint256(oracleDecimals));
+    }
+
+    /// @notice calculate stUSD+ amount to mint for payment
+    /// @param paymentToken payment token
+    /// @param paymentTokenAmount amount of payment token
+    function previewIssueAndDeposit(IERC20 paymentToken, uint256 paymentTokenAmount) external view returns (uint256) {
+        return stakedUsdplus.previewDeposit(previewIssue(paymentToken, paymentTokenAmount));
     }
 
     /// @notice mint USD+ for payment
@@ -87,7 +94,7 @@ contract Minter is Ownable {
         if (receiver == address(0)) revert ZeroAddress();
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
-        uint256 _issueAmount = previewIssueAmount(paymentToken, paymentTokenAmount);
+        uint256 _issueAmount = previewIssue(paymentToken, paymentTokenAmount);
         emit Issued(receiver, paymentToken, paymentTokenAmount, _issueAmount);
 
         paymentToken.safeTransferFrom(msg.sender, paymentRecipient, paymentTokenAmount);
@@ -96,11 +103,11 @@ contract Minter is Ownable {
         return _issueAmount;
     }
 
-    /// @notice mint USD+ for payment and deposit in USD++
+    /// @notice mint USD+ for payment and deposit in stUSD+
     /// @param receiver recipient
     /// @param paymentToken payment token
     /// @param paymentTokenAmount amount of payment token to spend
-    /// @return amount of USD++ minted
+    /// @return amount of stUSD+ minted
     function issueAndDeposit(address receiver, IERC20 paymentToken, uint256 paymentTokenAmount)
         external
         returns (uint256)

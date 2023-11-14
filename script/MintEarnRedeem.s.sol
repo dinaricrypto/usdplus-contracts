@@ -60,7 +60,7 @@ contract MintEarnRedeem is Script {
         cfg.usdPlus.approve(address(cfg.stakedUsdplus), usdplusBalance);
         cfg.stakedUsdplus.deposit(usdplusBalance, user);
         uint256 stakedUsdplusBalance = cfg.stakedUsdplus.balanceOf(user);
-        console.log("user %s USD++", stakedUsdplusBalance);
+        console.log("user %s stUSD+", stakedUsdplusBalance);
 
         vm.stopBroadcast();
 
