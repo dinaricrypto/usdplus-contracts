@@ -51,6 +51,11 @@ contract UsdPlusMinterTest is Test {
         paymentToken.mint(USER, type(uint256).max);
     }
 
+    function test_initialization() public {
+        assertEq(address(minter.stakedUsdplus()), address(stakedUsdplus));
+        assertEq(address(minter.usdplus()), address(usdplus));
+    }
+
     function test_setPaymentRecipient(address recipient) public {
         if (recipient == address(0)) {
             vm.expectRevert(UsdPlusMinter.ZeroAddress.selector);

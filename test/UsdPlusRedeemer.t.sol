@@ -62,6 +62,12 @@ contract UsdPlusRedeemerTest is Test {
         paymentToken.mint(FULFILLER, type(uint256).max);
     }
 
+    function test_initialization() public {
+        assertEq(address(redeemer.stakedUsdplus()), address(stakedUsdplus));
+        assertEq(address(redeemer.usdplus()), address(usdplus));
+        assertEq(redeemer.nextTicket(), 0);
+    }
+
     function test_setPaymentTokenOracle(IERC20 token, address oracle) public {
         // non-admin cannot set payment token oracle
         vm.expectRevert(
