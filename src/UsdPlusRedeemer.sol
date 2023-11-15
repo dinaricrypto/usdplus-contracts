@@ -45,7 +45,6 @@ contract UsdPlusRedeemer is UUPSUpgradeable, AccessControlDefaultAdminRulesUpgra
 
     /// ------------------ Storage ------------------
 
-    // TODO: make sure layout matches future
     struct UsdPlusRedeemerStorage {
         // USD+
         UsdPlus _usdplus;
