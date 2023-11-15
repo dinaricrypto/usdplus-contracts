@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
-import {Minter} from "../src/Minter.sol";
+import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
 import {Redeemer} from "../src/Redeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
@@ -14,7 +14,7 @@ contract MintEarnRedeemBundled is Script {
         ERC20Mock usdc;
         UsdPlus usdPlus;
         StakedUsdPlus stakedUsdplus;
-        Minter minter;
+        UsdPlusMinter minter;
         Redeemer redeemer;
     }
 
@@ -29,7 +29,7 @@ contract MintEarnRedeemBundled is Script {
             usdc: ERC20Mock(vm.envAddress("USDC")),
             usdPlus: UsdPlus(vm.envAddress("USDPLUS")),
             stakedUsdplus: StakedUsdPlus(vm.envAddress("STAKEDUSDPLUS")),
-            minter: Minter(vm.envAddress("MINTER")),
+            minter: UsdPlusMinter(vm.envAddress("MINTER")),
             redeemer: Redeemer(vm.envAddress("REDEEMER"))
         });
 
@@ -52,7 +52,7 @@ contract MintEarnRedeemBundled is Script {
 
         // mint usd+ and stake for stUSD+
         cfg.usdc.approve(address(cfg.minter), amount);
-        cfg.minter.issueAndDeposit(user, cfg.usdc, amount);
+        cfg.minter.depositAndStake(cfg.usdc, amount, user);
         uint256 stakedUsdplusBalance = cfg.stakedUsdplus.balanceOf(user);
         console.log("user %s stUSD+", stakedUsdplusBalance);
 
