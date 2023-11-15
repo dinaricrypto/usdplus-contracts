@@ -5,8 +5,8 @@ import "forge-std/Script.sol";
 import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
-import {Minter} from "../src/Minter.sol";
-import {Redeemer} from "../src/Redeemer.sol";
+import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
+import {UsdPlusRedeemer} from "../src/UsdPlusRedeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract MintEarnRedeemBundled is Script {
@@ -14,8 +14,8 @@ contract MintEarnRedeemBundled is Script {
         ERC20Mock usdc;
         UsdPlus usdPlus;
         StakedUsdPlus stakedUsdplus;
-        Minter minter;
-        Redeemer redeemer;
+        UsdPlusMinter minter;
+        UsdPlusRedeemer redeemer;
     }
 
     function run() external {
@@ -29,8 +29,8 @@ contract MintEarnRedeemBundled is Script {
             usdc: ERC20Mock(vm.envAddress("USDC")),
             usdPlus: UsdPlus(vm.envAddress("USDPLUS")),
             stakedUsdplus: StakedUsdPlus(vm.envAddress("STAKEDUSDPLUS")),
-            minter: Minter(vm.envAddress("MINTER")),
-            redeemer: Redeemer(vm.envAddress("REDEEMER"))
+            minter: UsdPlusMinter(vm.envAddress("MINTER")),
+            redeemer: UsdPlusRedeemer(vm.envAddress("REDEEMER"))
         });
 
         console.log("deployer: %s", deployer);
@@ -79,8 +79,8 @@ contract MintEarnRedeemBundled is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // fulfill redemption request
-        (,,, uint256 paymentAmount,) = cfg.redeemer.requests(ticket);
-        cfg.usdc.approve(address(cfg.redeemer), paymentAmount);
+        UsdPlusRedeemer.Request memory request = cfg.redeemer.requests(ticket);
+        cfg.usdc.approve(address(cfg.redeemer), request.paymentAmount);
         cfg.redeemer.fulfill(ticket);
         uint256 usdcBalance = cfg.usdc.balanceOf(user);
         console.log("user %s USDC", usdcBalance);

@@ -5,12 +5,12 @@ import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
-import "../src/Minter.sol";
+import "../src/UsdPlusMinter.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
-contract MinterTest is Test {
+contract UsdPlusMinterTest is Test {
     event PaymentRecipientSet(address indexed paymentRecipient);
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
     event Issued(address indexed to, IERC20 indexed paymentToken, uint256 paymentAmount, uint256 issueAmount);
@@ -18,7 +18,7 @@ contract MinterTest is Test {
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
     StakedUsdPlus stakedUsdplus;
-    Minter minter;
+    UsdPlusMinter minter;
     ERC20Mock paymentToken;
 
     address public constant ADMIN = address(0x1234);
@@ -40,15 +40,25 @@ contract MinterTest is Test {
                 new ERC1967Proxy(address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, ADMIN)))
             )
         );
-        minter = new Minter(stakedUsdplus, TREASURY, ADMIN);
+        UsdPlusMinter minterImpl = new UsdPlusMinter();
+        minter = UsdPlusMinter(
+            address(
+                new ERC1967Proxy(address(minterImpl), abi.encodeCall(UsdPlusMinter.initialize, (stakedUsdplus, TREASURY, ADMIN)))
+            )
+        );
         paymentToken = new ERC20Mock();
 
         paymentToken.mint(USER, type(uint256).max);
     }
 
+    function test_initialization() public {
+        assertEq(address(minter.stakedUsdplus()), address(stakedUsdplus));
+        assertEq(address(minter.usdplus()), address(usdplus));
+    }
+
     function test_setPaymentRecipient(address recipient) public {
         if (recipient == address(0)) {
-            vm.expectRevert(Minter.ZeroAddress.selector);
+            vm.expectRevert(UsdPlusMinter.ZeroAddress.selector);
             vm.prank(ADMIN);
             minter.setPaymentRecipient(recipient);
             return;
@@ -83,7 +93,7 @@ contract MinterTest is Test {
         vm.assume(amount < type(uint256).max / 2);
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(Minter.PaymentTokenNotAccepted.selector));
+        vm.expectRevert(abi.encodeWithSelector(UsdPlusMinter.PaymentTokenNotAccepted.selector));
         minter.previewIssue(paymentToken, amount);
 
         vm.prank(ADMIN);
@@ -93,12 +103,12 @@ contract MinterTest is Test {
     }
 
     function test_issueToZeroAddressReverts(uint256 amount) public {
-        vm.expectRevert(abi.encodeWithSelector(Minter.ZeroAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(UsdPlusMinter.ZeroAddress.selector));
         minter.issue(address(0), paymentToken, amount);
     }
 
     function test_issueZeroAmountReverts() public {
-        vm.expectRevert(abi.encodeWithSelector(Minter.ZeroAmount.selector));
+        vm.expectRevert(abi.encodeWithSelector(UsdPlusMinter.ZeroAmount.selector));
         minter.issue(USER, paymentToken, 0);
     }
 
@@ -110,7 +120,7 @@ contract MinterTest is Test {
         vm.stopPrank();
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(Minter.PaymentTokenNotAccepted.selector));
+        vm.expectRevert(abi.encodeWithSelector(UsdPlusMinter.PaymentTokenNotAccepted.selector));
         minter.issue(USER, paymentToken, amount);
 
         vm.prank(ADMIN);
