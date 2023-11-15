@@ -6,7 +6,7 @@ import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
-import {Redeemer} from "../src/Redeemer.sol";
+import {UsdPlusRedeemer, IUsdPlusRedeemer} from "../src/UsdPlusRedeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract MintEarnRedeemBundled is Script {
@@ -15,7 +15,7 @@ contract MintEarnRedeemBundled is Script {
         UsdPlus usdPlus;
         StakedUsdPlus stakedUsdplus;
         UsdPlusMinter minter;
-        Redeemer redeemer;
+        UsdPlusRedeemer redeemer;
     }
 
     function run() external {
@@ -30,7 +30,7 @@ contract MintEarnRedeemBundled is Script {
             usdPlus: UsdPlus(vm.envAddress("USDPLUS")),
             stakedUsdplus: StakedUsdPlus(vm.envAddress("STAKEDUSDPLUS")),
             minter: UsdPlusMinter(vm.envAddress("MINTER")),
-            redeemer: Redeemer(vm.envAddress("REDEEMER"))
+            redeemer: UsdPlusRedeemer(vm.envAddress("REDEEMER"))
         });
 
         console.log("deployer: %s", deployer);
@@ -71,7 +71,7 @@ contract MintEarnRedeemBundled is Script {
 
         // unstake usd+ and redeem for usdc
         // cfg.usdPlus.approve(address(cfg.redeemer), usdplusBalanceAfter);
-        uint256 ticket = cfg.redeemer.unstakeAndRequest(user, user, cfg.usdc, stakedUsdplusBalance);
+        uint256 ticket = cfg.redeemer.unstakeAndRequestRedeem(cfg.usdc, stakedUsdplusBalance, user, user);
 
         vm.stopBroadcast();
 
@@ -79,8 +79,8 @@ contract MintEarnRedeemBundled is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // fulfill redemption request
-        (,,, uint256 paymentAmount,) = cfg.redeemer.requests(ticket);
-        cfg.usdc.approve(address(cfg.redeemer), paymentAmount);
+        IUsdPlusRedeemer.Request memory request = cfg.redeemer.requests(ticket);
+        cfg.usdc.approve(address(cfg.redeemer), request.paymentTokenAmount);
         cfg.redeemer.fulfill(ticket);
         uint256 usdcBalance = cfg.usdc.balanceOf(user);
         console.log("user %s USDC", usdcBalance);

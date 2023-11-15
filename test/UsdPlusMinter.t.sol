@@ -13,7 +13,7 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 contract UsdPlusMinterTest is Test {
     event PaymentRecipientSet(address indexed paymentRecipient);
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
-    event Issued(address indexed to, IERC20 indexed paymentToken, uint256 paymentAmount, uint256 usdPlusAmount);
+    event Issued(address indexed to, IERC20 indexed paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount);
 
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
@@ -83,7 +83,7 @@ contract UsdPlusMinterTest is Test {
         vm.assume(amount < type(uint256).max / 2);
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(IUsdPlusMinter.PaymentTokenNotAccepted.selector));
+        vm.expectRevert(IUsdPlusMinter.PaymentTokenNotAccepted.selector);
         minter.previewDeposit(paymentToken, amount);
 
         vm.prank(ADMIN);
@@ -93,12 +93,12 @@ contract UsdPlusMinterTest is Test {
     }
 
     function test_depositToZeroAddressReverts(uint256 amount) public {
-        vm.expectRevert(abi.encodeWithSelector(UsdPlusMinter.ZeroAddress.selector));
+        vm.expectRevert(UsdPlusMinter.ZeroAddress.selector);
         minter.deposit(paymentToken, amount, address(0));
     }
 
     function test_depositZeroAmountReverts() public {
-        vm.expectRevert(abi.encodeWithSelector(UsdPlusMinter.ZeroAmount.selector));
+        vm.expectRevert(UsdPlusMinter.ZeroAmount.selector);
         minter.deposit(paymentToken, 0, USER);
     }
 
@@ -110,7 +110,7 @@ contract UsdPlusMinterTest is Test {
         vm.stopPrank();
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(IUsdPlusMinter.PaymentTokenNotAccepted.selector));
+        vm.expectRevert(IUsdPlusMinter.PaymentTokenNotAccepted.selector);
         minter.deposit(paymentToken, amount, USER);
 
         vm.prank(ADMIN);
@@ -152,12 +152,12 @@ contract UsdPlusMinterTest is Test {
     }
 
     function test_mintZeroAddressReverts(uint256 amount) public {
-        vm.expectRevert(abi.encodeWithSelector(UsdPlusMinter.ZeroAddress.selector));
+        vm.expectRevert(UsdPlusMinter.ZeroAddress.selector);
         minter.mint(paymentToken, amount, address(0));
     }
 
     function test_mintZeroAmountReverts() public {
-        vm.expectRevert(abi.encodeWithSelector(UsdPlusMinter.ZeroAmount.selector));
+        vm.expectRevert(UsdPlusMinter.ZeroAmount.selector);
         minter.mint(paymentToken, 0, USER);
     }
 
@@ -169,7 +169,7 @@ contract UsdPlusMinterTest is Test {
         vm.stopPrank();
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(IUsdPlusMinter.PaymentTokenNotAccepted.selector));
+        vm.expectRevert(IUsdPlusMinter.PaymentTokenNotAccepted.selector);
         minter.mint(paymentToken, amount, USER);
 
         vm.prank(ADMIN);

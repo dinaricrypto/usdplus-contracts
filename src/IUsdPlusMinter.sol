@@ -10,7 +10,9 @@ import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 interface IUsdPlusMinter {
     event PaymentRecipientSet(address indexed paymentRecipient);
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
-    event Issued(address indexed receiver, IERC20 indexed paymentToken, uint256 paymentAmount, uint256 usdPlusAmount);
+    event Issued(
+        address indexed receiver, IERC20 indexed paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount
+    );
 
     error PaymentTokenNotAccepted();
 
@@ -24,8 +26,13 @@ interface IUsdPlusMinter {
     function paymentRecipient() external view returns (address);
 
     /// @notice Oracle for payment token
+    /// @param paymentToken payment token
     /// @dev address(0) if payment token not accepted
     function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface oracle);
+
+    /// @notice get oracle price for payment token
+    /// @param paymentToken payment token
+    function getOraclePrice(IERC20 paymentToken) external view returns (uint256 price, uint8 decimals);
 
     /// @notice calculate USD+ amount to mint for payment
     /// @param paymentToken payment token

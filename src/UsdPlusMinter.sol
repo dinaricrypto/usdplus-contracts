@@ -57,15 +57,21 @@ contract UsdPlusMinter is IUsdPlusMinter, Ownable {
     // ------------------ Mint ------------------
 
     /// @inheritdoc IUsdPlusMinter
-    function previewDeposit(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
+    function getOraclePrice(IERC20 paymentToken) public view returns (uint256, uint8) {
         AggregatorV3Interface oracle = paymentTokenOracle[paymentToken];
         if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
 
-        uint8 oracleDecimals = oracle.decimals();
         // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();
+        uint8 oracleDecimals = oracle.decimals();
 
-        return Math.mulDiv(paymentTokenAmount, uint256(price), 10 ** uint256(oracleDecimals));
+        return (uint256(price), oracleDecimals);
+    }
+
+    /// @inheritdoc IUsdPlusMinter
+    function previewDeposit(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
+        (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
+        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals));
     }
 
     /// @inheritdoc IUsdPlusMinter
@@ -109,14 +115,8 @@ contract UsdPlusMinter is IUsdPlusMinter, Ownable {
 
     /// @inheritdoc IUsdPlusMinter
     function previewMint(IERC20 paymentToken, uint256 usdPlusAmount) public view returns (uint256) {
-        AggregatorV3Interface oracle = paymentTokenOracle[paymentToken];
-        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
-
-        uint8 oracleDecimals = oracle.decimals();
-        // slither-disable-next-line unused-return
-        (, int256 price,,,) = oracle.latestRoundData();
-
-        return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), uint256(price));
+        (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
+        return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price);
     }
 
     /// @inheritdoc IUsdPlusMinter

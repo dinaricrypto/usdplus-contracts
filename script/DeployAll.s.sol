@@ -6,7 +6,7 @@ import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
-import {Redeemer} from "../src/Redeemer.sol";
+import {UsdPlusRedeemer} from "../src/UsdPlusRedeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -66,7 +66,7 @@ contract DeployAllScript is Script {
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
         minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
-        Redeemer redeemer = new Redeemer(
+        UsdPlusRedeemer redeemer = new UsdPlusRedeemer(
             stakedusdplus,
             cfg.owner
         );
