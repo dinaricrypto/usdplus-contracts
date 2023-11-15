@@ -13,11 +13,19 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 contract UsdPlusRedeemerTest is Test {
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
     event RequestCreated(
-        uint256 indexed ticket, address indexed to, IERC20 paymentToken, uint256 paymentAmount, uint256 burnAmount
+        uint256 indexed ticket,
+        address indexed to,
+        IERC20 paymentToken,
+        uint256 paymentTokenAmount,
+        uint256 usdplusAmount
     );
     event RequestCancelled(uint256 indexed ticket, address indexed to);
     event RequestFulfilled(
-        uint256 indexed ticket, address indexed to, IERC20 paymentToken, uint256 paymentAmount, uint256 burnAmount
+        uint256 indexed ticket,
+        address indexed to,
+        IERC20 paymentToken,
+        uint256 paymentTokenAmount,
+        uint256 usdplusAmount
     );
 
     TransferRestrictor transferRestrictor;
@@ -85,11 +93,11 @@ contract UsdPlusRedeemerTest is Test {
         assertEq(address(redeemer.paymentTokenOracle(token)), oracle);
     }
 
-    function test_redemptionAmount(uint256 amount) public {
+    function test_previewRedeem(uint256 amount) public {
         vm.assume(amount < type(uint256).max / 2);
 
         // payment token oracle not set
-        vm.expectRevert(abi.encodeWithSelector(UsdPlusRedeemer.PaymentTokenNotAccepted.selector));
+        vm.expectRevert(IUsdPlusRedeemer.PaymentTokenNotAccepted.selector);
         redeemer.previewRedeem(paymentToken, amount);
 
         vm.prank(ADMIN);
@@ -98,17 +106,68 @@ contract UsdPlusRedeemerTest is Test {
         redeemer.previewRedeem(paymentToken, amount);
     }
 
+    function test_previewWithdraw(uint256 amount) public {
+        vm.assume(amount < type(uint256).max / 2);
+
+        // payment token oracle not set
+        vm.expectRevert(IUsdPlusRedeemer.PaymentTokenNotAccepted.selector);
+        redeemer.previewWithdraw(paymentToken, amount);
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        redeemer.previewWithdraw(paymentToken, amount);
+    }
+
+    function test_requestWithdrawToZeroAddressReverts(uint256 amount) public {
+        vm.expectRevert(UsdPlusRedeemer.ZeroAddress.selector);
+        redeemer.requestWithdraw(paymentToken, amount, address(0), USER);
+    }
+
+    function test_requestWithdrawZeroAmountReverts() public {
+        vm.expectRevert(UsdPlusRedeemer.ZeroAmount.selector);
+        redeemer.requestWithdraw(paymentToken, 0, USER, USER);
+    }
+
+    function test_requestWithdraw(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        uint256 usdplusAmount = redeemer.previewWithdraw(paymentToken, amount);
+
+        vm.prank(USER);
+        usdplus.approve(address(redeemer), usdplusAmount);
+
+        // reverts if withdrawal amount is 0
+        if (usdplusAmount == 0) {
+            vm.expectRevert(UsdPlusRedeemer.ZeroAmount.selector);
+            redeemer.requestWithdraw(paymentToken, amount, USER, USER);
+            return;
+        }
+
+        vm.expectEmit(true, true, true, true);
+        emit RequestCreated(0, USER, paymentToken, amount, usdplusAmount);
+        vm.prank(USER);
+        uint256 ticket = redeemer.requestWithdraw(paymentToken, amount, USER, USER);
+
+        IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
+        assertEq(request.paymentTokenAmount, amount);
+        assertEq(request.usdplusAmount, usdplusAmount);
+    }
+
     function test_requestToZeroAddressReverts(uint256 amount) public {
-        vm.expectRevert(abi.encodeWithSelector(UsdPlusRedeemer.ZeroAddress.selector));
-        redeemer.request(address(0), USER, paymentToken, amount);
+        vm.expectRevert(UsdPlusRedeemer.ZeroAddress.selector);
+        redeemer.requestRedeem(paymentToken, amount, address(0), USER);
     }
 
     function test_requestZeroAmountReverts() public {
-        vm.expectRevert(abi.encodeWithSelector(UsdPlusRedeemer.ZeroAmount.selector));
-        redeemer.request(USER, USER, paymentToken, 0);
+        vm.expectRevert(UsdPlusRedeemer.ZeroAmount.selector);
+        redeemer.requestRedeem(paymentToken, 0, USER, USER);
     }
 
-    function test_request(uint256 amount) public {
+    function test_requestRedeem(uint256 amount) public {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
@@ -121,21 +180,21 @@ contract UsdPlusRedeemerTest is Test {
 
         // reverts if redemption amount is 0
         if (redemptionEstimate == 0) {
-            vm.expectRevert(abi.encodeWithSelector(UsdPlusRedeemer.ZeroAmount.selector));
-            redeemer.request(USER, USER, paymentToken, amount);
+            vm.expectRevert(UsdPlusRedeemer.ZeroAmount.selector);
+            redeemer.requestRedeem(paymentToken, amount, USER, USER);
             return;
         }
 
         vm.expectEmit(true, true, true, true);
         emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
         vm.prank(USER);
-        uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
+        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
 
-        UsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
-        assertEq(request.paymentAmount, redemptionEstimate);
+        IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
+        assertEq(request.paymentTokenAmount, redemptionEstimate);
     }
 
-    function test_unstakeAndRequest(uint104 amount) public {
+    function test_unstakeAndRequestRedeem(uint104 amount) public {
         vm.assume(amount > 0);
 
         vm.startPrank(USER);
@@ -155,48 +214,14 @@ contract UsdPlusRedeemerTest is Test {
         vm.expectEmit(true, true, true, true);
         emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
         vm.prank(USER);
-        uint256 ticket = redeemer.unstakeAndRequest(USER, USER, paymentToken, stakedAmount);
+        uint256 ticket = redeemer.unstakeAndRequestRedeem(paymentToken, stakedAmount, USER, USER);
 
-        UsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
-        assertEq(request.paymentAmount, redemptionEstimate);
-    }
-
-    function test_cancelInvalidTicketReverts(uint256 ticket) public {
-        vm.expectRevert(abi.encodeWithSelector(UsdPlusRedeemer.InvalidTicket.selector));
-        vm.prank(FULFILLER);
-        redeemer.cancel(ticket);
-    }
-
-    function test_cancel(uint256 amount) public {
-        vm.assume(amount > 0 && amount < type(uint256).max / 2);
-
-        vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
-
-        uint256 redemptionEstimate = redeemer.previewRedeem(paymentToken, amount);
-        vm.assume(redemptionEstimate > 0);
-
-        vm.startPrank(USER);
-        usdplus.approve(address(redeemer), amount);
-        uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
-        vm.stopPrank();
-
-        // not fulfiller
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), redeemer.FULFILLER_ROLE()
-            )
-        );
-        redeemer.cancel(ticket);
-
-        vm.expectEmit(true, true, true, true);
-        emit RequestCancelled(ticket, USER);
-        vm.prank(FULFILLER);
-        redeemer.cancel(ticket);
+        IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
+        assertEq(request.paymentTokenAmount, redemptionEstimate);
     }
 
     function test_fulfillInvalidTicketReverts(uint256 ticket) public {
-        vm.expectRevert(abi.encodeWithSelector(UsdPlusRedeemer.InvalidTicket.selector));
+        vm.expectRevert(IUsdPlusRedeemer.InvalidTicket.selector);
         vm.prank(FULFILLER);
         redeemer.fulfill(ticket);
     }
@@ -212,7 +237,7 @@ contract UsdPlusRedeemerTest is Test {
 
         vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
-        uint256 ticket = redeemer.request(USER, USER, paymentToken, amount);
+        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
         vm.stopPrank();
 
         // not fulfiller
@@ -243,5 +268,39 @@ contract UsdPlusRedeemerTest is Test {
         emit RequestFulfilled(ticket, USER, paymentToken, redemptionEstimate, amount);
         redeemer.fulfill(ticket);
         vm.stopPrank();
+    }
+
+    function test_cancelInvalidTicketReverts(uint256 ticket) public {
+        vm.expectRevert(IUsdPlusRedeemer.InvalidTicket.selector);
+        vm.prank(FULFILLER);
+        redeemer.cancel(ticket);
+    }
+
+    function test_cancel(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        uint256 redemptionEstimate = redeemer.previewRedeem(paymentToken, amount);
+        vm.assume(redemptionEstimate > 0);
+
+        vm.startPrank(USER);
+        usdplus.approve(address(redeemer), amount);
+        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
+        vm.stopPrank();
+
+        // not fulfiller
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), redeemer.FULFILLER_ROLE()
+            )
+        );
+        redeemer.cancel(ticket);
+
+        vm.expectEmit(true, true, true, true);
+        emit RequestCancelled(ticket, USER);
+        vm.prank(FULFILLER);
+        redeemer.cancel(ticket);
     }
 }

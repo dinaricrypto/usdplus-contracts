@@ -6,7 +6,7 @@ import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
-import {UsdPlusRedeemer} from "../src/UsdPlusRedeemer.sol";
+import {UsdPlusRedeemer, IUsdPlusRedeemer} from "../src/UsdPlusRedeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 contract MintEarnRedeem is Script {
@@ -52,7 +52,7 @@ contract MintEarnRedeem is Script {
 
         // mint usd+
         cfg.usdc.approve(address(cfg.minter), amount);
-        cfg.minter.issue(user, cfg.usdc, amount);
+        cfg.minter.deposit(cfg.usdc, amount, user);
         uint256 usdplusBalance = cfg.usdPlus.balanceOf(user);
         console.log("user %s USD+", usdplusBalance);
 
@@ -82,7 +82,7 @@ contract MintEarnRedeem is Script {
 
         // redeem for usdc
         cfg.usdPlus.approve(address(cfg.redeemer), usdplusBalanceAfter);
-        uint256 ticket = cfg.redeemer.request(user, user, cfg.usdc, usdplusBalanceAfter);
+        uint256 ticket = cfg.redeemer.requestRedeem(cfg.usdc, usdplusBalanceAfter, user, user);
 
         vm.stopBroadcast();
 
@@ -90,8 +90,8 @@ contract MintEarnRedeem is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // fulfill redemption request
-        UsdPlusRedeemer.Request memory request = cfg.redeemer.requests(ticket);
-        cfg.usdc.approve(address(cfg.redeemer), request.paymentAmount);
+        IUsdPlusRedeemer.Request memory request = cfg.redeemer.requests(ticket);
+        cfg.usdc.approve(address(cfg.redeemer), request.paymentTokenAmount);
         cfg.redeemer.fulfill(ticket);
         uint256 usdcBalance = cfg.usdc.balanceOf(user);
         console.log("user %s USDC", usdcBalance);

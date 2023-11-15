@@ -8,23 +8,19 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
+import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 
 /// @notice USD+ minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
-contract UsdPlusMinter is UUPSUpgradeable, Ownable2StepUpgradeable {
+contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeable {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
     using SafeERC20 for UsdPlus;
 
-    event PaymentRecipientSet(address indexed paymentRecipient);
-    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
-    event Issued(address indexed receiver, IERC20 indexed paymentToken, uint256 paymentAmount, uint256 issueAmount);
-
     error ZeroAddress();
     error ZeroAmount();
-    error PaymentTokenNotAccepted();
 
     /// ------------------ Storage ------------------
 
@@ -74,27 +70,25 @@ contract UsdPlusMinter is UUPSUpgradeable, Ownable2StepUpgradeable {
 
     /// ------------------ Getters ------------------
 
-    /// @notice USD+
+    /// @inheritdoc IUsdPlusMinter
     function usdplus() external view returns (UsdPlus) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._usdplus;
     }
 
-    /// @notice stUSD+
+    /// @inheritdoc IUsdPlusMinter
     function stakedUsdplus() external view returns (StakedUsdPlus) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._stakedUsdplus;
     }
 
-    /// @notice payment recipient
+    /// @inheritdoc IUsdPlusMinter
     function paymentRecipient() external view returns (address) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._paymentRecipient;
     }
 
-    /// @notice Oracle for payment token
-    /// @param paymentToken payment token
-    /// @dev address(0) if payment token not accepted
+    /// @inheritdoc IUsdPlusMinter
     function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._paymentTokenOracle[paymentToken];
@@ -120,63 +114,95 @@ contract UsdPlusMinter is UUPSUpgradeable, Ownable2StepUpgradeable {
         emit PaymentTokenOracleSet(paymentToken, oracle);
     }
 
-    /// ------------------ Mint ------------------
+    // ------------------ Mint ------------------
 
-    /// @notice calculate USD+ amount to mint for payment
-    /// @param paymentToken payment token
-    /// @param paymentTokenAmount amount of payment token
-    function previewIssue(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
+    /// @inheritdoc IUsdPlusMinter
+    function getOraclePrice(IERC20 paymentToken) public view returns (uint256, uint8) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         AggregatorV3Interface oracle = $._paymentTokenOracle[paymentToken];
         if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
 
-        uint8 oracleDecimals = oracle.decimals();
         // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();
+        uint8 oracleDecimals = oracle.decimals();
 
-        return Math.mulDiv(paymentTokenAmount, uint256(price), 10 ** uint256(oracleDecimals));
+        return (uint256(price), oracleDecimals);
     }
 
-    /// @notice calculate stUSD+ amount to mint for payment
-    /// @param paymentToken payment token
-    /// @param paymentTokenAmount amount of payment token
-    function previewIssueAndDeposit(IERC20 paymentToken, uint256 paymentTokenAmount) external view returns (uint256) {
-        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        return $._stakedUsdplus.previewDeposit(previewIssue(paymentToken, paymentTokenAmount));
+    /// @inheritdoc IUsdPlusMinter
+    function previewDeposit(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
+        (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
+        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Floor);
     }
 
-    /// @notice mint USD+ for payment
-    /// @param receiver recipient
-    /// @param paymentToken payment token
-    /// @param paymentTokenAmount amount of payment token to spend
-    /// @return amount of USD+ minted
-    function issue(address receiver, IERC20 paymentToken, uint256 paymentTokenAmount) public returns (uint256) {
+    /// @inheritdoc IUsdPlusMinter
+    function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver)
+        public
+        returns (uint256 usdPlusAmount)
+    {
         if (receiver == address(0)) revert ZeroAddress();
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
-        uint256 _issueAmount = previewIssue(paymentToken, paymentTokenAmount);
-        emit Issued(receiver, paymentToken, paymentTokenAmount, _issueAmount);
+        usdPlusAmount = previewDeposit(paymentToken, paymentTokenAmount);
+        if (usdPlusAmount == 0) revert ZeroAmount();
+
+        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, receiver);
+    }
+
+    function _issue(IERC20 paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount, address receiver)
+        internal
+    {
+        emit Issued(receiver, paymentToken, paymentTokenAmount, usdPlusAmount);
 
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         paymentToken.safeTransferFrom(msg.sender, $._paymentRecipient, paymentTokenAmount);
-        $._usdplus.mint(receiver, _issueAmount);
-
-        return _issueAmount;
+        $._usdplus.mint(receiver, usdPlusAmount);
     }
 
-    /// @notice mint USD+ for payment and deposit in stUSD+
-    /// @param receiver recipient
-    /// @param paymentToken payment token
-    /// @param paymentTokenAmount amount of payment token to spend
-    /// @return amount of stUSD+ minted
-    function issueAndDeposit(address receiver, IERC20 paymentToken, uint256 paymentTokenAmount)
+    /// @inheritdoc IUsdPlusMinter
+    function previewDepositAndStake(IERC20 paymentToken, uint256 paymentTokenAmount) external view returns (uint256) {
+        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
+        return $._stakedUsdplus.previewDeposit(previewDeposit(paymentToken, paymentTokenAmount));
+    }
+
+    /// @inheritdoc IUsdPlusMinter
+    function depositAndStake(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver)
         external
         returns (uint256)
     {
-        uint256 _issueAmount = issue(address(this), paymentToken, paymentTokenAmount);
+        uint256 _issueAmount = deposit(paymentToken, paymentTokenAmount, address(this));
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         StakedUsdPlus _stakedUsdplus = $._stakedUsdplus;
         $._usdplus.safeIncreaseAllowance(address(_stakedUsdplus), _issueAmount);
         return _stakedUsdplus.deposit(_issueAmount, receiver);
+    }
+
+    /// @inheritdoc IUsdPlusMinter
+    function previewMint(IERC20 paymentToken, uint256 usdPlusAmount) public view returns (uint256) {
+        (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
+        return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Ceil);
+    }
+
+    /// @inheritdoc IUsdPlusMinter
+    function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver)
+        public
+        returns (uint256 paymentTokenAmount)
+    {
+        if (receiver == address(0)) revert ZeroAddress();
+        if (usdPlusAmount == 0) revert ZeroAmount();
+
+        paymentTokenAmount = previewMint(paymentToken, usdPlusAmount);
+        if (paymentTokenAmount == 0) revert ZeroAmount();
+
+        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, receiver);
+    }
+
+    /// @inheritdoc IUsdPlusMinter
+    function mintAndStake(IERC20 paymentToken, uint256 usdPlusAmount, address receiver) external returns (uint256) {
+        mint(paymentToken, usdPlusAmount, address(this));
+        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
+        StakedUsdPlus _stakedUsdplus = $._stakedUsdplus;
+        $._usdplus.safeIncreaseAllowance(address(_stakedUsdplus), usdPlusAmount);
+        return _stakedUsdplus.deposit(usdPlusAmount, receiver);
     }
 }
