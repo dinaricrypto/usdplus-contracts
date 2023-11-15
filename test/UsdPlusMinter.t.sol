@@ -40,10 +40,20 @@ contract UsdPlusMinterTest is Test {
                 new ERC1967Proxy(address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, ADMIN)))
             )
         );
-        minter = new UsdPlusMinter(stakedUsdplus, TREASURY, ADMIN);
+        UsdPlusMinter minterImpl = new UsdPlusMinter();
+        minter = UsdPlusMinter(
+            address(
+                new ERC1967Proxy(address(minterImpl), abi.encodeCall(UsdPlusMinter.initialize, (stakedUsdplus, TREASURY, ADMIN)))
+            )
+        );
         paymentToken = new ERC20Mock();
 
         paymentToken.mint(USER, type(uint256).max);
+    }
+
+    function test_initialization() public {
+        assertEq(address(minter.stakedUsdplus()), address(stakedUsdplus));
+        assertEq(address(minter.usdplus()), address(usdplus));
     }
 
     function test_setPaymentRecipient(address recipient) public {

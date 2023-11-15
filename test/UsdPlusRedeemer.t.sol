@@ -53,7 +53,12 @@ contract UsdPlusRedeemerTest is Test {
                 new ERC1967Proxy(address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, ADMIN)))
             )
         );
-        redeemer = new UsdPlusRedeemer(stakedUsdplus, ADMIN);
+        UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
+        redeemer = UsdPlusRedeemer(
+            address(
+                new ERC1967Proxy(address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedUsdplus, ADMIN)))
+            )
+        );
         paymentToken = new ERC20Mock();
 
         vm.startPrank(ADMIN);
@@ -63,6 +68,12 @@ contract UsdPlusRedeemerTest is Test {
 
         usdplus.mint(USER, type(uint256).max);
         paymentToken.mint(FULFILLER, type(uint256).max);
+    }
+
+    function test_initialization() public {
+        assertEq(address(redeemer.stakedUsdplus()), address(stakedUsdplus));
+        assertEq(address(redeemer.usdplus()), address(usdplus));
+        assertEq(redeemer.nextTicket(), 0);
     }
 
     function test_setPaymentTokenOracle(IERC20 token, address oracle) public {

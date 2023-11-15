@@ -58,17 +58,20 @@ contract DeployAllScript is Script {
 
         /// ------------------ usd+ minter/redeemer ------------------
 
-        UsdPlusMinter minter = new UsdPlusMinter(
-            stakedusdplus,
-            cfg.treasury,
-            cfg.owner
+        UsdPlusMinter minterImpl = new UsdPlusMinter();
+        UsdPlusMinter minter = UsdPlusMinter(
+            address(
+                new ERC1967Proxy(address(minterImpl), abi.encodeCall(UsdPlusMinter.initialize, (stakedusdplus, cfg.treasury, cfg.owner)))
+            )
         );
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
         minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
-        UsdPlusRedeemer redeemer = new UsdPlusRedeemer(
-            stakedusdplus,
-            cfg.owner
+        UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
+        UsdPlusRedeemer redeemer = UsdPlusRedeemer(
+            address(
+                new ERC1967Proxy(address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedusdplus, cfg.owner)))
+            )
         );
         usdplus.grantRole(usdplus.BURNER_ROLE(), address(redeemer));
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.redemptionFulfiller);
