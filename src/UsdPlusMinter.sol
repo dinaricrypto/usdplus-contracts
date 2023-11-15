@@ -71,7 +71,7 @@ contract UsdPlusMinter is IUsdPlusMinter, Ownable {
     /// @inheritdoc IUsdPlusMinter
     function previewDeposit(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals));
+        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Floor);
     }
 
     /// @inheritdoc IUsdPlusMinter
@@ -116,7 +116,7 @@ contract UsdPlusMinter is IUsdPlusMinter, Ownable {
     /// @inheritdoc IUsdPlusMinter
     function previewMint(IERC20 paymentToken, uint256 usdPlusAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price);
+        return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Ceil);
     }
 
     /// @inheritdoc IUsdPlusMinter

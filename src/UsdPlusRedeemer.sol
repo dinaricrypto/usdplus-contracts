@@ -75,7 +75,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, AccessControl {
     /// @inheritdoc IUsdPlusRedeemer
     function previewWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals));
+        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Ceil);
     }
 
     /// @inheritdoc IUsdPlusRedeemer
@@ -121,7 +121,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, AccessControl {
     /// @inheritdoc IUsdPlusRedeemer
     function previewRedeem(IERC20 paymentToken, uint256 usdplusAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(usdplusAmount, 10 ** uint256(oracleDecimals), price);
+        return Math.mulDiv(usdplusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Floor);
     }
 
     /// @inheritdoc IUsdPlusRedeemer
