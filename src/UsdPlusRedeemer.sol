@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.23;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -12,7 +14,8 @@ import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
-contract Redeemer is AccessControl {
+contract UsdPlusRedeemer is UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
+    /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
     using SafeERC20 for UsdPlus;
 
@@ -40,25 +43,85 @@ contract Redeemer is AccessControl {
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
 
+    /// ------------------ Storage ------------------
+
+    // TODO: make sure layout matches future
+    struct UsdPlusRedeemerStorage {
+        // USD+
+        UsdPlus _usdplus;
+        // stUSD+
+        StakedUsdPlus _stakedUsdplus;
+        // is this payment token accepted?
+        mapping(IERC20 => AggregatorV3Interface) _paymentTokenOracle;
+        // request ticket => request
+        mapping(uint256 => Request) _requests;
+        // next request ticket number
+        uint256 _nextTicket;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.UsdPlusRedeemer")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant USDPLUSREDEEMER_STORAGE_LOCATION =
+        0xf724d8e1327974c3212114feec241a18ecc4f13b9dce5898792083418cd99000;
+
+    function _getUsdPlusRedeemerStorage() private pure returns (UsdPlusRedeemerStorage storage $) {
+        assembly {
+            $.slot := USDPLUSREDEEMER_STORAGE_LOCATION
+        }
+    }
+
+    /// ------------------ Initialization ------------------
+
+    function initialize(StakedUsdPlus initialStakedUsdplus, address initialOwner) public initializer {
+        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
+
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        $._usdplus = UsdPlus(initialStakedUsdplus.asset());
+        $._stakedUsdplus = initialStakedUsdplus;
+        $._nextTicket = 0;
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+
+    /// ------------------ Getters ------------------
+
     /// @notice USD+
-    UsdPlus public immutable usdplus;
+    function usdplus() external view returns (UsdPlus) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        return $._usdplus;
+    }
 
     /// @notice stUSD+
-    StakedUsdPlus public immutable stakedUsdplus;
-
-    /// @notice is this payment token accepted?
-    mapping(IERC20 => AggregatorV3Interface) public paymentTokenOracle;
-
-    mapping(uint256 => Request) public requests;
-
-    uint256 public nextTicket;
-
-    constructor(StakedUsdPlus _stakedUsdplus, address initialOwner) {
-        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
-
-        stakedUsdplus = _stakedUsdplus;
-        usdplus = UsdPlus(_stakedUsdplus.asset());
+    function stakedUsdplus() external view returns (StakedUsdPlus) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        return $._stakedUsdplus;
     }
+
+    /// @notice Oracle for payment token
+    /// @param paymentToken payment token
+    /// @dev address(0) if payment token not accepted
+    function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        return $._paymentTokenOracle[paymentToken];
+    }
+
+    /// @notice request ticket => request
+    function requests(uint256 ticket) external view returns (Request memory) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        return $._requests[ticket];
+    }
+
+    /// @notice next request ticket number
+    function nextTicket() external view returns (uint256) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        return $._nextTicket;
+    }
+
+    /// ------------------ Admin ------------------
 
     /// @notice set payment token oracle
     /// @param payment payment token
@@ -67,17 +130,19 @@ contract Redeemer is AccessControl {
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        paymentTokenOracle[payment] = oracle;
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        $._paymentTokenOracle[payment] = oracle;
         emit PaymentTokenOracleSet(payment, oracle);
     }
 
-    // ----------------- Requests -----------------
+    /// ----------------- Requests -----------------
 
     /// @notice calculate payment amount for USD+ burn
     /// @param paymentToken payment token
     /// @param usdplusAmount amount of USD+
     function previewRedeem(IERC20 paymentToken, uint256 usdplusAmount) public view returns (uint256) {
-        AggregatorV3Interface oracle = paymentTokenOracle[paymentToken];
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        AggregatorV3Interface oracle = $._paymentTokenOracle[paymentToken];
         if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
 
         uint8 oracleDecimals = oracle.decimals();
@@ -95,7 +160,8 @@ contract Redeemer is AccessControl {
         view
         returns (uint256)
     {
-        return previewRedeem(paymentToken, stakedUsdplus.previewRedeem(stakedUsdplusAmount));
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        return previewRedeem(paymentToken, $._stakedUsdplus.previewRedeem(stakedUsdplusAmount));
     }
 
     /// @notice create a request to burn USD+ for payment token
@@ -115,11 +181,12 @@ contract Redeemer is AccessControl {
         uint256 paymentAmount = previewRedeem(paymentToken, amount);
         if (paymentAmount == 0) revert ZeroAmount();
 
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         unchecked {
-            ticket = nextTicket++;
+            ticket = $._nextTicket++;
         }
 
-        requests[ticket] = Request({
+        $._requests[ticket] = Request({
             owner: owner == address(this) ? msg.sender : owner,
             receiver: receiver,
             paymentToken: paymentToken,
@@ -130,39 +197,41 @@ contract Redeemer is AccessControl {
         emit RequestCreated(ticket, receiver, paymentToken, paymentAmount, amount);
 
         if (owner != address(this)) {
-            usdplus.safeTransferFrom(owner, address(this), amount);
+            $._usdplus.safeTransferFrom(owner, address(this), amount);
         }
     }
 
     /// @notice cancel a request to burn USD+ for payment
     /// @param ticket request ticket number
     function cancel(uint256 ticket) external onlyRole(FULFILLER_ROLE) {
-        Request memory _request = requests[ticket];
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        Request memory _request = $._requests[ticket];
 
         if (_request.receiver == address(0)) revert InvalidTicket();
 
-        delete requests[ticket];
+        delete $._requests[ticket];
 
         emit RequestCancelled(ticket, _request.receiver);
 
         // return USD+ to requester
-        usdplus.safeTransfer(_request.owner, _request.burnAmount);
+        $._usdplus.safeTransfer(_request.owner, _request.burnAmount);
     }
 
     /// @notice fulfill a request to burn USD+ for payment token
     /// @param ticket request ticket number
     function fulfill(uint256 ticket) external onlyRole(FULFILLER_ROLE) {
-        Request memory _request = requests[ticket];
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        Request memory _request = $._requests[ticket];
 
         if (_request.receiver == address(0)) revert InvalidTicket();
 
-        delete requests[ticket];
+        delete $._requests[ticket];
 
         emit RequestFulfilled(
             ticket, _request.receiver, _request.paymentToken, _request.paymentAmount, _request.burnAmount
         );
 
-        usdplus.burn(_request.burnAmount);
+        $._usdplus.burn(_request.burnAmount);
         _request.paymentToken.safeTransferFrom(msg.sender, _request.receiver, _request.paymentAmount);
     }
 
@@ -176,7 +245,8 @@ contract Redeemer is AccessControl {
         external
         returns (uint256 ticket)
     {
-        uint256 _redeemAmount = stakedUsdplus.redeem(amount, address(this), owner);
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        uint256 _redeemAmount = $._stakedUsdplus.redeem(amount, address(this), owner);
         return request(receiver, address(this), paymentToken, _redeemAmount);
     }
 }

@@ -92,8 +92,9 @@ contract UsdPlusMinter is UUPSUpgradeable, OwnableUpgradeable {
         return $._paymentRecipient;
     }
 
-    /// @notice payment token oracle
+    /// @notice Oracle for payment token
     /// @param paymentToken payment token
+    /// @dev address(0) if payment token not accepted
     function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._paymentTokenOracle[paymentToken];
