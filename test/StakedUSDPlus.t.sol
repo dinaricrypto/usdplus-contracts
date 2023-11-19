@@ -35,12 +35,12 @@ contract StakedUsdPlusTest is Test {
 
         // mint USD+ to user for testing
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(this));
-        usdplus.mint(address(USER), 100 ether);
-        usdplus.mint(address(this), 100 ether);
+        // usdplus.mint(address(USER), 100 ether);
+        // usdplus.mint(address(this), 100 ether);
 
         // seed stUSD+ with USD+
-        usdplus.approve(address(stakedusdplus), 100 ether);
-        stakedusdplus.deposit(100 ether, address(this));
+        // usdplus.approve(address(stakedusdplus), 100 ether);
+        // stakedusdplus.deposit(100 ether, address(this));
     }
 
     function test_deploymentConfig() public {
@@ -61,41 +61,64 @@ contract StakedUsdPlusTest is Test {
         assertEq(stakedusdplus.lockDuration(), duration);
     }
 
-    function test_postMintLocks() public {
-        // TODO: multiple locks
-        // TODO: fuzz
-        // TODO: fetch schedule
-        // TODO: manual lock refresh
+    function test_mintLockZeroReverts() public {
+        vm.expectRevert(StakedUsdPlus.ZeroValue.selector);
+        vm.prank(USER);
+        stakedusdplus.deposit(0, USER);
+    }
+
+    function test_mintLocks(uint104 amount1, uint104 amount2) public {
+        vm.assume(amount1 > 0 && amount2 > 0);
+
+        // mint USD+ to user for testing
+        uint256 total = uint256(amount1) + amount2;
+        usdplus.mint(USER, total);
 
         // deposit USD+ for stUSD+
         vm.startPrank(USER);
-        usdplus.approve(address(stakedusdplus), 100 ether);
-        stakedusdplus.deposit(100 ether, USER);
+        usdplus.approve(address(stakedusdplus), amount1);
+        stakedusdplus.deposit(amount1, USER);
         vm.stopPrank();
-        assertEq(stakedusdplus.sharesLocked(address(USER)), 100 ether);
+        assertEq(stakedusdplus.sharesLocked(address(USER)), amount1);
+
+        // move forward 10 days
+        vm.warp(block.timestamp + 10 days);
+
+        // deposit more USD+ for stUSD+
+        vm.startPrank(USER);
+        usdplus.approve(address(stakedusdplus), amount2);
+        stakedusdplus.deposit(amount2, USER);
+        vm.stopPrank();
+        assertEq(stakedusdplus.sharesLocked(address(USER)), total);
+
+        StakedUsdPlus.Lock[] memory lockSchedule = stakedusdplus.getLockSchedule(address(USER));
+        assertEq(lockSchedule.length, 2);
+        assertEq(lockSchedule[0].shares, amount1);
+        assertEq(lockSchedule[1].shares, amount2);
 
         // yield 1%
-        usdplus.mint(address(stakedusdplus), 2 ether);
-        assertEq(stakedusdplus.convertToAssets(stakedusdplus.totalSupply()), 202 ether - 1);
+        uint256 yield = total / 100;
+        usdplus.mint(address(stakedusdplus), yield);
+        assertEq(stakedusdplus.convertToAssets(stakedusdplus.totalSupply()), total + (yield > 0 ? yield - 1 : 0));
 
-        // user can redeem now for original value
+        // move forward 20 days
+        vm.warp(block.timestamp + 20 days);
+
+        // refesh stale lock totals
+        assertEq(stakedusdplus.sharesLocked(address(USER)), total);
+        stakedusdplus.refreshLocks(address(USER));
+        assertEq(stakedusdplus.sharesLocked(address(USER)), amount2);
+
+        // redeem USD+ from stUSD+, early exit loses yield
         vm.prank(USER);
-        stakedusdplus.redeem(50 ether, USER, USER);
-        assertEq(usdplus.balanceOf(address(USER)), 50 ether);
-        assertEq(stakedusdplus.sharesLocked(address(USER)), 50 ether);
-
-        // move forward 30 days
-        vm.warp(block.timestamp + 30 days);
-
-        // user can redeem after lock duration for yield
-        vm.prank(USER);
-        stakedusdplus.redeem(50 ether, USER, USER);
-        assertLt(usdplus.balanceOf(address(USER)), 100 ether + 1 ether - 1);
+        stakedusdplus.redeem(total, USER, USER);
+        assertGe(usdplus.balanceOf(address(USER)), total);
         assertEq(stakedusdplus.sharesLocked(address(USER)), 0);
     }
 
     function test_transferReverts(address to, uint104 amount) public {
         vm.assume(to != address(0));
+        vm.assume(amount > 0);
 
         usdplus.mint(USER, amount);
 
