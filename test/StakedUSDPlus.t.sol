@@ -33,14 +33,7 @@ contract StakedUsdPlusTest is Test {
             )
         );
 
-        // mint USD+ to user for testing
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(this));
-        // usdplus.mint(address(USER), 100 ether);
-        // usdplus.mint(address(this), 100 ether);
-
-        // seed stUSD+ with USD+
-        // usdplus.approve(address(stakedusdplus), 100 ether);
-        // stakedusdplus.deposit(100 ether, address(this));
     }
 
     function test_deploymentConfig() public {
