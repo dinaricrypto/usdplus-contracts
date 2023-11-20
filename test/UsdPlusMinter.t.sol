@@ -149,12 +149,13 @@ contract UsdPlusMinterTest is Test {
         vm.prank(ADMIN);
         minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
+        uint256 issueEstimate = minter.previewDepositAndStake(paymentToken, amount);
+        vm.assume(issueEstimate < type(uint104).max);
+
         vm.assume(minter.previewDeposit(paymentToken, amount) > 0);
 
         vm.prank(USER);
         paymentToken.approve(address(minter), amount);
-
-        uint256 issueEstimate = minter.previewDepositAndStake(paymentToken, amount);
 
         vm.prank(USER);
         uint256 issued = minter.depositAndStake(paymentToken, amount, USER);

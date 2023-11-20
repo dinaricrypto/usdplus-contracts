@@ -37,6 +37,7 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
 
     event LockDurationSet(uint48 duration);
 
+    error ZeroValue();
     error ValueOverflow();
     error LockTimeTooShort(uint256 wait);
     error ValueLocked(uint256 freeValue);
@@ -137,8 +138,8 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     /// @dev add lock to queue and update cached totals
     function addLock(address account, uint256 assets, uint256 shares) internal {
         // TODO: update maxDeposit to precheck these limits
-        if (assets > type(uint104).max) revert ValueOverflow();
-        if (shares > type(uint104).max) revert ValueOverflow();
+        if (assets == 0 || shares == 0) revert ZeroValue();
+        if (assets > type(uint104).max || shares > type(uint104).max) revert ValueOverflow();
 
         // TODO: reduce gas by not loading locktotals twice, not peeking twice
         refreshLocks(account);
@@ -158,6 +159,7 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     }
 
     /// @dev remove expired locks and update cached totals
+    // TODO: Iteration: Limit queue size and/or create single refresh method to clean one lock at a time
     function refreshLocks(address account) public {
         StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
         DoubleEndedQueue.Bytes32Deque storage locks = $._locks[account];
