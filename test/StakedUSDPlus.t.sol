@@ -38,7 +38,7 @@ contract StakedUsdPlusTest is Test {
 
     function test_deploymentConfig() public {
         assertEq(stakedusdplus.lockDuration(), 30 days);
-        assertEq(stakedusdplus.decimals(), 6);
+        assertEq(stakedusdplus.decimals(), usdplus.decimals());
     }
 
     function test_setLockDuration(uint48 duration) public {
@@ -62,6 +62,7 @@ contract StakedUsdPlusTest is Test {
 
     function test_mintLocks(uint104 amount1, uint104 amount2) public {
         vm.assume(amount1 > 0 && amount2 > 0);
+        vm.assume(stakedusdplus.previewDeposit(amount1) < type(uint104).max);
 
         // mint USD+ to user for testing
         uint256 total = uint256(amount1) + amount2;
@@ -72,7 +73,8 @@ contract StakedUsdPlusTest is Test {
         usdplus.approve(address(stakedusdplus), amount1);
         stakedusdplus.deposit(amount1, USER);
         vm.stopPrank();
-        assertEq(stakedusdplus.sharesLocked(address(USER)), amount1);
+        vm.assume(stakedusdplus.previewDeposit(amount2) < type(uint104).max);
+        assertEq(stakedusdplus.sharesLocked(address(USER)), amount1 * 10);
 
         // move forward 10 days
         vm.warp(block.timestamp + 10 days);
@@ -82,12 +84,12 @@ contract StakedUsdPlusTest is Test {
         usdplus.approve(address(stakedusdplus), amount2);
         stakedusdplus.deposit(amount2, USER);
         vm.stopPrank();
-        assertEq(stakedusdplus.sharesLocked(address(USER)), total);
+        assertEq(stakedusdplus.sharesLocked(address(USER)), total * 10);
 
         StakedUsdPlus.Lock[] memory lockSchedule = stakedusdplus.getLockSchedule(address(USER));
         assertEq(lockSchedule.length, 2);
-        assertEq(lockSchedule[0].shares, amount1);
-        assertEq(lockSchedule[1].shares, amount2);
+        assertEq(lockSchedule[0].shares, amount1 * 10);
+        assertEq(lockSchedule[1].shares, amount2 * 10);
 
         // yield 1%
         uint256 yield = total / 100;
@@ -98,13 +100,15 @@ contract StakedUsdPlusTest is Test {
         vm.warp(block.timestamp + 20 days);
 
         // refesh stale lock totals
-        assertEq(stakedusdplus.sharesLocked(address(USER)), total);
+        assertEq(stakedusdplus.sharesLocked(address(USER)), total * 10);
         stakedusdplus.refreshLocks(address(USER));
-        assertEq(stakedusdplus.sharesLocked(address(USER)), amount2);
+        assertEq(stakedusdplus.sharesLocked(address(USER)), amount2 * 10);
 
         // redeem USD+ from stUSD+, early exit loses yield
-        vm.prank(USER);
-        stakedusdplus.redeem(total, USER, USER);
+        vm.startPrank(USER);
+        uint256 redeemAmount = stakedusdplus.maxRedeem(USER);
+        stakedusdplus.redeem(redeemAmount, USER, USER);
+        vm.stopPrank();
         assertGe(usdplus.balanceOf(address(USER)), total);
         assertEq(stakedusdplus.sharesLocked(address(USER)), 0);
     }
@@ -112,6 +116,7 @@ contract StakedUsdPlusTest is Test {
     function test_transferReverts(address to, uint104 amount) public {
         vm.assume(to != address(0));
         vm.assume(amount > 0);
+        vm.assume(stakedusdplus.previewDeposit(amount) < type(uint104).max);
 
         usdplus.mint(USER, amount);
 

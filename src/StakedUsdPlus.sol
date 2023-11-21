@@ -91,10 +91,6 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         return $._lockDuration;
     }
 
-    function decimals() public view virtual override(ERC4626Upgradeable, ERC20Upgradeable) returns (uint8) {
-        return ERC4626Upgradeable.decimals();
-    }
-
     /// @notice locked stUSD+ for account
     /// @dev Warning: can be stale, call refreshLocks to update
     function sharesLocked(address account) external view returns (uint256) {
@@ -111,6 +107,14 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
             schedule[i] = unpackLockData($._locks[account].at(i));
         }
         return schedule;
+    }
+
+    function decimals() public view virtual override(ERC4626Upgradeable, ERC20Upgradeable) returns (uint8) {
+        return ERC4626Upgradeable.decimals() - 1;
+    }
+
+    function _decimalsOffset() internal view virtual override returns (uint8) {
+        return 1;
     }
 
     // ------------------ Admin ------------------

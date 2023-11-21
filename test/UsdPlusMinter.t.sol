@@ -201,6 +201,7 @@ contract UsdPlusMinterTest is Test {
 
     function test_mintAndStake(uint104 amount) public {
         vm.assume(amount > 0);
+        vm.assume(stakedUsdplus.previewDeposit(amount) < type(uint104).max);
 
         vm.startPrank(ADMIN);
         usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));

@@ -196,6 +196,7 @@ contract UsdPlusRedeemerTest is Test {
 
     function test_unstakeAndRequestRedeem(uint104 amount) public {
         vm.assume(amount > 0);
+        vm.assume(stakedUsdplus.previewDeposit(amount) < type(uint104).max);
 
         vm.startPrank(USER);
         usdplus.approve(address(stakedUsdplus), amount);
