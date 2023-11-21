@@ -92,7 +92,7 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     }
 
     function decimals() public view virtual override(ERC4626Upgradeable, ERC20Upgradeable) returns (uint8) {
-        return ERC4626Upgradeable.decimals();
+        return ERC4626Upgradeable.decimals() - 1;
     }
 
     /// @notice locked stUSD+ for account
