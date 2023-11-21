@@ -64,6 +64,14 @@ contract StakedUsdPlusTest is Test {
         vm.assume(amount1 > 0 && amount2 > 0);
         vm.assume(stakedusdplus.previewDeposit(amount1) < type(uint104).max);
 
+        uint256 factor = 10;
+
+        // assume existing supply 100k
+        uint104 supply = uint104(100_000 * 10 ** usdplus.decimals());
+        usdplus.mint(address(this), supply);
+        usdplus.approve(address(stakedusdplus), supply);
+        stakedusdplus.deposit(supply, address(this));
+
         // mint USD+ to user for testing
         uint256 total = uint256(amount1) + amount2;
         usdplus.mint(USER, total);
@@ -74,7 +82,7 @@ contract StakedUsdPlusTest is Test {
         stakedusdplus.deposit(amount1, USER);
         vm.stopPrank();
         vm.assume(stakedusdplus.previewDeposit(amount2) < type(uint104).max);
-        assertEq(stakedusdplus.sharesLocked(address(USER)), amount1 * 10);
+        assertEq(stakedusdplus.sharesLocked(address(USER)), amount1 * factor);
 
         // move forward 10 days
         vm.warp(block.timestamp + 10 days);
@@ -84,25 +92,27 @@ contract StakedUsdPlusTest is Test {
         usdplus.approve(address(stakedusdplus), amount2);
         stakedusdplus.deposit(amount2, USER);
         vm.stopPrank();
-        assertEq(stakedusdplus.sharesLocked(address(USER)), total * 10);
+        assertEq(stakedusdplus.sharesLocked(address(USER)), total * factor);
 
         StakedUsdPlus.Lock[] memory lockSchedule = stakedusdplus.getLockSchedule(address(USER));
         assertEq(lockSchedule.length, 2);
-        assertEq(lockSchedule[0].shares, amount1 * 10);
-        assertEq(lockSchedule[1].shares, amount2 * 10);
+        assertEq(lockSchedule[0].shares, amount1 * factor);
+        assertEq(lockSchedule[1].shares, amount2 * factor);
 
         // yield 1%
-        uint256 yield = total / 100;
+        uint256 yield = (supply + total) / 100;
         usdplus.mint(address(stakedusdplus), yield);
-        assertEq(stakedusdplus.convertToAssets(stakedusdplus.totalSupply()), total + (yield > 0 ? yield - 1 : 0));
+        assertEq(
+            stakedusdplus.convertToAssets(stakedusdplus.totalSupply()), supply + total + (yield > 0 ? yield - 1 : 0)
+        );
 
         // move forward 20 days
         vm.warp(block.timestamp + 20 days);
 
         // refesh stale lock totals
-        assertEq(stakedusdplus.sharesLocked(address(USER)), total * 10);
+        assertEq(stakedusdplus.sharesLocked(address(USER)), total * factor);
         stakedusdplus.refreshLocks(address(USER));
-        assertEq(stakedusdplus.sharesLocked(address(USER)), amount2 * 10);
+        assertEq(stakedusdplus.sharesLocked(address(USER)), amount2 * factor);
 
         // redeem USD+ from stUSD+, early exit loses yield
         vm.startPrank(USER);
