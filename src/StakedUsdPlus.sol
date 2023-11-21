@@ -109,11 +109,11 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         return schedule;
     }
 
-    function decimals() public view virtual override(ERC4626Upgradeable, ERC20Upgradeable) returns (uint8) {
+    function decimals() public view override(ERC4626Upgradeable, ERC20Upgradeable) returns (uint8) {
         return ERC4626Upgradeable.decimals() - 1;
     }
 
-    function _decimalsOffset() internal view virtual override returns (uint8) {
+    function _decimalsOffset() internal pure override returns (uint8) {
         return 1;
     }
 
@@ -221,7 +221,7 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         return assetsDue;
     }
 
-    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
         // add lock on user mint
         addLock(receiver, assets, shares);
         super._deposit(caller, receiver, assets, shares);
@@ -229,7 +229,6 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
 
     function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
-        virtual
         override
     {
         refreshLocks(owner);
@@ -263,7 +262,7 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         super._withdraw(caller, receiver, owner, assetsToWithdraw, shares);
     }
 
-    function _update(address from, address to, uint256 value) internal virtual override {
+    function _update(address from, address to, uint256 value) internal override {
         // check if transfer is allowed
         UsdPlus(asset()).checkTransferRestricted(from, to);
 

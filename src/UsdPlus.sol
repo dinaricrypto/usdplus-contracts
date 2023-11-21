@@ -133,7 +133,7 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, AccessControlDefaul
 
     // ------------------ Transfer Restriction ------------------
 
-    function _update(address from, address to, uint256 value) internal virtual override {
+    function _update(address from, address to, uint256 value) internal override {
         checkTransferRestricted(from, to);
 
         super._update(from, to, value);
