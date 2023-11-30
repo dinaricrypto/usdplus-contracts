@@ -6,20 +6,17 @@ import {
     ERC20PermitUpgradeable,
     ERC20Upgradeable
 } from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from
-    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {ITransferRestrictor} from "./ITransferRestrictor.sol";
+import {ERC7281Min} from "./ERC7281/ERC7281Min.sol";
 
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
-contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
+contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, Ownable2StepUpgradeable {
     /// ------------------ Types ------------------
 
     event TreasurySet(address indexed treasury);
     event TransferRestrictorSet(ITransferRestrictor indexed transferRestrictor);
-
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     /// ------------------ Storage ------------------
 
@@ -48,7 +45,7 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, AccessControlDefaul
     {
         __ERC20_init("USD+", "USD+");
         __ERC20Permit_init("USD+");
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
+        __Ownable_init(initialOwner);
 
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._treasury = initialTreasury;
@@ -60,7 +57,7 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, AccessControlDefaul
         _disableInitializers();
     }
 
-    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /// ------------------ Getters ------------------
 
@@ -100,34 +97,43 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, AccessControlDefaul
     // ------------------ Admin ------------------
 
     /// @notice set treasury address
-    function setTreasury(address newTreasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setTreasury(address newTreasury) external onlyOwner {
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._treasury = newTreasury;
         emit TreasurySet(newTreasury);
     }
 
     /// @notice set transfer restrictor
-    function setTransferRestrictor(ITransferRestrictor newTransferRestrictor) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setTransferRestrictor(ITransferRestrictor newTransferRestrictor) external onlyOwner {
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._transferRestrictor = newTransferRestrictor;
         emit TransferRestrictorSet(newTransferRestrictor);
     }
 
-    // ------------------ Minting/Burning ------------------
+    function setIssuerLimits(address issuer, uint256 mintingLimit, uint256 burningLimit) external onlyOwner {
+        _setIssuerLimits(issuer, mintingLimit, burningLimit);
+    }
+
+    // ------------------ Minting/Burning (ERC-7281) ------------------
 
     /// @notice mint USD+ to account
-    function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
-        _mint(to, amount);
+    function mint(address to, uint256 value) external {
+        _useMintingLimits(_msgSender(), value);
+        _mint(to, value);
     }
 
     /// @notice burn USD+ from msg.sender
-    function burn(uint256 value) external onlyRole(BURNER_ROLE) {
-        _burn(_msgSender(), value);
+    function burn(uint256 value) external {
+        address account = _msgSender();
+        _useBurningLimits(account, value);
+        _burn(account, value);
     }
 
     /// @notice burn USD+ from account
-    function burnFrom(address account, uint256 value) external onlyRole(BURNER_ROLE) {
-        _spendAllowance(account, _msgSender(), value);
+    function burnFrom(address account, uint256 value) external {
+        address spender = _msgSender();
+        _spendAllowance(account, spender, value);
+        _useBurningLimits(spender, value);
         _burn(account, value);
     }
 

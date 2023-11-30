@@ -23,7 +23,10 @@ contract StakedUsdPlusTest is Test {
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(
-                new ERC1967Proxy(address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, address(this))))
+                new ERC1967Proxy(
+                    address(usdplusImpl),
+                    abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, address(this)))
+                )
             )
         );
         StakedUsdPlus stakedusdplusImpl = new StakedUsdPlus();
@@ -33,7 +36,7 @@ contract StakedUsdPlusTest is Test {
             )
         );
 
-        usdplus.grantRole(usdplus.MINTER_ROLE(), address(this));
+        usdplus.setIssuerLimits(address(this), type(uint256).max, 0);
     }
 
     function test_deploymentConfig() public {

@@ -45,14 +45,19 @@ contract DeployAllScript is Script {
         UsdPlus usdplusImpl = new UsdPlus();
         UsdPlus usdplus = UsdPlus(
             address(
-                new ERC1967Proxy(address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner)))
+                new ERC1967Proxy(
+                    address(usdplusImpl),
+                    abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
+                )
             )
         );
 
         StakedUsdPlus stakedusdplusImpl = new StakedUsdPlus();
         StakedUsdPlus stakedusdplus = StakedUsdPlus(
             address(
-                new ERC1967Proxy(address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, cfg.owner)))
+                new ERC1967Proxy(
+                    address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, cfg.owner))
+                )
             )
         );
 
@@ -61,19 +66,24 @@ contract DeployAllScript is Script {
         UsdPlusMinter minterImpl = new UsdPlusMinter();
         UsdPlusMinter minter = UsdPlusMinter(
             address(
-                new ERC1967Proxy(address(minterImpl), abi.encodeCall(UsdPlusMinter.initialize, (stakedusdplus, cfg.treasury, cfg.owner)))
+                new ERC1967Proxy(
+                    address(minterImpl),
+                    abi.encodeCall(UsdPlusMinter.initialize, (stakedusdplus, cfg.treasury, cfg.owner))
+                )
             )
         );
-        usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
+        usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
         minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
         UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
         UsdPlusRedeemer redeemer = UsdPlusRedeemer(
             address(
-                new ERC1967Proxy(address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedusdplus, cfg.owner)))
+                new ERC1967Proxy(
+                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedusdplus, cfg.owner))
+                )
             )
         );
-        usdplus.grantRole(usdplus.BURNER_ROLE(), address(redeemer));
+        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.redemptionFulfiller);
         redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 

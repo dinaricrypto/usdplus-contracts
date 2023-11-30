@@ -5,7 +5,8 @@ import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor, ITransferRestrictor} from "../src/TransferRestrictor.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
 
 contract UsdPlusTest is Test {
     event TreasurySet(address indexed treasury);
@@ -25,18 +26,21 @@ contract UsdPlusTest is Test {
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(
-                new ERC1967Proxy(address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN)))
+                new ERC1967Proxy(
+                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN))
+                )
             )
         );
+
+        vm.startPrank(ADMIN);
+        usdplus.setIssuerLimits(MINTER, type(uint256).max, 0);
+        usdplus.setIssuerLimits(BURNER, 0, type(uint256).max);
+        vm.stopPrank();
     }
 
     function test_treasury(address treasury) public {
         // non-admin cannot set treasury
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), usdplus.DEFAULT_ADMIN_ROLE()
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
         usdplus.setTreasury(treasury);
 
         // admin can set treasury
@@ -49,11 +53,7 @@ contract UsdPlusTest is Test {
 
     function test_transferRestrictor(ITransferRestrictor _transferRestrictor) public {
         // non-admin cannot set transfer restrictor
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), usdplus.DEFAULT_ADMIN_ROLE()
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
         usdplus.setTransferRestrictor(_transferRestrictor);
 
         // admin can set transfer restrictor
@@ -65,18 +65,11 @@ contract UsdPlusTest is Test {
     }
 
     function test_mint(uint256 amount) public {
-        // non-minter cannot mint
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), usdplus.MINTER_ROLE()
-            )
-        );
-        usdplus.mint(USER, amount);
+        vm.assume(amount > 0);
 
-        // grant minter role
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.MINTER_ROLE(), MINTER);
-        vm.stopPrank();
+        // non-minter cannot mint
+        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
+        usdplus.mint(USER, amount);
 
         // minter can mint
         vm.prank(MINTER);
@@ -85,63 +78,43 @@ contract UsdPlusTest is Test {
     }
 
     function test_burn(uint256 amount) public {
-        // mint USD+ to user for testing
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.MINTER_ROLE(), MINTER);
-        vm.stopPrank();
+        vm.assume(amount > 0);
 
+        // mint USD+ to user for testing
         vm.prank(MINTER);
-        usdplus.mint(USER, amount);
+        usdplus.mint(BURNER, amount);
 
         // non-burner cannot burn
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, USER, usdplus.BURNER_ROLE()
-            )
-        );
+        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
         vm.prank(USER);
         usdplus.burn(amount);
-
-        // grant burner role
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.BURNER_ROLE(), USER);
-        vm.stopPrank();
 
         // burner can burn
-        vm.prank(USER);
+        vm.prank(BURNER);
         usdplus.burn(amount);
-        assertEq(usdplus.balanceOf(USER), 0);
+        assertEq(usdplus.balanceOf(BURNER), 0);
     }
 
     function test_burnFrom(uint256 amount) public {
-        // mint USD+ to user for testing
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.MINTER_ROLE(), MINTER);
-        vm.stopPrank();
+        vm.assume(amount > 0);
 
+        // mint USD+ to user for testing
         vm.prank(MINTER);
         usdplus.mint(USER, amount);
 
         // user approves burner
         vm.prank(USER);
-        usdplus.approve(address(BURNER), amount);
+        usdplus.approve(BURNER, amount);
 
         // non-burner cannot burn
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, address(BURNER), usdplus.BURNER_ROLE()
-            )
-        );
-        vm.prank(address(BURNER));
+        vm.startPrank(USER);
+        usdplus.approve(USER, amount);
+        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
         usdplus.burnFrom(USER, amount);
-
-        // grant burner role
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.BURNER_ROLE(), address(BURNER));
         vm.stopPrank();
 
         // burner can burn
-        vm.prank(address(BURNER));
+        vm.prank(BURNER);
         usdplus.burnFrom(USER, amount);
         assertEq(usdplus.balanceOf(USER), 0);
     }
@@ -150,10 +123,6 @@ contract UsdPlusTest is Test {
         vm.assume(to != address(0));
 
         // mint USD+ to user for testing
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.MINTER_ROLE(), MINTER);
-        vm.stopPrank();
-
         vm.prank(MINTER);
         usdplus.mint(USER, amount);
 

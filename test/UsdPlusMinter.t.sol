@@ -31,7 +31,9 @@ contract UsdPlusMinterTest is Test {
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(
-                new ERC1967Proxy(address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN)))
+                new ERC1967Proxy(
+                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN))
+                )
             )
         );
         StakedUsdPlus stakedusdplusImpl = new StakedUsdPlus();
@@ -43,12 +45,17 @@ contract UsdPlusMinterTest is Test {
         UsdPlusMinter minterImpl = new UsdPlusMinter();
         minter = UsdPlusMinter(
             address(
-                new ERC1967Proxy(address(minterImpl), abi.encodeCall(UsdPlusMinter.initialize, (stakedUsdplus, TREASURY, ADMIN)))
+                new ERC1967Proxy(
+                    address(minterImpl), abi.encodeCall(UsdPlusMinter.initialize, (stakedUsdplus, TREASURY, ADMIN))
+                )
             )
         );
         paymentToken = new ERC20Mock();
 
         paymentToken.mint(USER, type(uint256).max);
+
+        vm.prank(ADMIN);
+        usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
     }
 
     function test_initialization() public {
@@ -115,10 +122,6 @@ contract UsdPlusMinterTest is Test {
     function test_deposit(uint256 amount) public {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
-        vm.stopPrank();
-
         // payment token oracle not set
         vm.expectRevert(IUsdPlusMinter.PaymentTokenNotAccepted.selector);
         minter.deposit(paymentToken, amount, USER);
@@ -141,10 +144,6 @@ contract UsdPlusMinterTest is Test {
 
     function test_depositAndStake(uint104 amount) public {
         vm.assume(amount > 0);
-
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
-        vm.stopPrank();
 
         vm.prank(ADMIN);
         minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
@@ -175,10 +174,6 @@ contract UsdPlusMinterTest is Test {
     function test_mint(uint256 amount) public {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
-        vm.stopPrank();
-
         // payment token oracle not set
         vm.expectRevert(IUsdPlusMinter.PaymentTokenNotAccepted.selector);
         minter.mint(paymentToken, amount, USER);
@@ -201,10 +196,6 @@ contract UsdPlusMinterTest is Test {
 
     function test_mintAndStake(uint104 amount) public {
         vm.assume(amount > 0);
-
-        vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.MINTER_ROLE(), address(minter));
-        vm.stopPrank();
 
         vm.prank(ADMIN);
         minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
