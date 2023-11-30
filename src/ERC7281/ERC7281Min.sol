@@ -7,8 +7,6 @@ import {IERC7281Min} from "./IERC7281Min.sol";
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/ERC7281/ERC7281Min.sol)
 /// @author Modified from defi-wonderland (https://github.com/defi-wonderland/xERC20/blob/main/solidity/contracts/XERC20.sol)
 abstract contract ERC7281Min is IERC7281Min {
-    // TODO: confirm unlimited minting/burning roles - generalize "lockbox" superminter. more efficient than computing type(uint256).max limits.
-    // TODO: confirm unset limits restrict all minting/burning.
     /**
      * @notice The duration it takes for the limits to fully replenish
      */
@@ -38,23 +36,29 @@ abstract contract ERC7281Min is IERC7281Min {
         emit IssuerLimitsSet(issuer, mintingLimit, burningLimit);
     }
 
-    function mintingMaxLimitOf(address issuer) public view returns (uint256) {
+    function mintingMaxLimitOf(address issuer) external view returns (uint256) {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
         return $._issuerLimits[issuer].mintLimitParams.maxLimit;
     }
 
-    function burningMaxLimitOf(address issuer) public view returns (uint256) {
+    function burningMaxLimitOf(address issuer) external view returns (uint256) {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
         return $._issuerLimits[issuer].burnLimitParams.maxLimit;
     }
 
-    function mintingCurrentLimitOf(address issuer) public view returns (uint256) {
+    function mintingCurrentLimitOf(address issuer) external view returns (uint256) {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
+        if ($._issuerLimits[issuer].mintLimitParams.maxLimit == type(uint256).max) {
+            return type(uint256).max;
+        }
         return _getCurrentLimit($._issuerLimits[issuer].mintLimitParams);
     }
 
-    function burningCurrentLimitOf(address issuer) public view returns (uint256 _limit) {
+    function burningCurrentLimitOf(address issuer) external view returns (uint256 _limit) {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
+        if ($._issuerLimits[issuer].burnLimitParams.maxLimit == type(uint256).max) {
+            return type(uint256).max;
+        }
         return _getCurrentLimit($._issuerLimits[issuer].burnLimitParams);
     }
 
@@ -64,11 +68,14 @@ abstract contract ERC7281Min is IERC7281Min {
      * @param value The change in the limit
      */
     function _useMintingLimits(address issuer, uint256 value) internal {
-        uint256 currentLimit = mintingCurrentLimitOf(issuer);
-        if (currentLimit < value) revert ERC7281_LimitExceeded();
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
-        $._issuerLimits[issuer].mintLimitParams.timestamp = block.timestamp;
-        $._issuerLimits[issuer].mintLimitParams.currentLimit = currentLimit - value;
+        LimitParameters storage limitParameters = $._issuerLimits[issuer].mintLimitParams;
+        if (limitParameters.maxLimit == type(uint256).max) return;
+
+        uint256 currentLimit = _getCurrentLimit(limitParameters);
+        if (currentLimit < value) revert ERC7281_LimitExceeded();
+        limitParameters.timestamp = block.timestamp;
+        limitParameters.currentLimit = currentLimit - value;
     }
 
     /**
@@ -77,11 +84,14 @@ abstract contract ERC7281Min is IERC7281Min {
      * @param value The change in the limit
      */
     function _useBurningLimits(address issuer, uint256 value) internal {
-        uint256 currentLimit = burningCurrentLimitOf(issuer);
-        if (currentLimit < value) revert ERC7281_LimitExceeded();
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
-        $._issuerLimits[issuer].burnLimitParams.timestamp = block.timestamp;
-        $._issuerLimits[issuer].burnLimitParams.currentLimit = currentLimit - value;
+        LimitParameters storage limitParameters = $._issuerLimits[issuer].burnLimitParams;
+        if (limitParameters.maxLimit == type(uint256).max) return;
+
+        uint256 currentLimit = _getCurrentLimit(limitParameters);
+        if (currentLimit < value) revert ERC7281_LimitExceeded();
+        limitParameters.timestamp = block.timestamp;
+        limitParameters.currentLimit = currentLimit - value;
     }
 
     /**
@@ -92,13 +102,17 @@ abstract contract ERC7281Min is IERC7281Min {
      */
     function _changeMintingLimit(address issuer, uint256 newMaxLimit) internal {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
-        uint256 oldMaxLimit = $._issuerLimits[issuer].mintLimitParams.maxLimit;
-        uint256 currentLimit = mintingCurrentLimitOf(issuer);
+
+        if (newMaxLimit == type(uint256).max) {
+            $._issuerLimits[issuer].mintLimitParams.currentLimit = type(uint256).max;
+        } else {
+            uint256 oldMaxLimit = $._issuerLimits[issuer].mintLimitParams.maxLimit;
+            uint256 currentLimit = _getCurrentLimit($._issuerLimits[issuer].mintLimitParams);
+            $._issuerLimits[issuer].mintLimitParams.currentLimit =
+                _calculateNewCurrentLimit(newMaxLimit, oldMaxLimit, currentLimit);
+        }
+
         $._issuerLimits[issuer].mintLimitParams.maxLimit = newMaxLimit;
-
-        $._issuerLimits[issuer].mintLimitParams.currentLimit =
-            _calculateNewCurrentLimit(newMaxLimit, oldMaxLimit, currentLimit);
-
         $._issuerLimits[issuer].mintLimitParams.ratePerSecond = newMaxLimit / _DURATION;
         $._issuerLimits[issuer].mintLimitParams.timestamp = block.timestamp;
     }
@@ -111,13 +125,17 @@ abstract contract ERC7281Min is IERC7281Min {
      */
     function _changeBurningLimit(address issuer, uint256 newMaxLimit) internal {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
-        uint256 oldMaxLimit = $._issuerLimits[issuer].burnLimitParams.maxLimit;
-        uint256 currentLimit = burningCurrentLimitOf(issuer);
+
+        if (newMaxLimit == type(uint256).max) {
+            $._issuerLimits[issuer].burnLimitParams.currentLimit = type(uint256).max;
+        } else {
+            uint256 oldMaxLimit = $._issuerLimits[issuer].burnLimitParams.maxLimit;
+            uint256 currentLimit = _getCurrentLimit($._issuerLimits[issuer].burnLimitParams);
+            $._issuerLimits[issuer].burnLimitParams.currentLimit =
+                _calculateNewCurrentLimit(newMaxLimit, oldMaxLimit, currentLimit);
+        }
+
         $._issuerLimits[issuer].burnLimitParams.maxLimit = newMaxLimit;
-
-        $._issuerLimits[issuer].burnLimitParams.currentLimit =
-            _calculateNewCurrentLimit(newMaxLimit, oldMaxLimit, currentLimit);
-
         $._issuerLimits[issuer].burnLimitParams.ratePerSecond = newMaxLimit / _DURATION;
         $._issuerLimits[issuer].burnLimitParams.timestamp = block.timestamp;
     }
