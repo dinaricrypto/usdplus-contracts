@@ -8,6 +8,7 @@ import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/UsdPlusRedeemer.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
+import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract UsdPlusRedeemerTest is Test {
@@ -44,7 +45,9 @@ contract UsdPlusRedeemerTest is Test {
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(
-                new ERC1967Proxy(address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, ADMIN)))
+                new ERC1967Proxy(
+                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, ADMIN))
+                )
             )
         );
         StakedUsdPlus stakedusdplusImpl = new StakedUsdPlus();
@@ -56,13 +59,15 @@ contract UsdPlusRedeemerTest is Test {
         UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
         redeemer = UsdPlusRedeemer(
             address(
-                new ERC1967Proxy(address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedUsdplus, ADMIN)))
+                new ERC1967Proxy(
+                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedUsdplus, ADMIN))
+                )
             )
         );
         paymentToken = new ERC20Mock();
 
         vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.MINTER_ROLE(), address(this));
+        usdplus.setIssuerLimits(address(this), type(uint256).max, 0);
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), FULFILLER);
         vm.stopPrank();
 
@@ -249,16 +254,12 @@ contract UsdPlusRedeemerTest is Test {
         redeemer.fulfill(ticket);
 
         // redeemer not burner
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, address(redeemer), usdplus.BURNER_ROLE()
-            )
-        );
+        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
         vm.prank(FULFILLER);
         redeemer.fulfill(ticket);
 
         vm.startPrank(ADMIN);
-        usdplus.grantRole(usdplus.BURNER_ROLE(), address(redeemer));
+        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
         vm.stopPrank();
 
         vm.startPrank(FULFILLER);

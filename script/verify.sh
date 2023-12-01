@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# args
-# forge verify-contract --chain-id 11155111 --watch --constructor-args $(cast abi-encode "constructor(address,bytes)" "0x658875Ad4d31735B0dA3Ed82E22DF3008D713b37" "0xc0c53b8b0000000000000000000000009303a17f11459a0c0d5b59ce4bc3880269ec94b50000000000000000000000004181803232280371e02a875f51515be57b2152310000000000000000000000004181803232280371e02a875f51515be57b215231") 0x3c34a5ACBD6Cf3e2305384276a7845A336a66041 lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy
+# proxy
+# forge verify-contract --chain-id 1 --watch --constructor-args $(cast abi-encode "constructor(address,bytes)" "0x63914c467eA6C16EA85514DBC32b9Ee2ae179e8e" "0x485cc95500000000000000000000000098c6616f1cc0d3e938a16200830dd55663dd7dd3000000000000000000000000269e944ad9140fc6e21794e8ea71ce1afbfe38c8") 0xe1B2FEEDE3ffE7e63a89A669A08688951c94611e lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy
 # no args
-forge verify-contract --chain-id 11155111 --watch 0x620Cb13F90D06C59ebCa43C433468981aE5fA678 src/UsdPlusRedeemer.sol:UsdPlusRedeemer
+forge verify-contract --chain-id 1 --watch 0x036c44f2df0d7CfA7624b002bd7EF486449152Af src/UsdPlus.sol:UsdPlus
