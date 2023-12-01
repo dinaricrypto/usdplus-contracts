@@ -20,6 +20,7 @@ contract UsdPlusTest is Test {
     address public constant MINTER = address(0x1236);
     address public constant BURNER = address(0x1237);
     address public constant USER = address(0x1238);
+    address public constant BRIDGE = address(0x1239);
 
     function setUp() public {
         transferRestrictor = new TransferRestrictor(ADMIN);
@@ -35,6 +36,7 @@ contract UsdPlusTest is Test {
         vm.startPrank(ADMIN);
         usdplus.setIssuerLimits(MINTER, type(uint256).max, 0);
         usdplus.setIssuerLimits(BURNER, 0, type(uint256).max);
+        usdplus.setIssuerLimits(BRIDGE, 100 ether, 100 ether);
         vm.stopPrank();
     }
 
@@ -75,6 +77,10 @@ contract UsdPlusTest is Test {
         vm.prank(MINTER);
         usdplus.mint(USER, amount);
         assertEq(usdplus.balanceOf(USER), amount);
+        assertEq(usdplus.mintingMaxLimitOf(MINTER), type(uint256).max);
+        assertEq(usdplus.burningMaxLimitOf(MINTER), 0);
+        assertEq(usdplus.mintingCurrentLimitOf(MINTER), type(uint256).max);
+        assertEq(usdplus.burningCurrentLimitOf(MINTER), 0);
     }
 
     function test_burn(uint256 amount) public {
@@ -93,6 +99,10 @@ contract UsdPlusTest is Test {
         vm.prank(BURNER);
         usdplus.burn(amount);
         assertEq(usdplus.balanceOf(BURNER), 0);
+        assertEq(usdplus.mintingMaxLimitOf(BURNER), 0);
+        assertEq(usdplus.burningMaxLimitOf(BURNER), type(uint256).max);
+        assertEq(usdplus.mintingCurrentLimitOf(BURNER), 0);
+        assertEq(usdplus.burningCurrentLimitOf(BURNER), type(uint256).max);
     }
 
     function test_burnFrom(uint256 amount) public {
@@ -117,6 +127,10 @@ contract UsdPlusTest is Test {
         vm.prank(BURNER);
         usdplus.burnFrom(USER, amount);
         assertEq(usdplus.balanceOf(USER), 0);
+        assertEq(usdplus.mintingMaxLimitOf(BURNER), 0);
+        assertEq(usdplus.burningMaxLimitOf(BURNER), type(uint256).max);
+        assertEq(usdplus.mintingCurrentLimitOf(BURNER), 0);
+        assertEq(usdplus.burningCurrentLimitOf(BURNER), type(uint256).max);
     }
 
     function test_transferReverts(address to, uint256 amount) public {
@@ -154,5 +168,42 @@ contract UsdPlusTest is Test {
         // transfer succeeds
         vm.prank(USER);
         usdplus.transfer(to, amount);
+    }
+
+    /// ------------------ ERC7281 ------------------
+
+    function test_erc7281(uint256 amount) public {
+        // mint USD+ to user for testing
+        vm.prank(MINTER);
+        usdplus.mint(USER, amount);
+
+        // user approves bridge
+        vm.prank(USER);
+        usdplus.approve(BRIDGE, amount);
+
+        if (amount > 100 ether) {
+            vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
+            vm.prank(BRIDGE);
+            usdplus.burnFrom(USER, amount);
+        } else {
+            // circular bridging
+            vm.startPrank(BRIDGE);
+            usdplus.burnFrom(USER, amount);
+            usdplus.mint(USER, amount);
+            vm.stopPrank();
+            assertEq(usdplus.balanceOf(USER), amount);
+            assertEq(usdplus.mintingMaxLimitOf(BRIDGE), 100 ether);
+            assertEq(usdplus.burningMaxLimitOf(BRIDGE), 100 ether);
+            assertEq(usdplus.mintingCurrentLimitOf(BRIDGE), 100 ether - amount);
+            assertEq(usdplus.burningCurrentLimitOf(BRIDGE), 100 ether - amount);
+
+            // adjust limts after bridging
+            vm.prank(ADMIN);
+            usdplus.setIssuerLimits(BRIDGE, 200 ether, 50 ether);
+            assertEq(usdplus.mintingMaxLimitOf(BRIDGE), 200 ether);
+            assertEq(usdplus.burningMaxLimitOf(BRIDGE), 50 ether);
+            assertEq(usdplus.mintingCurrentLimitOf(BRIDGE), 200 ether - amount);
+            assertEq(usdplus.burningCurrentLimitOf(BRIDGE), amount > 50 ether ? 0 : 50 ether - amount);
+        }
     }
 }
