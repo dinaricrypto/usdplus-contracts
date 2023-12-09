@@ -123,18 +123,9 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, Ownable
     }
 
     /// @notice burn USD+ from msg.sender
-    function burn(uint256 value) external {
-        address account = _msgSender();
-        _useBurningLimits(account, value);
-        _burn(account, value);
-    }
-
-    /// @notice burn USD+ from account
-    function burnFrom(address account, uint256 value) external {
-        address spender = _msgSender();
-        _spendAllowance(account, spender, value);
-        _useBurningLimits(spender, value);
-        _burn(account, value);
+    function burn(address from, uint256 value) external {
+        _useBurningLimits(_msgSender(), value);
+        _burn(from, value);
     }
 
     // ------------------ Transfer Restriction ------------------
