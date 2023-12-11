@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.23;
 
-import {ERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20Permit, ERC20} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
 
 contract ERC20Mock is ERC20Permit, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");

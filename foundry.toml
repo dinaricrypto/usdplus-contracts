@@ -3,7 +3,7 @@ src = "src"
 out = "out"
 libs = [
     "lib",
-    "node_modules",
+    "node_modules/@chainlink",
 ]
 solc_version = '0.8.23'
 via_ir = true

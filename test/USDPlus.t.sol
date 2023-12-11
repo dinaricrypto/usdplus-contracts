@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor, ITransferRestrictor} from "../src/TransferRestrictor.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
 
 contract UsdPlusTest is Test {

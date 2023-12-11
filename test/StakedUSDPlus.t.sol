@@ -6,7 +6,7 @@ import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 contract StakedUsdPlusTest is Test {
     event LockDurationSet(uint48 duration);

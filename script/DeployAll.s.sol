@@ -8,7 +8,7 @@ import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
 import {UsdPlusRedeemer} from "../src/UsdPlusRedeemer.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployAllScript is Script {

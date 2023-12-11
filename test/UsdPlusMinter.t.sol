@@ -7,8 +7,8 @@ import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/UsdPlusMinter.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
+import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 
 contract UsdPlusMinterTest is Test {
     event PaymentRecipientSet(address indexed paymentRecipient);
