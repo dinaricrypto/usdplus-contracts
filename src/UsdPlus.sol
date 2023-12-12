@@ -6,13 +6,14 @@ import {
     ERC20PermitUpgradeable,
     ERC20Upgradeable
 } from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 import {ERC7281Min} from "./ERC7281/ERC7281Min.sol";
 
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
-contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, Ownable2StepUpgradeable {
+contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, AccessControlDefaultAdminRulesUpgradeable {
     /// ------------------ Types ------------------
 
     event TreasurySet(address indexed treasury);
@@ -45,7 +46,7 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, Ownable
     {
         __ERC20_init("USD+", "USD+");
         __ERC20Permit_init("USD+");
-        __Ownable_init(initialOwner);
+        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
 
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._treasury = initialTreasury;
@@ -57,7 +58,7 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, Ownable
         _disableInitializers();
     }
 
-    function _authorizeUpgrade(address) internal override onlyOwner {}
+    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// ------------------ Getters ------------------
 
@@ -97,20 +98,23 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, Ownable
     // ------------------ Admin ------------------
 
     /// @notice set treasury address
-    function setTreasury(address newTreasury) external onlyOwner {
+    function setTreasury(address newTreasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._treasury = newTreasury;
         emit TreasurySet(newTreasury);
     }
 
     /// @notice set transfer restrictor
-    function setTransferRestrictor(ITransferRestrictor newTransferRestrictor) external onlyOwner {
+    function setTransferRestrictor(ITransferRestrictor newTransferRestrictor) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._transferRestrictor = newTransferRestrictor;
         emit TransferRestrictorSet(newTransferRestrictor);
     }
 
-    function setIssuerLimits(address issuer, uint256 mintingLimit, uint256 burningLimit) external onlyOwner {
+    function setIssuerLimits(address issuer, uint256 mintingLimit, uint256 burningLimit)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         _setIssuerLimits(issuer, mintingLimit, burningLimit);
     }
 

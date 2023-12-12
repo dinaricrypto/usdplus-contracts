@@ -18,20 +18,25 @@ contract CCIPMinter is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, 
 
     error InvalidCall(bytes4 selector);
     error InvalidSender(address sender);
-    error InvalidReceiver(address receiver);
+    error InvalidReceiver(address messageReceiver);
     error InsufficientFunds(uint256 value, uint256 fee);
 
     event ApprovedSenderSet(uint64 indexed sourceChainSelector, address indexed sender);
-    event ApprovedReceiverSet(uint64 indexed destinationChainSelector, address indexed receiver);
+    event ApprovedReceiverSet(uint64 indexed destinationChainSelector, address indexed messageReceiver);
     event Sent(
         bytes32 indexed messageId,
         uint64 indexed destinationChainSelector,
-        address indexed receiver,
+        address indexed messageReceiver,
+        address to,
         uint256 amount,
         uint256 fee
     );
     event Received(
-        bytes32 indexed messageId, uint64 indexed sourceChainSelector, address indexed sender, uint256 amount
+        bytes32 indexed messageId,
+        uint64 indexed sourceChainSelector,
+        address indexed messageSender,
+        address to,
+        uint256 amount
     );
 
     /// ------------------ Storage ------------------
@@ -73,8 +78,13 @@ contract CCIPMinter is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, 
 
     /// ------------------ Getters ------------------
 
-    function getFee(uint64 destinationChainSelector, address receiver, uint256 amount) public view returns (uint256) {
-        return IRouterClient(getRouter()).getFee(destinationChainSelector, _createCCIPMessage(receiver, amount));
+    function getFee(uint64 destinationChainSelector, address messageReceiver, address to, uint256 amount)
+        public
+        view
+        returns (uint256)
+    {
+        return
+            IRouterClient(getRouter()).getFee(destinationChainSelector, _createCCIPMessage(messageReceiver, to, amount));
     }
 
     /// ------------------ Admin ------------------
@@ -85,10 +95,10 @@ contract CCIPMinter is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, 
         emit ApprovedSenderSet(sourceChainSelector, sender);
     }
 
-    function setApprovedReceiver(uint64 destinationChainSelector, address receiver) external onlyOwner {
+    function setApprovedReceiver(uint64 destinationChainSelector, address messageReceiver) external onlyOwner {
         CCIPMinterStorage storage $ = _getCCIPMinterStorage();
-        $._approvedReceiver[destinationChainSelector] = receiver;
-        emit ApprovedReceiverSet(destinationChainSelector, receiver);
+        $._approvedReceiver[destinationChainSelector] = messageReceiver;
+        emit ApprovedReceiverSet(destinationChainSelector, messageReceiver);
     }
 
     /// ------------------ CCIP ------------------
@@ -105,40 +115,40 @@ contract CCIPMinter is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, 
         (bool success,) = address($._usdplus).call(message.data);
         require(success);
 
-        (, uint256 amount) = abi.decode(message.data[4:], (address, uint256));
-        emit Received(message.messageId, message.sourceChainSelector, sender, amount);
+        (address to, uint256 amount) = abi.decode(message.data[4:], (address, uint256));
+        emit Received(message.messageId, message.sourceChainSelector, sender, to, amount);
     }
 
-    function _createCCIPMessage(address receiver, uint256 amount)
+    function _createCCIPMessage(address messageReceiver, address to, uint256 amount)
         internal
         pure
         returns (Client.EVM2AnyMessage memory)
     {
         return Client.EVM2AnyMessage({
-            receiver: abi.encode(receiver),
-            data: abi.encodeCall(UsdPlus.mint, (receiver, amount)),
+            receiver: abi.encode(messageReceiver),
+            data: abi.encodeCall(UsdPlus.mint, (to, amount)),
             tokenAmounts: new Client.EVMTokenAmount[](0),
             feeToken: address(0), // ETH will be used for fees
             extraArgs: bytes("")
         });
     }
 
-    function burnAndMint(uint64 destinationChainSelector, address receiver, uint256 amount)
+    function burnAndMint(uint64 destinationChainSelector, address messageReceiver, address to, uint256 amount)
         external
         payable
         returns (bytes32 messageId)
     {
         CCIPMinterStorage storage $ = _getCCIPMinterStorage();
-        if (receiver != $._approvedReceiver[destinationChainSelector]) revert InvalidReceiver(receiver);
+        if (messageReceiver != $._approvedReceiver[destinationChainSelector]) revert InvalidReceiver(messageReceiver);
 
-        uint256 fee = getFee(destinationChainSelector, receiver, amount);
+        uint256 fee = getFee(destinationChainSelector, messageReceiver, to, amount);
         if (fee > msg.value) revert InsufficientFunds(msg.value, fee);
 
         $._usdplus.burnFrom(msg.sender, amount);
 
-        Client.EVM2AnyMessage memory message = _createCCIPMessage(receiver, amount);
+        Client.EVM2AnyMessage memory message = _createCCIPMessage(messageReceiver, to, amount);
         messageId = IRouterClient(getRouter()).ccipSend{value: msg.value}(destinationChainSelector, message);
 
-        emit Sent(messageId, destinationChainSelector, receiver, amount, fee);
+        emit Sent(messageId, destinationChainSelector, messageReceiver, to, amount, fee);
     }
 }
