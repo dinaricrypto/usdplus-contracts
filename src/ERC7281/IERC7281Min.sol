@@ -73,8 +73,8 @@ interface IERC7281Min {
     /**
      * @notice Burns tokens for a user
      * @dev Can only be called by an issuer
-     * @param account The address of the user who needs tokens burned
+     * @param from The address of the user who needs tokens burned
      * @param value The amount of tokens being burned
      */
-    function burnFrom(address account, uint256 value) external;
+    function burn(address from, uint256 value) external;
 }
