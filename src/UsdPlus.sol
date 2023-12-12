@@ -128,7 +128,7 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, Ownable
         if (from != spender) {
             _spendAllowance(from, spender, value);
         }
-        _useBurningLimits(_msgSender(), value);
+        _useBurningLimits(spender, value);
         _burn(from, value);
     }
 
