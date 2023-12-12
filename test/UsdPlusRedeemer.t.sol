@@ -253,6 +253,9 @@ contract UsdPlusRedeemerTest is Test {
         );
         redeemer.fulfill(ticket);
 
+        vm.prank(USER);
+        usdplus.approve(address(redeemer), amount);
+
         // redeemer not burner
         vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
         vm.prank(FULFILLER);

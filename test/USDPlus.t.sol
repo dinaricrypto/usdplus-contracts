@@ -93,11 +93,11 @@ contract UsdPlusTest is Test {
         // non-burner cannot burn
         vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
         vm.prank(USER);
-        usdplus.burn(amount);
+        usdplus.burn(USER, amount);
 
         // burner can burn
         vm.prank(BURNER);
-        usdplus.burn(amount);
+        usdplus.burn(BURNER, amount);
         assertEq(usdplus.balanceOf(BURNER), 0);
         assertEq(usdplus.mintingMaxLimitOf(BURNER), 0);
         assertEq(usdplus.burningMaxLimitOf(BURNER), type(uint256).max);
@@ -120,12 +120,12 @@ contract UsdPlusTest is Test {
         vm.startPrank(USER);
         usdplus.approve(USER, amount);
         vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
-        usdplus.burnFrom(USER, amount);
+        usdplus.burn(USER, amount);
         vm.stopPrank();
 
         // burner can burn
         vm.prank(BURNER);
-        usdplus.burnFrom(USER, amount);
+        usdplus.burn(USER, amount);
         assertEq(usdplus.balanceOf(USER), 0);
         assertEq(usdplus.mintingMaxLimitOf(BURNER), 0);
         assertEq(usdplus.burningMaxLimitOf(BURNER), type(uint256).max);
@@ -184,11 +184,11 @@ contract UsdPlusTest is Test {
         if (amount > 100 ether) {
             vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
             vm.prank(BRIDGE);
-            usdplus.burnFrom(USER, amount);
+            usdplus.burn(USER, amount);
         } else {
             // circular bridging
             vm.startPrank(BRIDGE);
-            usdplus.burnFrom(USER, amount);
+            usdplus.burn(USER, amount);
             usdplus.mint(USER, amount);
             vm.stopPrank();
             assertEq(usdplus.balanceOf(USER), amount);
