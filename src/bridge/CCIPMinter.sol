@@ -6,6 +6,7 @@ import {
     Initializable
 } from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
+import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {IRouterClient} from "contracts-ccip/v0.8/ccip/interfaces/IRouterClient.sol";
 import {Client} from "contracts-ccip/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "./CCIPReceiver.sol";
@@ -14,6 +15,8 @@ import {UsdPlus} from "../UsdPlus.sol";
 /// @notice USD+ mint/burn bridge using CCIP
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/bridge/CCIPMinter.sol)
 contract CCIPMinter is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, CCIPReceiver {
+    using Address for address;
+
     /// ------------------ Types ------------------
 
     error InvalidCall(bytes4 selector);
@@ -50,12 +53,12 @@ contract CCIPMinter is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, 
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.CCIPMinter")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant CCIPMinter_STORAGE_LOCATION =
+    bytes32 private constant CCIPMINTER_STORAGE_LOCATION =
         0x78c64de9b9dc0dfc8eacf934bc1fbd9289d8bc5c08666d7fa486b9fc8241ca00;
 
     function _getCCIPMinterStorage() private pure returns (CCIPMinterStorage storage $) {
         assembly {
-            $.slot := CCIPMinter_STORAGE_LOCATION
+            $.slot := CCIPMINTER_STORAGE_LOCATION
         }
     }
 
@@ -112,11 +115,11 @@ contract CCIPMinter is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, 
             revert InvalidSender(sender);
         }
 
-        (bool success,) = address($._usdplus).call(message.data);
-        require(success);
-
         (address to, uint256 amount) = abi.decode(message.data[4:], (address, uint256));
         emit Received(message.messageId, message.sourceChainSelector, sender, to, amount);
+
+        // slither-disable-next-line unused-return
+        address($._usdplus).functionCall(message.data);
     }
 
     function _createCCIPMessage(address messageReceiver, address to, uint256 amount)
@@ -144,11 +147,12 @@ contract CCIPMinter is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, 
         uint256 fee = getFee(destinationChainSelector, messageReceiver, to, amount);
         if (fee > msg.value) revert InsufficientFunds(msg.value, fee);
 
-        $._usdplus.burnFrom(msg.sender, amount);
+        $._usdplus.burn(msg.sender, amount);
 
         Client.EVM2AnyMessage memory message = _createCCIPMessage(messageReceiver, to, amount);
         messageId = IRouterClient(getRouter()).ccipSend{value: msg.value}(destinationChainSelector, message);
 
+        // slither-disable-next-line reentrancy-events
         emit Sent(messageId, destinationChainSelector, messageReceiver, to, amount, fee);
     }
 }

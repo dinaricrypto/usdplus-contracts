@@ -27,6 +27,7 @@ abstract contract CCIPReceiver is IAny2EVMMessageReceiver, IERC165 {
 
     /// ------------------ Initialization ------------------
 
+    // slither-disable-next-line naming-convention
     function __CCIPReceiver_init(address router) internal {
         if (router == address(0)) revert InvalidRouter(address(0));
         CCIPReceiverStorage storage $ = _getCCIPReceiverStorage();
