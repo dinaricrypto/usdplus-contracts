@@ -2,14 +2,14 @@
 pragma solidity 0.8.23;
 
 import "forge-std/Script.sol";
-import {CCIPMinter} from "../src/bridge/CCIPMinter.sol";
+import {CCIPWaypoint} from "../src/bridge/CCIPWaypoint.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 
-contract CCIPBridgeTransfer is Script {
+contract CCIPWaypointTransfer is Script {
     struct Config {
         address deployer;
         UsdPlus usdPlus;
-        CCIPMinter ccipMinter;
+        CCIPWaypoint ccipWaypoint;
         uint64 dest;
         address receiver;
     }
@@ -21,7 +21,7 @@ contract CCIPBridgeTransfer is Script {
         Config memory cfg = Config({
             deployer: vm.addr(deployerPrivateKey),
             usdPlus: UsdPlus(vm.envAddress("USDPLUS")),
-            ccipMinter: CCIPMinter(vm.envAddress("CCIP_MINTER")),
+            ccipWaypoint: CCIPWaypoint(vm.envAddress("CCIP_MINTER")),
             dest: uint64(vm.envUint("CCIP_DEST")),
             receiver: vm.envAddress("CCIP_RECEIVER")
         });
@@ -34,13 +34,13 @@ contract CCIPBridgeTransfer is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // approve
-        cfg.usdPlus.approve(address(cfg.ccipMinter), amount);
+        cfg.usdPlus.approve(address(cfg.ccipWaypoint), amount);
 
         // get fee
-        uint256 fee = cfg.ccipMinter.getFee(cfg.dest, cfg.receiver, cfg.deployer, amount);
+        uint256 fee = cfg.ccipWaypoint.getFee(cfg.dest, cfg.receiver, cfg.deployer, amount, false);
 
         // send to bridge
-        bytes32 messageId = cfg.ccipMinter.burnAndMint{value: fee}(cfg.dest, cfg.receiver, cfg.deployer, amount);
+        bytes32 messageId = cfg.ccipWaypoint.sendUsdPlus{value: fee}(cfg.dest, cfg.deployer, amount, false);
 
         console.log("messageId");
         console.logBytes32(messageId);

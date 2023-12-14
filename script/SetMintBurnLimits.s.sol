@@ -11,14 +11,14 @@ contract SetMintBurnLimits is Script {
         address deployer = vm.addr(deployerPrivateKey);
 
         UsdPlus usdPlus = UsdPlus(vm.envAddress("USDPLUS"));
-        address ccipMinter = vm.envAddress("CCIP_MINTER");
+        address ccipWaypoint = vm.envAddress("CCIP_WAYPOINT");
 
         console.log("deployer: %s", deployer);
 
         // send txs as user
         vm.startBroadcast(deployerPrivateKey);
 
-        usdPlus.setIssuerLimits(ccipMinter, type(uint256).max, type(uint256).max);
+        usdPlus.setIssuerLimits(ccipWaypoint, type(uint256).max, type(uint256).max);
 
         vm.stopBroadcast();
     }

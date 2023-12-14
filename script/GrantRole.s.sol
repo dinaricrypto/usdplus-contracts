@@ -11,15 +11,15 @@ contract GrantRole is Script {
         address deployer = vm.addr(deployerPrivateKey);
 
         UsdPlus usdPlus = UsdPlus(vm.envAddress("USDPLUS"));
-        address ccipMinter = vm.envAddress("CCIP_MINTER");
+        address ccipWaypoint = vm.envAddress("CCIP_WAYPOINT");
 
         console.log("deployer: %s", deployer);
 
         // send txs as user
         vm.startBroadcast(deployerPrivateKey);
 
-        usdPlus.grantRole(keccak256("MINTER_ROLE"), ccipMinter);
-        usdPlus.grantRole(keccak256("BURNER_ROLE"), ccipMinter);
+        usdPlus.grantRole(keccak256("MINTER_ROLE"), ccipWaypoint);
+        usdPlus.grantRole(keccak256("BURNER_ROLE"), ccipWaypoint);
 
         vm.stopBroadcast();
     }
