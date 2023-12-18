@@ -43,7 +43,9 @@ contract CCIPRouterMock is IRouterClient {
         address receiver = abi.decode(message.receiver, (address));
         for (uint256 i = 0; i < message.tokenAmounts.length; ++i) {
             IERC7281Min token = IERC7281Min(message.tokenAmounts[i].token);
+            // slither-disable-next-line calls-loop
             token.burn(msg.sender, message.tokenAmounts[i].amount);
+            // slither-disable-next-line calls-loop
             token.mint(receiver, message.tokenAmounts[i].amount);
         }
 
