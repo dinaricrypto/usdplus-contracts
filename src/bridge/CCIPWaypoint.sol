@@ -38,6 +38,7 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     error InvalidSender(uint64 sourceChainSelector, address sender);
     error InvalidReceiver(uint64 destinationChainSelector);
     error InsufficientFunds(uint256 value, uint256 fee);
+    error AmountZero();
     error AddressZero();
 
     event ApprovedSenderSet(uint64 indexed sourceChainSelector, address indexed sourceChainWaypoint);
@@ -105,6 +106,16 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     /// ------------------ Getters ------------------
 
+    function getApprovedSender(uint64 sourceChainSelector) external view returns (address) {
+        CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
+        return $._approvedSender[sourceChainSelector];
+    }
+
+    function getApprovedReceiver(uint64 destinationChainSelector) external view returns (address) {
+        CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
+        return $._approvedReceiver[destinationChainSelector];
+    }
+
     function getFee(
         uint64 destinationChainSelector,
         address destinationChainWaypoint,
@@ -158,8 +169,10 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         uint256 amount = message.destTokenAmounts[0].amount;
         emit Received(message.messageId, message.sourceChainSelector, sender, params.to, amount, params.stake);
         if (params.stake) {
+            StakedUsdPlus stakedUsdPlus = $._stakedUsdPlus;
+            usdPlus.safeIncreaseAllowance(address(stakedUsdPlus), amount);
             // slither-disable-next-line unused-return
-            $._stakedUsdPlus.deposit(amount, params.to);
+            stakedUsdPlus.deposit(amount, params.to);
         } else {
             usdPlus.safeTransfer(params.to, amount);
         }
@@ -189,6 +202,8 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         whenNotPaused
         returns (bytes32 messageId)
     {
+        if (amount == 0) revert AmountZero();
+
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         address destinationChainWaypoint = $._approvedReceiver[destinationChainSelector];
         if (destinationChainWaypoint == address(0)) revert InvalidReceiver(destinationChainSelector);
@@ -197,8 +212,15 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         Client.EVM2AnyMessage memory message = _createCCIPMessage(destinationChainWaypoint, to, amount, stake);
 
         // calculate and check fee
-        uint256 fee = IRouterClient(getRouter()).getFee(destinationChainSelector, message);
+        address router = getRouter();
+        uint256 fee = IRouterClient(router).getFee(destinationChainSelector, message);
         if (fee > msg.value) revert InsufficientFunds(msg.value, fee);
+
+        // pull usdplus
+        IERC20(message.tokenAmounts[0].token).safeTransferFrom(msg.sender, address(this), amount);
+
+        // approve router to spend token
+        IERC20(message.tokenAmounts[0].token).safeIncreaseAllowance(router, amount);
 
         // send ccip message
         messageId = IRouterClient(getRouter()).ccipSend{value: msg.value}(destinationChainSelector, message);
