@@ -9,6 +9,7 @@ import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contra
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IRouterClient} from "ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {Client} from "ccip/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "./CCIPReceiver.sol";
@@ -23,6 +24,8 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     // TODO: Generalize to include payment tokens: USDC, etc.
     // TODO: Migrate ccip dependency to official release. Needs fix to forge install (https://github.com/foundry-rs/foundry/issues/5996)
     using Address for address;
+    using SafeERC20 for IERC20;
+    using SafeERC20 for UsdPlus;
 
     /// ------------------ Types ------------------
 
@@ -35,6 +38,7 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     error InvalidSender(uint64 sourceChainSelector, address sender);
     error InvalidReceiver(uint64 destinationChainSelector);
     error InsufficientFunds(uint256 value, uint256 fee);
+    error AddressZero();
 
     event ApprovedSenderSet(uint64 indexed sourceChainSelector, address indexed sourceChainWaypoint);
     event ApprovedReceiverSet(uint64 indexed destinationChainSelector, address indexed destinationChainWaypoint);
@@ -68,12 +72,12 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.CCIPWaypoint")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant CCIPWaypoint_STORAGE_LOCATION =
+    bytes32 private constant CCIPWAYPOINT_STORAGE_LOCATION =
         0x78c64de9b9dc0dfc8eacf934bc1fbd9289d8bc5c08666d7fa486b9fc8241ca00;
 
     function _getCCIPWaypointStorage() private pure returns (CCIPWaypointStorage storage $) {
         assembly {
-            $.slot := CCIPWaypoint_STORAGE_LOCATION
+            $.slot := CCIPWAYPOINT_STORAGE_LOCATION
         }
     }
 
@@ -154,9 +158,10 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         uint256 amount = message.destTokenAmounts[0].amount;
         emit Received(message.messageId, message.sourceChainSelector, sender, params.to, amount, params.stake);
         if (params.stake) {
+            // slither-disable-next-line unused-return
             $._stakedUsdPlus.deposit(amount, params.to);
         } else {
-            usdPlus.transfer(params.to, amount);
+            usdPlus.safeTransfer(params.to, amount);
         }
     }
 
@@ -205,10 +210,12 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     /// ------------------ Rescue ------------------
 
     function rescue(address to, address token, uint256 amount) external onlyOwner {
+        if (to == address(0)) revert AddressZero();
+
         if (token == address(0)) {
             payable(to).transfer(amount);
         } else {
-            IERC20(token).transfer(to, amount);
+            IERC20(token).safeTransfer(to, amount);
         }
     }
 }
