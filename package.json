@@ -10,7 +10,6 @@
     "errors": "npx ts-node script/errors_parse_ast.ts"
   },
   "devDependencies": {
-    "@chainlink/contracts-ccip": "^1.2.1",
     "@types/node": "^20.10.4",
     "solidity-code-metrics": "^0.0.25",
     "ts-node": "^10.9.2",
