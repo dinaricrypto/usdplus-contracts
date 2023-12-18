@@ -7,9 +7,9 @@ import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/UsdPlusRedeemer.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
+import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
-import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 
 contract UsdPlusRedeemerTest is Test {
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);

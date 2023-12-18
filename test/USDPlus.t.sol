@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor, ITransferRestrictor} from "../src/TransferRestrictor.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
 
 contract UsdPlusTest is Test {
@@ -42,7 +42,11 @@ contract UsdPlusTest is Test {
 
     function test_treasury(address treasury) public {
         // non-admin cannot set treasury
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), usdplus.DEFAULT_ADMIN_ROLE()
+            )
+        );
         usdplus.setTreasury(treasury);
 
         // admin can set treasury
@@ -55,7 +59,11 @@ contract UsdPlusTest is Test {
 
     function test_transferRestrictor(ITransferRestrictor _transferRestrictor) public {
         // non-admin cannot set transfer restrictor
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), usdplus.DEFAULT_ADMIN_ROLE()
+            )
+        );
         usdplus.setTransferRestrictor(_transferRestrictor);
 
         // admin can set transfer restrictor
