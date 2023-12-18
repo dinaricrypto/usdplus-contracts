@@ -9,8 +9,8 @@ import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contra
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IRouterClient} from "contracts-ccip/v0.8/ccip/interfaces/IRouterClient.sol";
-import {Client} from "contracts-ccip/v0.8/ccip/libraries/Client.sol";
+import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "./CCIPReceiver.sol";
 import {UsdPlus} from "../UsdPlus.sol";
 import {StakedUsdPlus} from "../StakedUsdPlus.sol";

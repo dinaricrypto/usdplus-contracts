@@ -2,6 +2,7 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
 chainlink/=lib/chainlink/
 contracts-ccip/=node_modules/@chainlink/contracts-ccip/src/
+@chainlink/contracts-ccip/=node_modules/@chainlink/contracts-ccip/
 ds-test/=lib/forge-std/lib/ds-test/src/
 erc4626-tests/=lib/openzeppelin-contracts-upgradeable/lib/erc4626-tests/
 forge-std/=lib/forge-std/src/

@@ -2,8 +2,8 @@
 pragma solidity 0.8.23;
 
 import "forge-std/Script.sol";
-import {Client} from "contracts-ccip/v0.8/ccip/libraries/Client.sol";
-import {IRouterClient} from "contracts-ccip/v0.8/ccip/interfaces/IRouterClient.sol";
+import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
+import {IRouterClient} from "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract CCIPTokenTransfer is Script {
