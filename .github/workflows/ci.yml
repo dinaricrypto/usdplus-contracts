@@ -46,17 +46,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: "16.x"
-    
-      - name: Enable Node Corepack
-        run: corepack enable
-  
-      - name: Install yarn
-        run: yarn install
-
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -89,17 +78,6 @@ jobs:
         with:
           version: nightly
 
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: "16.x"
-  
-      - name: Enable Node Corepack
-        run: corepack enable
-
-      - name: Install yarn
-        run: yarn install
-
       - name: Run Forge build
         run: |
           forge --version
@@ -126,17 +104,6 @@ jobs:
         with:
           version: nightly
 
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: "16.x"
-
-      - name: Enable Node Corepack
-        run: corepack enable
-
-      - name: Install yarn
-        run: yarn install
-  
       - name: Run Forge coverage
         run: forge coverage -f $RPC_ARBITRUM  --report lcov
         env: 
