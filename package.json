@@ -6,9 +6,13 @@
     "test": "forge test -f $(grep RPC_URL .env-test | cut -d '=' -f2) -vvv",
     "coverage": "forge coverage -f $(grep RPC_URL .env-test | cut -d '=' -f2) --report lcov && genhtml --branch-coverage --dark-mode -o ./coverage/ lcov.info",
     "metrics": "solidity-code-metrics ./src/**/*.sol --html > metrics.html",
-    "deploy:all": "forge script script/DeployAll.s.sol:DeployAllScript --rpc-url $(grep RPC_URL .env | cut -d '=' -f2) --broadcast --verify -vvv"
+    "deploy:all": "forge script script/DeployAll.s.sol:DeployAllScript --rpc-url $(grep RPC_URL .env | cut -d '=' -f2) --broadcast --verify -vvv",
+    "errors": "npx ts-node script/errors_parse_ast.ts"
   },
   "devDependencies": {
-    "solidity-code-metrics": "^0.0.25"
+    "@types/node": "^20.10.4",
+    "solidity-code-metrics": "^0.0.25",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   }
 }
