@@ -158,6 +158,13 @@ contract CCIPWaypointTest is Test {
         vm.prank(USER);
         usdplus.approve(address(waypoint), amount);
 
+        vm.expectRevert(CCIPWaypoint.StakingDisabled.selector);
+        vm.prank(USER);
+        waypoint.sendUsdPlus{value: fee}(uint64(block.chainid), OTHER, amount, true);
+
+        vm.prank(ADMIN);
+        waypoint.setStakingEnabled(uint64(block.chainid), true);
+
         // user sends usdplus to other and stakes
         uint256 userBalanceBefore = usdplus.balanceOf(USER);
         uint256 otherBalanceBefore = stakedUsdplus.balanceOf(OTHER);
