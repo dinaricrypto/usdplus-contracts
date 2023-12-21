@@ -40,6 +40,7 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     error InsufficientFunds(uint256 value, uint256 fee);
     error AmountZero();
     error AddressZero();
+    error StakingDisabled();
 
     event ApprovedSenderSet(uint64 indexed sourceChainSelector, address indexed sourceChainWaypoint);
     event ApprovedReceiverSet(uint64 indexed destinationChainSelector, address indexed destinationChainWaypoint);
@@ -70,6 +71,7 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         mapping(uint64 => address) _approvedReceiver;
         UsdPlus _usdplus;
         StakedUsdPlus _stakedUsdPlus;
+        mapping(uint64 => bool) _stakingEnabled;
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.CCIPWaypoint")) - 1)) & ~bytes32(uint256(0xff))
@@ -116,6 +118,11 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         return $._approvedReceiver[destinationChainSelector];
     }
 
+    function isStakingEnabled(uint64 destinationChainSelector) external view returns (bool) {
+        CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
+        return $._stakingEnabled[destinationChainSelector];
+    }
+
     function getFee(
         uint64 destinationChainSelector,
         address destinationChainWaypoint,
@@ -143,6 +150,11 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         $._approvedReceiver[destinationChainSelector] = destinationChainWaypoint;
         emit ApprovedReceiverSet(destinationChainSelector, destinationChainWaypoint);
+    }
+
+    function setStakingEnabled(uint64 destinationChainSelector, bool enabled) external onlyOwner {
+        CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
+        $._stakingEnabled[destinationChainSelector] = enabled;
     }
 
     function pause() external onlyOwner {
@@ -207,6 +219,7 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         address destinationChainWaypoint = $._approvedReceiver[destinationChainSelector];
         if (destinationChainWaypoint == address(0)) revert InvalidReceiver(destinationChainSelector);
+        if (stake && !$._stakingEnabled[destinationChainSelector]) revert StakingDisabled();
 
         // compile ccip message
         Client.EVM2AnyMessage memory message = _createCCIPMessage(destinationChainWaypoint, to, amount, stake);
