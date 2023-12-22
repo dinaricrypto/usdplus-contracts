@@ -63,6 +63,29 @@ contract StakedUsdPlusTest is Test {
         stakedusdplus.deposit(0, USER);
     }
 
+    function test_refreshOldestLock() public {
+        usdplus.mint(USER, 1000);
+
+        vm.startPrank(USER);
+        usdplus.approve(address(stakedusdplus), 1000);
+        for (uint256 i = 0; i < 10; i++) {
+            stakedusdplus.deposit(10, USER);
+            vm.warp(block.timestamp + 1);
+        }
+        vm.stopPrank();
+
+        // refresh oldest lock - not expired
+        bool removed = stakedusdplus.refreshOldestLock(USER);
+        assertFalse(removed);
+        assertEq(stakedusdplus.getLockSchedule(address(USER)).length, 10);
+
+        // refresh oldest lock - expired
+        vm.warp(block.timestamp + 30 days);
+        removed = stakedusdplus.refreshOldestLock(USER);
+        assertTrue(removed);
+        assertEq(stakedusdplus.getLockSchedule(address(USER)).length, 9);
+    }
+
     function test_mintLocks(uint104 amount1, uint104 amount2) public {
         vm.assume(amount1 > 0 && amount2 > 0);
 
