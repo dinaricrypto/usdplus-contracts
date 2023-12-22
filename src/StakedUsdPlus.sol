@@ -153,8 +153,8 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     /// @dev add lock to queue and update cached totals
     function addLock(address account, uint256 assets, uint256 shares) internal {
         if (assets == 0 || shares == 0) revert ZeroValue();
-        // TODO: turn this back on
-        // if (assets > type(uint104).max || shares > type(uint104).max) revert ValueOverflow();
+        // Is this still necessary with maxDeposit and maxMint checks?
+        if (assets > type(uint104).max || shares > type(uint104).max) revert ValueOverflow();
 
         // TODO: reduce gas by not loading locktotals twice, not peeking twice
         refreshLocks(account);
