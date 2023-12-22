@@ -85,6 +85,14 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
 
     /// ------------------ Getters ------------------
 
+    function maxDeposit(address) public pure override returns (uint256) {
+        return type(uint104).max;
+    }
+
+    function maxMint(address) public pure override returns (uint256) {
+        return type(uint104).max;
+    }
+
     /// @notice lock duration in seconds
     function lockDuration() public view returns (uint48) {
         StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
@@ -100,6 +108,13 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     function sharesLocked(address account) external view returns (uint256) {
         StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
         return $._cachedLockTotals[account].shares;
+    }
+
+    /// @notice locked USD+ for account
+    /// @dev Warning: can be stale, call refreshLocks to update
+    function assetsLocked(address account) external view returns (uint256) {
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        return $._cachedLockTotals[account].assets;
     }
 
     /// @notice complete lock schedule for account
@@ -137,9 +152,9 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
 
     /// @dev add lock to queue and update cached totals
     function addLock(address account, uint256 assets, uint256 shares) internal {
-        // TODO: update maxDeposit to precheck these limits
         if (assets == 0 || shares == 0) revert ZeroValue();
-        if (assets > type(uint104).max || shares > type(uint104).max) revert ValueOverflow();
+        // TODO: turn this back on
+        // if (assets > type(uint104).max || shares > type(uint104).max) revert ValueOverflow();
 
         // TODO: reduce gas by not loading locktotals twice, not peeking twice
         refreshLocks(account);
