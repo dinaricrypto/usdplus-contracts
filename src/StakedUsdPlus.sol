@@ -173,8 +173,8 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
             LockTotals(uint128(cachedTotals.assets + assets), uint128(cachedTotals.shares + shares));
     }
 
-    /// @dev remove expired locks and update cached totals
-    // TODO: Iteration: Limit queue size and/or create single refresh method to clean one lock at a time
+    /// @notice Remove expired locks and update cached totals
+    /// @dev Warning: Iterating over the queue may be expensive, use refreshOldestLock if this fails
     function refreshLocks(address account) public {
         StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
         DoubleEndedQueue.Bytes32Deque storage locks = $._locks[account];
@@ -196,6 +196,26 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
             LockTotals memory cachedTotals = $._cachedLockTotals[account];
             $._cachedLockTotals[account] =
                 LockTotals(cachedTotals.assets - assetsDecrement, cachedTotals.shares - sharesDecrement);
+        }
+    }
+
+    /// @notice Check if oldest lock is expired and remove if so, updating cached totals
+    /// @dev This is a convenience method to avoid iterating over the queue
+    /// @return removed True if oldest lock was expired and removed
+    function refreshOldestLock(address account) public returns (bool removed) {
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        DoubleEndedQueue.Bytes32Deque storage locks = $._locks[account];
+
+        // remove expired lock
+        Lock memory lock = unpackLockData(locks.front());
+        removed = lock.endTime <= block.timestamp;
+        if (removed) {
+            // slither-disable-next-line unused-return
+            locks.popFront();
+            // update cached totals
+            LockTotals memory cachedTotals = $._cachedLockTotals[account];
+            $._cachedLockTotals[account] =
+                LockTotals(cachedTotals.assets - lock.assets, cachedTotals.shares - lock.shares);
         }
     }
 
