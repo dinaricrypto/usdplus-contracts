@@ -7,6 +7,19 @@ import {IERC7281Min} from "./IERC7281Min.sol";
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/ERC7281/ERC7281Min.sol)
 /// @author Modified from defi-wonderland (https://github.com/defi-wonderland/xERC20/blob/main/solidity/contracts/XERC20.sol)
 abstract contract ERC7281Min is IERC7281Min {
+    // TODO: more efficient types and packing
+    struct IssuerLimits {
+        LimitParameters mintLimitParams;
+        LimitParameters burnLimitParams;
+    }
+
+    struct LimitParameters {
+        uint256 timestamp;
+        uint256 ratePerSecond;
+        uint256 maxLimit;
+        uint256 currentLimit;
+    }
+
     /**
      * @notice The duration it takes for the limits to fully replenish
      */

@@ -20,19 +20,6 @@ interface IERC7281Min {
      */
     error ERC7281_LimitExceeded();
 
-    // TODO: more efficient types and packing
-    struct IssuerLimits {
-        LimitParameters mintLimitParams;
-        LimitParameters burnLimitParams;
-    }
-
-    struct LimitParameters {
-        uint256 timestamp;
-        uint256 ratePerSecond;
-        uint256 maxLimit;
-        uint256 currentLimit;
-    }
-
     /**
      * @notice Updates the limits of an issuer
      * @dev Can only be called by the owner
