@@ -17,18 +17,18 @@
 | approve                                                                                   | 22688           | 25313  | 24788  | 29288  | 32      |
 | asset                                                                                     | 887             | 887    | 887    | 887    | 27      |
 | assetsLocked                                                                              | 1343            | 1343   | 1343   | 1343   | 5       |
-| balanceOf                                                                                 | 1245            | 2874   | 1246   | 7748   | 58      |
-| burn                                                                                      | 5992            | 9894   | 10473  | 12073  | 9       |
-| burningCurrentLimitOf                                                                     | 1502            | 3641   | 1502   | 7920   | 3       |
+| balanceOf                                                                                 | 1245            | 2903   | 1248   | 7748   | 57      |
+| burn                                                                                      | 5992            | 9902   | 10473  | 12073  | 9       |
+| burningCurrentLimitOf                                                                     | 1502            | 3647   | 1502   | 7938   | 3       |
 | burningMaxLimitOf                                                                         | 1581            | 2247   | 1581   | 3581   | 3       |
 | cancel                                                                                    | 2948            | 10402  | 9967   | 18292  | 3       |
 | ccipReceive                                                                               | 28804           | 93041  | 93041  | 157278 | 2       |
 | checkTransferRestricted                                                                   | 1396            | 3138   | 2699   | 4699   | 33      |
 | decimals                                                                                  | 691             | 739    | 691    | 2856   | 45      |
 | deposit(address,uint256,address)                                                          | 5679            | 27681  | 6841   | 91365  | 4       |
-| deposit(uint256,address)                                                                  | 3334            | 91621  | 111460 | 156160 | 29      |
+| deposit(uint256,address)                                                                  | 20814           | 92223  | 111460 | 156160 | 29      |
 | depositAndStake                                                                           | 229584          | 229584 | 229584 | 229584 | 1       |
-| fulfill                                                                                   | 3125            | 20382  | 18439  | 41524  | 4       |
+| fulfill                                                                                   | 3125            | 20386  | 18448  | 41524  | 4       |
 | getApprovedReceiver                                                                       | 968             | 968    | 968    | 968    | 1       |
 | getApprovedSender                                                                         | 922             | 922    | 922    | 922    | 1       |
 | getFee                                                                                    | 19230           | 19230  | 19230  | 19230  | 2       |
@@ -43,7 +43,7 @@
 | mint(address,uint256,address)                                                             | 5203            | 27236  | 6365   | 91011  | 4       |
 | mint(uint256,address)                                                                     | 109747          | 109747 | 109747 | 109747 | 1       |
 | mintAndStake                                                                              | 231464          | 231464 | 231464 | 231464 | 1       |
-| mintingCurrentLimitOf                                                                     | 1304            | 5578   | 7716   | 7716   | 3       |
+| mintingCurrentLimitOf                                                                     | 1304            | 5590   | 7734   | 7734   | 3       |
 | mintingMaxLimitOf                                                                         | 877             | 2210   | 2877   | 2877   | 3       |
 | nextTicket                                                                                | 3261            | 3261   | 3261   | 3261   | 1       |
 | pause                                                                                     | 7478            | 19134  | 19134  | 30791  | 2       |
@@ -51,7 +51,7 @@
 | paymentRecipient                                                                          | 711             | 711    | 711    | 711    | 1       |
 | paymentTokenOracle                                                                        | 1082            | 1186   | 1186   | 1290   | 2       |
 | previewDeposit(address,uint256)                                                           | 6677            | 14437  | 14697  | 21677  | 4       |
-| previewDeposit(uint256)                                                                   | 3625            | 18625  | 21125  | 21125  | 7       |
+| previewDeposit(uint256)                                                                   | 3625            | 18208  | 21125  | 21125  | 6       |
 | previewDepositAndStake                                                                    | 47727           | 47727  | 47727  | 47727  | 1       |
 | previewMint(address,uint256)                                                              | 21857           | 21857  | 21857  | 21857  | 2       |
 | previewMint(uint256)                                                                      | 21010           | 21010  | 21010  | 21010  | 1       |
@@ -69,7 +69,7 @@
 | sendUsdPlus                                                                               | 7803            | 143676 | 147288 | 275939 | 3       |
 | setApprovedReceiver                                                                       | 7790            | 23953  | 25027  | 31527  | 10      |
 | setApprovedSender                                                                         | 7444            | 23566  | 24636  | 31136  | 10      |
-| setIssuerLimits                                                                           | 99005           | 111162 | 99005  | 159194 | 74      |
+| setIssuerLimits                                                                           | 98987           | 111150 | 98987  | 159224 | 74      |
 | setLockDuration                                                                           | 7648            | 10665  | 10665  | 13683  | 2       |
 | setPaymentRecipient                                                                       | 7327            | 10444  | 10444  | 13561  | 2       |
 | setPaymentTokenOracle                                                                     | 3058            | 27592  | 31049  | 31148  | 16      |
@@ -96,7 +96,7 @@
 | assetsLocked                                 | 1024            | 1024   | 1024   | 1024   | 5       |
 | balanceOf                                    | 929             | 1595   | 929    | 2929   | 3       |
 | decimals                                     | 2540            | 2540   | 2540   | 2540   | 1       |
-| deposit                                      | 3011            | 90842  | 111138 | 151338 | 29      |
+| deposit                                      | 15991           | 91290  | 111138 | 151338 | 29      |
 | getLockSchedule                              | 3988            | 11298  | 14222  | 15686  | 3       |
 | initialize                                   | 192603          | 192603 | 192603 | 192603 | 44      |
 | isBlacklisted                                | 3638            | 4523   | 4966   | 4966   | 3       |
@@ -104,7 +104,7 @@
 | maxDeposit                                   | 532             | 532    | 532    | 532    | 1       |
 | maxMint                                      | 1038            | 1038   | 1038   | 1038   | 1       |
 | mint                                         | 109425          | 109425 | 109425 | 109425 | 1       |
-| previewDeposit                               | 3306            | 14448  | 16306  | 16306  | 7       |
+| previewDeposit                               | 3306            | 14139  | 16306  | 16306  | 6       |
 | previewMint                                  | 16191           | 16191  | 16191  | 16191  | 1       |
 | previewRedeem                                | 2690            | 2690   | 2690   | 2690   | 1       |
 | redeem                                       | 18528           | 28307  | 28307  | 38086  | 2       |
@@ -126,23 +126,23 @@
 | src/UsdPlus.sol:UsdPlus contract |                 |        |        |        |         |
 |----------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                  | Deployment Size |        |        |        |         |
-| 2814195                          | 14154           |        |        |        |         |
+| 2813195                          | 14149           |        |        |        |         |
 | Function Name                    | min             | avg    | median | max    | # calls |
 | DEFAULT_ADMIN_ROLE               | 881             | 881    | 881    | 881    | 2       |
 | allowance                        | 3589            | 3589   | 3589   | 3589   | 5       |
 | approve                          | 22366           | 23991  | 24466  | 24466  | 31      |
-| balanceOf                        | 926             | 1871   | 926    | 2926   | 55      |
-| burn                             | 5737            | 9141   | 9728   | 11818  | 9       |
-| burningCurrentLimitOf            | 1183            | 3322   | 1183   | 7601   | 3       |
+| balanceOf                        | 926             | 1888   | 926    | 2926   | 54      |
+| burn                             | 5737            | 9148   | 9746   | 11818  | 9       |
+| burningCurrentLimitOf            | 1183            | 3328   | 1183   | 7619   | 3       |
 | burningMaxLimitOf                | 1262            | 1928   | 1262   | 3262   | 3       |
 | checkTransferRestricted          | 1077            | 2818   | 2380   | 4380   | 33      |
 | decimals                         | 375             | 375    | 375    | 375    | 44      |
 | initialize                       | 214264          | 214264 | 214264 | 214264 | 51      |
 | isBlacklisted                    | 1483            | 2368   | 2811   | 2811   | 6       |
-| mint                             | 9274            | 50146  | 52557  | 59057  | 46      |
-| mintingCurrentLimitOf            | 985             | 5259   | 7397   | 7397   | 3       |
+| mint                             | 9292            | 50146  | 52557  | 59057  | 46      |
+| mintingCurrentLimitOf            | 985             | 5271   | 7415   | 7415   | 3       |
 | mintingMaxLimitOf                | 558             | 1891   | 2558   | 2558   | 3       |
-| setIssuerLimits                  | 98680           | 110837 | 98680  | 158869 | 74      |
+| setIssuerLimits                  | 98662           | 110825 | 98662  | 158899 | 74      |
 | setTransferRestrictor            | 2789            | 5727   | 5576   | 8970   | 4       |
 | setTreasury                      | 3493            | 6564   | 6564   | 9635   | 2       |
 | transfer                         | 2373            | 16315  | 20556  | 40292  | 27      |
@@ -176,7 +176,7 @@
 | DEFAULT_ADMIN_ROLE                               | 751             | 751    | 751    | 751    | 1       |
 | FULFILLER_ROLE                                   | 443             | 443    | 443    | 443    | 17      |
 | cancel                                           | 2622            | 8602   | 9714   | 13472  | 3       |
-| fulfill                                          | 2799            | 18048  | 14062  | 41272  | 4       |
+| fulfill                                          | 2799            | 18052  | 14069  | 41272  | 4       |
 | grantRole                                        | 27357           | 27357  | 27357  | 27357  | 15      |
 | initialize                                       | 121119          | 121119 | 121119 | 121119 | 15      |
 | nextTicket                                       | 2945            | 2945   | 2945   | 2945   | 1       |

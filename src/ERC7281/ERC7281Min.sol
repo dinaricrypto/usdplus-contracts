@@ -21,7 +21,7 @@ abstract contract ERC7281Min is IERC7281Min {
     /**
      * @notice The duration it takes for the limits to fully replenish
      */
-    uint256 private constant _DURATION = 1 days;
+    uint64 private constant _DURATION = 1 days;
 
     /// ------------------ Storage ------------------
 
@@ -187,17 +187,16 @@ abstract contract ERC7281Min is IERC7281Min {
     function _calculateNewCurrentLimit(uint256 newMaxLimit, uint256 oldMaxLimit, uint256 currentLimit)
         internal
         pure
-        returns (uint256 newCurrentLimit)
+        returns (uint256)
     {
-        uint256 _difference;
-
-        if (oldMaxLimit > newMaxLimit) {
-            _difference = oldMaxLimit - newMaxLimit;
-            newCurrentLimit = currentLimit > _difference ? currentLimit - _difference : 0;
-        } else {
-            _difference = newMaxLimit - oldMaxLimit;
-            newCurrentLimit = currentLimit + _difference;
+        if (newMaxLimit > oldMaxLimit) {
+            return currentLimit + (newMaxLimit - oldMaxLimit);
         }
+        uint256 _difference = oldMaxLimit - newMaxLimit;
+        if (currentLimit > _difference) {
+            return currentLimit - _difference;
+        }
+        return 0;
     }
 
     /**
@@ -208,15 +207,15 @@ abstract contract ERC7281Min is IERC7281Min {
         view
         returns (uint256)
     {
-        if (currentLimit == maxLimit) {
-            return currentLimit;
-        } else if (timestamp + _DURATION <= block.timestamp) {
+        if (currentLimit == maxLimit || timestamp + _DURATION <= block.timestamp) {
             return maxLimit;
-        } else if (timestamp + _DURATION > block.timestamp) {
-            uint256 _timePassed = block.timestamp - timestamp;
-            uint256 _calculatedLimit = currentLimit + (_timePassed * ratePerSecond);
-            return _calculatedLimit > maxLimit ? maxLimit : _calculatedLimit;
         }
-        return currentLimit;
+
+        uint256 timePassed = block.timestamp - timestamp;
+        uint256 calculatedLimit = currentLimit + (timePassed * ratePerSecond);
+        if (calculatedLimit > maxLimit) {
+            return maxLimit;
+        }
+        return calculatedLimit;
     }
 }
