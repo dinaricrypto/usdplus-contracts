@@ -5,7 +5,6 @@ pragma solidity >=0.8.4 <0.9.0;
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/ERC7281/IERC7281Min.sol)
 /// @author Modified from defi-wonderland (https://github.com/defi-wonderland/xERC20/blob/main/solidity/interfaces/IXERC20.sol)
 interface IERC7281Min {
-    // TODO: confirm compatibility with ERC-7281 consumers
     /**
      * @notice Emits when a limit is set
      *

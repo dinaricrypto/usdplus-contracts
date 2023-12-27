@@ -9,7 +9,7 @@
 | lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy contract |                 |        |        |        |         |
 |-------------------------------------------------------------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                                                                           | Deployment Size |        |        |        |         |
-| 169950                                                                                    | 947             |        |        |        |         |
+| 172481                                                                                    | 915             |        |        |        |         |
 | Function Name                                                                             | min             | avg    | median | max    | # calls |
 | DEFAULT_ADMIN_ROLE                                                                        | 5567            | 5653   | 5697   | 5697   | 3       |
 | FULFILLER_ROLE                                                                            | 759             | 759    | 759    | 759    | 17      |
@@ -17,7 +17,7 @@
 | approve                                                                                   | 22688           | 25313  | 24788  | 29288  | 32      |
 | asset                                                                                     | 887             | 887    | 887    | 887    | 27      |
 | assetsLocked                                                                              | 1343            | 1343   | 1343   | 1343   | 5       |
-| balanceOf                                                                                 | 1245            | 2903   | 1248   | 7748   | 57      |
+| balanceOf                                                                                 | 1245            | 2874   | 1246   | 7748   | 58      |
 | burn                                                                                      | 5971            | 9884   | 10452  | 12052  | 9       |
 | burningCurrentLimitOf                                                                     | 1499            | 2976   | 1499   | 5930   | 3       |
 | burningMaxLimitOf                                                                         | 1645            | 2344   | 1645   | 3742   | 3       |
@@ -26,7 +26,7 @@
 | checkTransferRestricted                                                                   | 1396            | 3138   | 2699   | 4699   | 33      |
 | decimals                                                                                  | 691             | 739    | 691    | 2856   | 45      |
 | deposit(address,uint256,address)                                                          | 5679            | 27672  | 6841   | 91329  | 4       |
-| deposit(uint256,address)                                                                  | 20814           | 92223  | 111460 | 156160 | 29      |
+| deposit(uint256,address)                                                                  | 3334            | 91621  | 111460 | 156160 | 29      |
 | depositAndStake                                                                           | 229555          | 229555 | 229555 | 229555 | 1       |
 | fulfill                                                                                   | 3125            | 20377  | 18441  | 41503  | 4       |
 | getApprovedReceiver                                                                       | 968             | 968    | 968    | 968    | 1       |
@@ -51,7 +51,7 @@
 | paymentRecipient                                                                          | 711             | 711    | 711    | 711    | 1       |
 | paymentTokenOracle                                                                        | 1082            | 1186   | 1186   | 1290   | 2       |
 | previewDeposit(address,uint256)                                                           | 6677            | 14437  | 14697  | 21677  | 4       |
-| previewDeposit(uint256)                                                                   | 3625            | 18208  | 21125  | 21125  | 6       |
+| previewDeposit(uint256)                                                                   | 3625            | 18625  | 21125  | 21125  | 7       |
 | previewDepositAndStake                                                                    | 47727           | 47727  | 47727  | 47727  | 1       |
 | previewMint(address,uint256)                                                              | 21857           | 21857  | 21857  | 21857  | 2       |
 | previewMint(uint256)                                                                      | 21010           | 21010  | 21010  | 21010  | 1       |
@@ -96,7 +96,7 @@
 | assetsLocked                                 | 1024            | 1024   | 1024   | 1024   | 5       |
 | balanceOf                                    | 929             | 1595   | 929    | 2929   | 3       |
 | decimals                                     | 2540            | 2540   | 2540   | 2540   | 1       |
-| deposit                                      | 15991           | 91290  | 111138 | 151338 | 29      |
+| deposit                                      | 3011            | 90842  | 111138 | 151338 | 29      |
 | getLockSchedule                              | 3988            | 11298  | 14222  | 15686  | 3       |
 | initialize                                   | 192603          | 192603 | 192603 | 192603 | 44      |
 | isBlacklisted                                | 3638            | 4523   | 4966   | 4966   | 3       |
@@ -104,7 +104,7 @@
 | maxDeposit                                   | 532             | 532    | 532    | 532    | 1       |
 | maxMint                                      | 1038            | 1038   | 1038   | 1038   | 1       |
 | mint                                         | 109425          | 109425 | 109425 | 109425 | 1       |
-| previewDeposit                               | 3306            | 14139  | 16306  | 16306  | 6       |
+| previewDeposit                               | 3306            | 14448  | 16306  | 16306  | 7       |
 | previewMint                                  | 16191           | 16191  | 16191  | 16191  | 1       |
 | previewRedeem                                | 2690            | 2690   | 2690   | 2690   | 1       |
 | redeem                                       | 18528           | 28307  | 28307  | 38086  | 2       |
