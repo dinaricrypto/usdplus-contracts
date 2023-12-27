@@ -5,6 +5,8 @@
   "scripts": {
     "test": "forge test -f $(grep RPC_URL .env-test | cut -d '=' -f2) -vvv",
     "coverage": "forge coverage -f $(grep RPC_URL .env-test | cut -d '=' -f2) --report lcov && genhtml --branch-coverage --dark-mode -o ./coverage/ lcov.info",
+    "snapshot": "forge snapshot -f $(grep RPC_URL .env-test | cut -d '=' -f2)",
+    "gas": "forge test -f $(grep RPC_URL .env-test | cut -d '=' -f2) --gas-report --fuzz-seed 1 | grep '^|' > .gas-report",
     "metrics": "solidity-code-metrics ./src/**/*.sol --html > metrics.html",
     "deploy:all": "forge script script/DeployAll.s.sol:DeployAllScript --rpc-url $(grep RPC_URL .env | cut -d '=' -f2) --broadcast --verify -vvv",
     "errors": "npx ts-node script/errors_parse_ast.ts"
