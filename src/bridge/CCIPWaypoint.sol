@@ -137,6 +137,10 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     /// ------------------ Admin ------------------
 
+    function setRouter(address router) external onlyOwner {
+        _setRouter(router);
+    }
+
     function setApprovedSender(uint64 sourceChainSelector, address sourceChainWaypoint) external onlyOwner {
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         $._approvedSender[sourceChainSelector] = sourceChainWaypoint;

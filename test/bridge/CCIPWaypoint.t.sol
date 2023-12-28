@@ -12,6 +12,7 @@ import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.
 import {CCIPRouterMock} from "../../src/mocks/CCIPRouterMock.sol";
 
 contract CCIPWaypointTest is Test {
+    event RouterSet(address indexed router);
     event ApprovedSenderSet(uint64 indexed sourceChainSelector, address indexed sourceChainWaypoint);
     event ApprovedReceiverSet(uint64 indexed destinationChainSelector, address indexed destinationChainWaypoint);
     event Sent(
@@ -89,6 +90,25 @@ contract CCIPWaypointTest is Test {
 
     function test_initialization() public {
         assertEq(address(waypoint.getRouter()), address(router));
+    }
+
+    function test_setRouterZeroReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(CCIPReceiver.InvalidRouter.selector, (address(0))));
+        vm.prank(ADMIN);
+        waypoint.setRouter(address(0));
+    }
+
+    function test_setRouter(address account) public {
+        vm.assume(account != address(0));
+
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, (address(this))));
+        waypoint.setRouter(account);
+
+        vm.expectEmit(true, true, true, true);
+        emit RouterSet(account);
+        vm.prank(ADMIN);
+        waypoint.setRouter(account);
+        assertEq(address(waypoint.getRouter()), account);
     }
 
     function test_setApprovedSender(uint64 chain, address account) public {
