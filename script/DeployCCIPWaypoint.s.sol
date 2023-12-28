@@ -7,7 +7,7 @@ import {UsdPlus} from "../src/UsdPlus.sol";
 import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract DeployCCIPBridge is Script {
+contract DeployCCIPWaypoint is Script {
     struct DeployConfig {
         address deployer;
         UsdPlus usdPlus;
@@ -43,6 +43,7 @@ contract DeployCCIPBridge is Script {
             )
         );
 
+        // Remember to configure after both waypoints are deployed
         // ccipWaypoint.setApprovedReceiver();
 
         vm.stopBroadcast();
