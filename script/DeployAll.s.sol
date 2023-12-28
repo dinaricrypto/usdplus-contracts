@@ -16,20 +16,21 @@ contract DeployAll is Script {
     struct DeployConfig {
         address owner;
         address treasury;
+        IERC20 usdc;
+        AggregatorV3Interface paymentTokenOracle;
     }
-    // address redemptionFulfiller;
-    // IERC20 usdc;
-    // AggregatorV3Interface paymentTokenOracle;
 
     function run() external {
         // load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
-        DeployConfig memory cfg = DeployConfig({owner: deployer, treasury: vm.envAddress("TREASURY")});
-        // redemptionFulfiller: vm.envAddress("FULFILLER"),
-        // usdc: IERC20(vm.envAddress("USDC")),
-        // paymentTokenOracle: AggregatorV3Interface(vm.envAddress("USDCORACLE"))
+        DeployConfig memory cfg = DeployConfig({
+            owner: deployer,
+            treasury: vm.envAddress("TREASURY"),
+            usdc: IERC20(vm.envAddress("USDC")),
+            paymentTokenOracle: AggregatorV3Interface(vm.envAddress("USDCORACLE"))
+        });
 
         console.log("deployer: %s", deployer);
 
@@ -65,29 +66,29 @@ contract DeployAll is Script {
 
         /// ------------------ usd+ minter/redeemer ------------------
 
-        // UsdPlusMinter minterImpl = new UsdPlusMinter();
-        // UsdPlusMinter minter = UsdPlusMinter(
-        //     address(
-        //         new ERC1967Proxy(
-        //             address(minterImpl),
-        //             abi.encodeCall(UsdPlusMinter.initialize, (stakedusdplus, cfg.treasury, cfg.owner))
-        //         )
-        //     )
-        // );
-        // usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
-        // minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
+        UsdPlusMinter minterImpl = new UsdPlusMinter();
+        UsdPlusMinter minter = UsdPlusMinter(
+            address(
+                new ERC1967Proxy(
+                    address(minterImpl),
+                    abi.encodeCall(UsdPlusMinter.initialize, (stakedusdplus, cfg.treasury, cfg.owner))
+                )
+            )
+        );
+        usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
+        minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
-        // UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
-        // UsdPlusRedeemer redeemer = UsdPlusRedeemer(
-        //     address(
-        //         new ERC1967Proxy(
-        //             address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedusdplus, cfg.owner))
-        //         )
-        //     )
-        // );
-        // usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
-        // redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.redemptionFulfiller);
-        // redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
+        UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
+        UsdPlusRedeemer redeemer = UsdPlusRedeemer(
+            address(
+                new ERC1967Proxy(
+                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedusdplus, cfg.owner))
+                )
+            )
+        );
+        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
+        redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.treasury);
+        redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
         vm.stopBroadcast();
     }
