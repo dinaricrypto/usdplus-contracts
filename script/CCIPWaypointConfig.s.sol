@@ -4,8 +4,8 @@ pragma solidity 0.8.23;
 import "forge-std/Script.sol";
 import {CCIPWaypoint} from "../src/bridge/CCIPWaypoint.sol";
 
-contract UpgradeCCIPBridge is Script {
-    struct DeployConfig {
+contract CCIPWaypointConfig is Script {
+    struct Config {
         address deployer;
         CCIPWaypoint ccipWaypoint;
     }
@@ -14,18 +14,18 @@ contract UpgradeCCIPBridge is Script {
         // load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
 
-        DeployConfig memory cfg = DeployConfig({
-            deployer: vm.addr(deployerPrivateKey),
-            ccipWaypoint: CCIPWaypoint(vm.envAddress("CCIP_MINTER"))
-        });
+        Config memory cfg =
+            Config({deployer: vm.addr(deployerPrivateKey), ccipWaypoint: CCIPWaypoint(vm.envAddress("CCIP_WAYPOINT"))});
+
+        uint64 chain = 4949039107694359620;
+        address remoteWaypoint = 0x3A34b7Fa417B51af57936f72b8234C824F816907;
 
         console.log("deployer: %s", cfg.deployer);
 
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
-        CCIPWaypoint ccipWaypointImpl = new CCIPWaypoint();
-        cfg.ccipWaypoint.upgradeToAndCall(address(ccipWaypointImpl), "");
+        cfg.ccipWaypoint.setApprovedReceiver(chain, remoteWaypoint);
 
         vm.stopBroadcast();
     }

@@ -9,6 +9,12 @@ import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/bridge/CCIPReceiver.sol)
 /// @author Modified from Chainlink (https://github.com/smartcontractkit/ccip/blob/ccip-develop/contracts/src/v0.8/ccip/applications/CCIPReceiver.sol)
 abstract contract CCIPReceiver is IAny2EVMMessageReceiver, IERC165 {
+    /// ------------------ Types ------------------
+
+    event RouterSet(address indexed router);
+
+    error InvalidRouter(address router);
+
     /// ------------------ Storage ------------------
 
     struct CCIPReceiverStorage {
@@ -29,9 +35,15 @@ abstract contract CCIPReceiver is IAny2EVMMessageReceiver, IERC165 {
 
     // slither-disable-next-line naming-convention
     function __CCIPReceiver_init(address router) internal {
+        CCIPReceiverStorage storage $ = _getCCIPReceiverStorage();
+        $._router = router;
+    }
+
+    function _setRouter(address router) internal {
         if (router == address(0)) revert InvalidRouter(address(0));
         CCIPReceiverStorage storage $ = _getCCIPReceiverStorage();
         $._router = router;
+        emit RouterSet(router);
     }
 
     /// @notice IERC165 supports an interfaceId
@@ -67,8 +79,6 @@ abstract contract CCIPReceiver is IAny2EVMMessageReceiver, IERC165 {
         CCIPReceiverStorage storage $ = _getCCIPReceiverStorage();
         return $._router;
     }
-
-    error InvalidRouter(address router);
 
     /// @dev only calls from the set router are accepted.
     modifier onlyRouter() {
