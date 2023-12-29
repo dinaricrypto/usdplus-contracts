@@ -21,7 +21,7 @@ contract CCIPWaypointTransfer is Script {
         Config memory cfg = Config({
             deployer: vm.addr(deployerPrivateKey),
             usdPlus: UsdPlus(vm.envAddress("USDPLUS")),
-            ccipWaypoint: CCIPWaypoint(vm.envAddress("CCIP_MINTER")),
+            ccipWaypoint: CCIPWaypoint(vm.envAddress("CCIP_WAYPOINT")),
             dest: uint64(vm.envUint("CCIP_DEST")),
             receiver: vm.envAddress("CCIP_RECEIVER")
         });
