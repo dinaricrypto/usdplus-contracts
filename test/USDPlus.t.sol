@@ -113,6 +113,28 @@ contract UsdPlusTest is Test {
         assertEq(usdplus.burningCurrentLimitOf(BURNER), type(uint256).max);
     }
 
+    function test_burn2(uint256 amount) public {
+        vm.assume(amount > 0);
+
+        // mint USD+ to user for testing
+        vm.prank(MINTER);
+        usdplus.mint(BURNER, amount);
+
+        // non-burner cannot burn
+        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
+        vm.prank(USER);
+        usdplus.burn(amount);
+
+        // burner can burn
+        vm.prank(BURNER);
+        usdplus.burn(amount);
+        assertEq(usdplus.balanceOf(BURNER), 0);
+        assertEq(usdplus.mintingMaxLimitOf(BURNER), 0);
+        assertEq(usdplus.burningMaxLimitOf(BURNER), type(uint256).max);
+        assertEq(usdplus.mintingCurrentLimitOf(BURNER), 0);
+        assertEq(usdplus.burningCurrentLimitOf(BURNER), type(uint256).max);
+    }
+
     function test_burnFrom(uint256 amount) public {
         vm.assume(amount > 0);
 

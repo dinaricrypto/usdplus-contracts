@@ -9,7 +9,7 @@ import {
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {ITransferRestrictor} from "./ITransferRestrictor.sol";
-import {ERC7281Min} from "./ERC7281/ERC7281Min.sol";
+import {ERC7281Min, IERC7281Min} from "./ERC7281/ERC7281Min.sol";
 
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
@@ -118,21 +118,28 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, AccessC
         _setIssuerLimits(issuer, mintingLimit, burningLimit);
     }
 
-    // ------------------ Minting/Burning (ERC-7281) ------------------
+    // ------------------ Minting/Burning ------------------
 
-    /// @notice mint USD+ to account
+    /// @inheritdoc IERC7281Min
     function mint(address to, uint256 value) external {
         _useMintingLimits(_msgSender(), value);
         _mint(to, value);
     }
 
-    /// @notice burn USD+ from msg.sender
+    /// @inheritdoc IERC7281Min
     function burn(address from, uint256 value) external {
         address spender = _msgSender();
         if (from != spender) {
             _spendAllowance(from, spender, value);
         }
         _useBurningLimits(spender, value);
+        _burn(from, value);
+    }
+
+    /// @notice burn USD+ from msg.sender
+    function burn(uint256 value) external {
+        address from = _msgSender();
+        _useBurningLimits(from, value);
         _burn(from, value);
     }
 
