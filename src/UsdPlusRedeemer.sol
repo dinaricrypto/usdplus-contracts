@@ -230,7 +230,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
             ticket, request.receiver, request.paymentToken, request.paymentTokenAmount, request.usdplusAmount
         );
 
-        $._usdplus.burn(request.owner, request.usdplusAmount);
+        $._usdplus.burn(request.usdplusAmount);
         request.paymentToken.safeTransferFrom(msg.sender, request.receiver, request.paymentTokenAmount);
     }
 

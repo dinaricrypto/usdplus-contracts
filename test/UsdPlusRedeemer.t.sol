@@ -272,6 +272,8 @@ contract UsdPlusRedeemerTest is Test {
         emit RequestFulfilled(ticket, USER, paymentToken, redemptionEstimate, amount);
         redeemer.fulfill(ticket);
         vm.stopPrank();
+        assertEq(paymentToken.balanceOf(USER), redemptionEstimate);
+        assertEq(usdplus.balanceOf(address(redeemer)), 0);
     }
 
     function test_cancelInvalidTicketReverts(uint256 ticket) public {
