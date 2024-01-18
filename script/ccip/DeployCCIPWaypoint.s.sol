@@ -2,9 +2,9 @@
 pragma solidity 0.8.23;
 
 import "forge-std/Script.sol";
-import {CCIPWaypoint} from "../src/bridge/CCIPWaypoint.sol";
-import {UsdPlus} from "../src/UsdPlus.sol";
-import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
+import {CCIPWaypoint} from "../../src/bridge/CCIPWaypoint.sol";
+import {UsdPlus} from "../../src/UsdPlus.sol";
+import {StakedUsdPlus} from "../../src/StakedUsdPlus.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployCCIPWaypoint is Script {
