@@ -17,8 +17,6 @@ import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
 contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, Ownable2StepUpgradeable {
-    // TODO: continuous yield?
-
     /// ------------------ Types ------------------
 
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
