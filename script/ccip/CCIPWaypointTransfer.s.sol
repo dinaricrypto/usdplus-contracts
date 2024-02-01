@@ -2,8 +2,8 @@
 pragma solidity 0.8.23;
 
 import "forge-std/Script.sol";
-import {CCIPWaypoint} from "../src/bridge/CCIPWaypoint.sol";
-import {UsdPlus} from "../src/UsdPlus.sol";
+import {CCIPWaypoint} from "../../src/bridge/CCIPWaypoint.sol";
+import {UsdPlus} from "../../src/UsdPlus.sol";
 
 contract CCIPWaypointTransfer is Script {
     struct Config {
