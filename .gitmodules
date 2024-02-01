@@ -13,3 +13,6 @@
 [submodule "lib/ccip"]
 	path = lib/ccip
 	url = https://github.com/smartcontractkit/ccip
+[submodule "lib/ERC4626-Contracts"]
+	path = lib/ERC4626-Contracts
+	url = https://github.com/ERC4626-Alliance/ERC4626-Contracts
