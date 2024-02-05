@@ -14,10 +14,9 @@ import {DoubleEndedQueue} from "openzeppelin-contracts/contracts/utils/structs/D
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
 
-/// @notice stablecoin yield vault
+/// @notice stablecoin yield vault with min holding period
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
 contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, Ownable2StepUpgradeable {
-    // TODO: continuous yield?
 
     /// ------------------ Types ------------------
 
