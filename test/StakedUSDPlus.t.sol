@@ -120,9 +120,12 @@ contract StakedUsdPlusTest is Test {
 
         vm.startPrank(USER);
         usdplus.approve(address(stakedusdplus), 1000);
+        // TODO: test double entry
+        // stakedusdplus.deposit(10, USER);
+        uint256 intialtime = block.timestamp;
         for (uint256 i = 0; i < 10; i++) {
             stakedusdplus.deposit(10, USER);
-            vm.warp(block.timestamp + 1);
+            vm.warp(intialtime + 1 + i);
         }
         vm.stopPrank();
 

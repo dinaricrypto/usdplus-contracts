@@ -10,17 +10,17 @@ import {
 } from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {DoubleEndedQueue} from "openzeppelin-contracts/contracts/utils/structs/DoubleEndedQueue.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {RedBlackTreeLib} from "solady/utils/RedBlackTreeLib.sol";
 import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
+import {console} from "forge-std/console.sol";
 
 /// @notice stablecoin yield vault with min holding period
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
 contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, Ownable2StepUpgradeable {
-
     /// ------------------ Types ------------------
 
-    using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
+    using RedBlackTreeLib for *;
 
     struct Lock {
         uint48 endTime;
@@ -46,9 +46,8 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     struct StakedUsdPlusStorage {
         // lock duration in seconds
         uint48 _lockDuration;
-        // dequeue of locks per account
-        // back == most recent lock
-        mapping(address => DoubleEndedQueue.Bytes32Deque) _locks;
+        // rbtree of locks per account
+        mapping(address => RedBlackTreeLib.Tree) _locks;
         // cached lock totals per account
         mapping(address => LockTotals) _cachedLockTotals;
     }
@@ -119,10 +118,16 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     /// @notice complete lock schedule for account
     function getLockSchedule(address account) external view returns (Lock[] memory) {
         StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
-        uint256 n = $._locks[account].length();
+        RedBlackTreeLib.Tree storage locks = $._locks[account];
+        uint256 n = locks.size();
         Lock[] memory schedule = new Lock[](n);
-        for (uint256 i = 0; i < n; i++) {
-            schedule[i] = unpackLockData($._locks[account].at(i));
+        if (n == 0) return schedule;
+
+        uint256 i = 0;
+        bytes32 ptr = locks.first();
+        while (!ptr.isEmpty()) {
+            schedule[i++] = unpackLockData(ptr.value());
+            ptr = ptr.next();
         }
         return schedule;
     }
@@ -139,14 +144,24 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     // ------------------ Lock System ------------------
 
     /// @dev pack lock data into a single bytes32
-    function packLockData(Lock memory lock) internal pure returns (bytes32) {
-        return bytes32(uint256(lock.endTime) << 208 | uint256(lock.assets) << 104 | lock.shares);
+    function packLockData(Lock memory lock) internal pure returns (uint256) {
+        return uint256(lock.endTime) << 208 | uint256(lock.assets) << 104 | lock.shares;
     }
 
     /// @dev unpack lock data from a single bytes32
-    function unpackLockData(bytes32 packed) internal pure returns (Lock memory) {
-        uint256 packedInt = uint256(packed);
-        return Lock(uint48(packedInt >> 208), uint104(packedInt >> 104), uint104(packedInt));
+    function unpackLockData(uint256 packed) internal pure returns (Lock memory) {
+        return Lock(uint48(packed >> 208), uint104(packed >> 104), uint104(packed));
+    }
+
+    function _lockUpsert(RedBlackTreeLib.Tree storage locks, Lock memory lock) internal {
+        // check for perfect duplicate and update if found, otherwise insert
+        uint256 packedLock = packLockData(lock);
+        bytes32 ptr = locks.find(packedLock);
+        if (!ptr.isEmpty()) {
+            ptr.remove();
+            packedLock = packLockData(Lock(lock.endTime, lock.assets + lock.assets, lock.shares + lock.shares));
+        }
+        locks.insert(packedLock);
     }
 
     /// @dev add lock to queue and update cached totals
@@ -162,11 +177,12 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         // this means that if lockDuration is changed, users may have to wait before they can mint more stUSD+
         StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
         uint48 endTime = uint48(block.timestamp) + $._lockDuration;
-        if ($._locks[account].length() > 0) {
-            Lock memory prevLock = unpackLockData($._locks[account].back());
+        bytes32 ptr = $._locks[account].last();
+        if (!ptr.isEmpty()) {
+            Lock memory prevLock = unpackLockData(ptr.value());
             if (endTime < prevLock.endTime) revert LockTimeTooShort(prevLock.endTime - endTime);
         }
-        $._locks[account].pushBack(packLockData(Lock(endTime, uint104(assets), uint104(shares))));
+        _lockUpsert($._locks[account], Lock(endTime, uint104(assets), uint104(shares)));
         LockTotals memory cachedTotals = $._cachedLockTotals[account];
         $._cachedLockTotals[account] =
             LockTotals(uint128(cachedTotals.assets + assets), uint128(cachedTotals.shares + shares));
@@ -176,19 +192,20 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     /// @dev Warning: Iterating over the queue may be expensive, use refreshOldestLock if this fails
     function refreshLocks(address account) public {
         StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
-        DoubleEndedQueue.Bytes32Deque storage locks = $._locks[account];
+        RedBlackTreeLib.Tree storage locks = $._locks[account];
 
         // remove expired locks
         uint128 assetsDecrement = 0;
         uint128 sharesDecrement = 0;
-        while (locks.length() > 0) {
-            Lock memory lock = unpackLockData(locks.front());
+        bytes32 ptr = locks.first();
+        while (!ptr.isEmpty()) {
+            Lock memory lock = unpackLockData(ptr.value());
             // if lock is not expired, stop
             if (lock.endTime > block.timestamp) break;
             assetsDecrement += lock.assets;
             sharesDecrement += lock.shares;
-            // slither-disable-next-line unused-return
-            locks.popFront();
+            ptr.remove();
+            ptr = locks.first();
         }
         // update cached totals
         if (assetsDecrement > 0) {
@@ -203,14 +220,14 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     /// @return removed True if oldest lock was expired and removed
     function refreshOldestLock(address account) public returns (bool removed) {
         StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
-        DoubleEndedQueue.Bytes32Deque storage locks = $._locks[account];
+        RedBlackTreeLib.Tree storage locks = $._locks[account];
 
         // remove expired lock
-        Lock memory lock = unpackLockData(locks.front());
+        bytes32 ptr = locks.first();
+        Lock memory lock = unpackLockData(ptr.value());
         removed = lock.endTime <= block.timestamp;
         if (removed) {
-            // slither-disable-next-line unused-return
-            locks.popFront();
+            ptr.remove();
             // update cached totals
             LockTotals memory cachedTotals = $._cachedLockTotals[account];
             $._cachedLockTotals[account] =
@@ -223,20 +240,20 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         if (sharesToConsume > type(uint128).max) revert ValueOverflow();
 
         StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
-        DoubleEndedQueue.Bytes32Deque storage locks = $._locks[account];
+        RedBlackTreeLib.Tree storage locks = $._locks[account];
 
         uint128 assetsDue = 0;
         uint128 sharesRemaining = uint128(sharesToConsume);
         while (sharesRemaining > 0) {
-            Lock memory lock = unpackLockData(locks.popFront());
+            bytes32 ptr = locks.first();
+            Lock memory lock = unpackLockData(ptr.value());
+            ptr.remove();
             if (lock.shares > sharesRemaining) {
                 // partially consume lock and return to queue
                 uint128 assets = uint128(Math.mulDiv(lock.assets, sharesRemaining, lock.shares));
                 assetsDue += assets;
-                locks.pushFront(
-                    packLockData(
-                        Lock(lock.endTime, uint104(lock.assets - assets), uint104(lock.shares - sharesRemaining))
-                    )
+                _lockUpsert(
+                    locks, Lock(lock.endTime, uint104(lock.assets - assets), uint104(lock.shares - sharesRemaining))
                 );
                 sharesRemaining = 0;
             } else {
