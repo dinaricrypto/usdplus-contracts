@@ -140,10 +140,10 @@ contract StakedUsdPlusTest is Test {
 
     function test_refreshManyLocks() public {
         uint256 n = 1000;
-        usdplus.mint(USER, n*10);
+        usdplus.mint(USER, n * 10);
 
         vm.startPrank(USER);
-        usdplus.approve(address(stakedusdplus), n*10);
+        usdplus.approve(address(stakedusdplus), n * 10);
         // TODO: test double entry
         // stakedusdplus.deposit(10, USER);
         uint256 intialtime = block.timestamp;
