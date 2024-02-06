@@ -251,6 +251,7 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     }
 
     /// @dev assumes refreshLocks(from) has been called
+    // slither-disable-next-line cyclomatic-complexity
     function migrateLocks(address from, address to, uint256 shares) internal {
         if (shares > type(uint128).max) revert ValueOverflow();
         refreshLocks(to);
