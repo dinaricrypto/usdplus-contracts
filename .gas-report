@@ -64,9 +64,9 @@
 | redeem                                                                                    | 26076           | 38299   | 38299  | 50523   | 2       |
 | refreshLocks                                                                              | 3298            | 2474977 | 7206   | 7414427 | 3       |
 | refreshOldestLock                                                                         | 2798            | 6519    | 6519   | 10240   | 2       |
-| requestRedeem                                                                             | 5466            | 113981  | 186319 | 186319  | 5       |
+| requestRedeem                                                                             | 5466            | 78069   | 6759   | 186319  | 5       |
 | requestWithdraw                                                                           | 5378            | 65711   | 5397   | 186359  | 3       |
-| requests                                                                                  | 2035            | 2035    | 2035   | 2035    | 3       |
+| requests                                                                                  | 2035            | 2035    | 2035   | 2035    | 2       |
 | rescue                                                                                    | 7420            | 22995   | 22617  | 39325   | 4       |
 | sendUsdPlus                                                                               | 7825            | 186782  | 184196 | 368325  | 3       |
 | setApprovedReceiver                                                                       | 7812            | 24154   | 25049  | 31549   | 12      |
@@ -83,7 +83,7 @@
 | stakedUsdplus                                                                             | 7453            | 7557    | 7557   | 7661    | 2       |
 | totalSupply                                                                               | 753             | 753     | 753    | 753     | 1       |
 | transfer                                                                                  | 2718            | 17614   | 15737  | 45136   | 32      |
-| transferFrom                                                                              | 5686            | 6259    | 5686   | 40886   | 1035    |
+| transferFrom                                                                              | 5686            | 6225    | 5686   | 40886   | 1034    |
 | transferRestrictor                                                                        | 1555            | 1555    | 1555   | 1555    | 1       |
 | treasury                                                                                  | 1016            | 1016    | 1016   | 1016    | 1       |
 | unpause                                                                                   | 791             | 1427    | 1427   | 2064    | 2       |
@@ -123,7 +123,7 @@
 | 848456                                                 | 4453            |       |        |       |         |
 | Function Name                                          | min             | avg   | median | max   | # calls |
 | isBlacklisted                                          | 925             | 925   | 925    | 925   | 4       |
-| requireNotRestricted                                   | 737             | 1045  | 900    | 4900  | 2152    |
+| requireNotRestricted                                   | 737             | 1043  | 900    | 4900  | 2151    |
 | restrict                                               | 24032           | 24032 | 24032  | 24032 | 4       |
 | unrestrict                                             | 1950            | 1950  | 1950   | 1950  | 2       |
 | src/UsdPlus.sol:UsdPlus contract |                 |        |        |        |         |
@@ -150,7 +150,7 @@
 | setTransferRestrictor            | 2811            | 6446   | 6992   | 8992   | 4       |
 | setTreasury                      | 3515            | 6586   | 6586   | 9657   | 2       |
 | transfer                         | 2395            | 17501  | 25717  | 40314  | 29      |
-| transferFrom                     | 5358            | 5931   | 5358   | 40558  | 1035    |
+| transferFrom                     | 5358            | 5897   | 5358   | 40558  | 1034    |
 | transferRestrictor               | 1239            | 1239   | 1239   | 1239   | 1       |
 | treasury                         | 700             | 700    | 700    | 700    | 1       |
 | src/UsdPlusMinter.sol:UsdPlusMinter contract |                 |        |        |        |         |
@@ -188,9 +188,9 @@
 | previewRedeem                                    | 3234            | 18000  | 21692  | 21692  | 5       |
 | previewUnstakeAndRedeem                          | 27200           | 27200  | 27200  | 27200  | 1       |
 | previewWithdraw                                  | 3190            | 15575  | 21768  | 21768  | 3       |
-| requestRedeem                                    | 631             | 111847 | 185985 | 185985 | 5       |
+| requestRedeem                                    | 631             | 75935  | 6424   | 185985 | 5       |
 | requestWithdraw                                  | 543             | 62376  | 562    | 186025 | 3       |
-| requests                                         | 1698            | 1698   | 1698   | 1698   | 3       |
+| requests                                         | 1698            | 1698   | 1698   | 1698   | 2       |
 | setPaymentTokenOracle                            | 2729            | 23706  | 26329  | 26329  | 9       |
 | stakedUsdplus                                    | 2845            | 2845   | 2845   | 2845   | 1       |
 | unstakeAndRequestRedeem                          | 193322          | 193322 | 193322 | 193322 | 1       |

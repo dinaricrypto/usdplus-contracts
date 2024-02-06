@@ -13,7 +13,6 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {RedBlackTreeLib} from "solady/utils/RedBlackTreeLib.sol";
 import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
-import {console} from "forge-std/console.sol";
 
 /// @notice stablecoin yield vault with min holding period
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
