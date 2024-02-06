@@ -244,9 +244,9 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
                 sharesRemaining -= lock.shares;
             }
         }
-        LockTotals memory cachedFromTotals = $._cachedLockTotals[account];
+        LockTotals memory cachedTotals = $._cachedLockTotals[account];
         $._cachedLockTotals[account] =
-            LockTotals(cachedFromTotals.assets - assetsDue, cachedFromTotals.shares - uint128(sharesToConsume));
+            LockTotals(cachedTotals.assets - assetsDue, cachedTotals.shares - uint128(sharesToConsume));
         return assetsDue;
     }
 
@@ -260,7 +260,7 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         DoubleEndedQueue.Bytes32Deque storage fromLocks = $._locks[from];
         DoubleEndedQueue.Bytes32Deque storage toLocks = $._locks[to];
 
-        // Consume locks from from account and store for to account
+        // Consume locks from "from" account and store for "to" account
         uint256 n = fromLocks.length();
         bytes32[] memory migratingLocks = new bytes32[](n);
         uint128 assetsDue = 0;
@@ -290,16 +290,16 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
             }
             // Update migrating count
             n = i;
-            // Update cached from account totals
-            LockTotals memory cachedTotals = $._cachedLockTotals[from];
+            // Update cached "from" account totals
+            LockTotals memory cachedFromTotals = $._cachedLockTotals[from];
             $._cachedLockTotals[from] =
-                LockTotals(cachedTotals.assets - assetsDue, cachedTotals.shares - uint128(shares));
+                LockTotals(cachedFromTotals.assets - assetsDue, cachedFromTotals.shares - uint128(shares));
         }
 
         uint256 m = toLocks.length();
-        // If existing locks in to account, merge locks
+        // If existing locks in "to" account, merge locks
         if (m > 0) {
-            // Build prefix, overlap, and suffix arrays wrt to account locks
+            // Build prefix, overlap, and suffix arrays wrt "to" account locks
             bytes32[] memory prefix = new bytes32[](n);
             bytes32[] memory overlap = new bytes32[](n);
             bytes32[] memory suffix = new bytes32[](n);
@@ -343,12 +343,12 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
                 toLocks.pushFront(suffix[i]);
             }
         } else {
-            // If no existing locks in to account, simply add locks
+            // If no existing locks in "to" account, simply add locks
             for (uint256 i = 0; i < n; i++) {
                 toLocks.pushFront(migratingLocks[i]);
             }
         }
-        // Update cached to account totals
+        // Update cached "to" account totals
         LockTotals memory cachedToTotals = $._cachedLockTotals[to];
         $._cachedLockTotals[to] = LockTotals(cachedToTotals.assets + assetsDue, cachedToTotals.shares + uint128(shares));
     }
