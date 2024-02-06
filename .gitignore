@@ -55,4 +55,3 @@ docs/*.png
 *.out
 *.synctex.gz
 *.synctex(busy)
-latex/*.pdf
