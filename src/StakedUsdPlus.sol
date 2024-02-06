@@ -17,8 +17,6 @@ import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
 contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, Ownable2StepUpgradeable {
-    // TODO: continuous yield?
-
     /// ------------------ Types ------------------
 
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
@@ -250,6 +248,20 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         $._cachedLockTotals[account] =
             LockTotals(cachedTotals.assets - assetsDue, cachedTotals.shares - uint128(sharesToConsume));
         return assetsDue;
+    }
+
+    function migrateLocks(address oldAccount, address newAccount, uint256 shares) internal {
+        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
+        DoubleEndedQueue.Bytes32Deque storage oldLocks = $._locks[oldAccount];
+        DoubleEndedQueue.Bytes32Deque storage newLocks = $._locks[newAccount];
+
+        uint256 n = oldLocks.length();
+        for (uint256 i = 0; i < n; i++) {
+            newLocks.pushBack(oldLocks.at(i));
+        }
+        $._cachedLockTotals[newAccount] = $._cachedLockTotals[oldAccount];
+        $._cachedLockTotals[oldAccount] = LockTotals(0, 0);
+        $._locks[oldAccount].clear();
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
