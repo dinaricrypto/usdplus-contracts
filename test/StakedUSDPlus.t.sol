@@ -142,14 +142,15 @@ contract StakedUsdPlusTest is Test {
     }
 
     function test_refreshManyLocks() public {
-        usdplus.mint(USER, 10000);
+        uint256 n = 1000;
+        usdplus.mint(USER, n * 10);
 
         vm.startPrank(USER);
-        usdplus.approve(address(stakedusdplus), 10000);
+        usdplus.approve(address(stakedusdplus), n * 10);
         // TODO: test double entry
         // stakedusdplus.deposit(10, USER);
         uint256 intialtime = block.timestamp;
-        for (uint256 i = 0; i < 100; i++) {
+        for (uint256 i = 0; i < n; i++) {
             stakedusdplus.deposit(10, USER);
             vm.warp(intialtime + 1 + i);
         }
@@ -157,7 +158,7 @@ contract StakedUsdPlusTest is Test {
 
         // refresh locks - not expired
         stakedusdplus.refreshLocks(USER);
-        assertEq(stakedusdplus.getLockSchedule(address(USER)).length, 100);
+        assertEq(stakedusdplus.getLockSchedule(address(USER)).length, n);
 
         // refresh locks - expired
         vm.warp(block.timestamp + 30 days);
