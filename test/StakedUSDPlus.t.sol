@@ -284,7 +284,7 @@ contract StakedUsdPlusTest is Test {
         vm.prank(USER);
         stakedusdplus.transfer(USER2, stakedusdplusBalance);
         assertEq(stakedusdplus.getLockSchedule(USER).length, 0);
-        assertEq(stakedusdplus.getLockSchedule(USER2).length, n * 2);
+        assertEq(stakedusdplus.getLockSchedule(USER2).length, n + 1);
         assertEq(stakedusdplus.balanceOf(USER), 0);
         assertEq(stakedusdplus.balanceOf(USER2), stakedusdplusBalance * 2);
         assertEq(stakedusdplus.assetsLocked(USER), 0);

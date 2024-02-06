@@ -12,7 +12,6 @@ import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contra
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {DoubleEndedQueue} from "openzeppelin-contracts/contracts/utils/structs/DoubleEndedQueue.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
-import {LibSort} from "solady/utils/LibSort.sol";
 import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
 
 /// @notice stablecoin yield vault
@@ -250,109 +249,6 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         return assetsDue;
     }
 
-    /// @dev assumes refreshLocks(from) has been called
-    // slither-disable-next-line cyclomatic-complexity
-    function migrateLocks(address from, address to, uint256 shares) internal {
-        if (shares > type(uint128).max) revert ValueOverflow();
-        refreshLocks(to);
-
-        StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
-        DoubleEndedQueue.Bytes32Deque storage fromLocks = $._locks[from];
-        DoubleEndedQueue.Bytes32Deque storage toLocks = $._locks[to];
-
-        // Consume locks from "from" account and store for "to" account
-        uint256 n = fromLocks.length();
-        bytes32[] memory migratingLocks = new bytes32[](n);
-        uint128 assetsDue = 0;
-        {
-            uint128 sharesRemaining = uint128(shares);
-            uint256 i = 0;
-            while (sharesRemaining > 0) {
-                bytes32 packedLock = fromLocks.popFront();
-                Lock memory lock = unpackLockData(packedLock);
-                if (lock.shares > sharesRemaining) {
-                    // partially consume lock and return to queue
-                    uint128 assets = uint128(Math.mulDiv(lock.assets, sharesRemaining, lock.shares));
-                    migratingLocks[i++] = packLockData(Lock(lock.endTime, uint104(assets), uint104(sharesRemaining)));
-                    assetsDue += assets;
-                    fromLocks.pushFront(
-                        packLockData(
-                            Lock(lock.endTime, uint104(lock.assets - assets), uint104(lock.shares - sharesRemaining))
-                        )
-                    );
-                    sharesRemaining = 0;
-                } else {
-                    // fully consume lock
-                    migratingLocks[i++] = packedLock;
-                    assetsDue += lock.assets;
-                    sharesRemaining -= lock.shares;
-                }
-            }
-            // Update migrating count
-            n = i;
-            // Update cached "from" account totals
-            LockTotals memory cachedFromTotals = $._cachedLockTotals[from];
-            $._cachedLockTotals[from] =
-                LockTotals(cachedFromTotals.assets - assetsDue, cachedFromTotals.shares - uint128(shares));
-        }
-
-        uint256 m = toLocks.length();
-        // If existing locks in "to" account, merge locks
-        if (m > 0) {
-            // Build prefix, overlap, and suffix arrays wrt "to" account locks
-            bytes32[] memory prefix = new bytes32[](n);
-            bytes32[] memory overlap = new bytes32[](n);
-            bytes32[] memory suffix = new bytes32[](n);
-            uint256 p = 0;
-            uint256 o = 0;
-            uint256 s = 0;
-            bytes32 toLockMin = toLocks.back();
-            bytes32 toLockMax = toLocks.front();
-            for (uint256 i = 0; i < n; i++) {
-                bytes32 lock = migratingLocks[i];
-                if (lock < toLockMin) {
-                    prefix[p++] = lock;
-                } else if (lock > toLockMax) {
-                    suffix[s++] = lock;
-                } else {
-                    overlap[o++] = lock;
-                }
-            }
-
-            // Merge overlap array into toLocks
-            if (o > 0) {
-                uint256[] memory merged = new uint256[](o + m);
-                for (uint256 i = 0; i < o; i++) {
-                    merged[i] = uint256(overlap[i]);
-                }
-                for (uint256 i = 0; i < m; i++) {
-                    merged[i + o] = uint256(toLocks.at(i)); // consider replacing with pop to clear storage
-                }
-                LibSort.sort(merged);
-                toLocks.clear();
-                for (uint256 i = 0; i < merged.length; i++) {
-                    toLocks.pushFront(bytes32(merged[i]));
-                }
-            }
-
-            // Add prefix and suffix arrays to toLocks
-            for (uint256 i = 0; i < p; i++) {
-                toLocks.pushBack(prefix[i]);
-            }
-            for (uint256 i = 0; i < s; i++) {
-                toLocks.pushFront(suffix[i]);
-            }
-        } else {
-            // If no existing locks in "to" account, simply add locks
-            for (uint256 i = 0; i < n; i++) {
-                toLocks.pushFront(migratingLocks[i]);
-            }
-        }
-        // Update cached "to" account totals
-        LockTotals memory cachedToTotals = $._cachedLockTotals[to];
-        $._cachedLockTotals[to] = LockTotals(cachedToTotals.assets + assetsDue, cachedToTotals.shares + uint128(shares));
-    }
-
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal virtual override {
         // add lock on user mint
         addLock(receiver, assets, shares);
@@ -407,7 +303,10 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
             StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
             uint256 freeShares = balanceOf(from) - $._cachedLockTotals[from].shares;
             if (value > freeShares) {
-                migrateLocks(from, to, value - freeShares);
+                uint256 lockedShares = value - freeShares;
+                uint256 assetsDue = consumeLocks(from, lockedShares);
+                // new lock is added to "to" account with extended duration
+                addLock(to, assetsDue, lockedShares);
             }
         }
 
