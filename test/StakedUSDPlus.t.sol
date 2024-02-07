@@ -18,6 +18,7 @@ contract StakedUsdPlusTest is Test {
 
     address public constant ADMIN = address(0x1234);
     address public constant USER = address(0x1235);
+    address public constant USER2 = address(0x1236);
 
     function setUp() public {
         transferRestrictor = new TransferRestrictor(address(this));
@@ -129,13 +130,38 @@ contract StakedUsdPlusTest is Test {
         // refresh oldest lock - not expired
         bool removed = stakedusdplus.refreshOldestLock(USER);
         assertFalse(removed);
-        assertEq(stakedusdplus.getLockSchedule(address(USER)).length, 10);
+        assertEq(stakedusdplus.getLockSchedule(USER).length, 10);
 
         // refresh oldest lock - expired
         vm.warp(block.timestamp + 30 days);
         removed = stakedusdplus.refreshOldestLock(USER);
         assertTrue(removed);
-        assertEq(stakedusdplus.getLockSchedule(address(USER)).length, 9);
+        assertEq(stakedusdplus.getLockSchedule(USER).length, 9);
+    }
+
+    function test_refreshManyLocks() public {
+        uint256 n = 1000;
+        usdplus.mint(USER, n * 10);
+
+        vm.startPrank(USER);
+        usdplus.approve(address(stakedusdplus), n * 10);
+        // TODO: test double entry
+        // stakedusdplus.deposit(10, USER);
+        uint256 intialtime = block.timestamp;
+        for (uint256 i = 0; i < n; i++) {
+            stakedusdplus.deposit(10, USER);
+            vm.warp(intialtime + 1 + i);
+        }
+        vm.stopPrank();
+
+        // refresh locks - not expired
+        stakedusdplus.refreshLocks(USER);
+        assertEq(stakedusdplus.getLockSchedule(USER).length, n);
+
+        // refresh locks - expired
+        vm.warp(block.timestamp + 30 days);
+        stakedusdplus.refreshLocks(USER);
+        assertEq(stakedusdplus.getLockSchedule(USER).length, 0);
     }
 
     function test_mintLocks(uint104 amount1, uint104 amount2) public {
@@ -150,8 +176,8 @@ contract StakedUsdPlusTest is Test {
         usdplus.approve(address(stakedusdplus), amount1);
         uint256 shares1 = stakedusdplus.deposit(amount1, USER);
         vm.stopPrank();
-        assertEq(stakedusdplus.assetsLocked(address(USER)), amount1);
-        assertEq(stakedusdplus.sharesLocked(address(USER)), shares1);
+        assertEq(stakedusdplus.assetsLocked(USER), amount1);
+        assertEq(stakedusdplus.sharesLocked(USER), shares1);
 
         // move forward 10 days
         vm.warp(block.timestamp + 10 days);
@@ -162,10 +188,10 @@ contract StakedUsdPlusTest is Test {
         uint256 shares2 = stakedusdplus.deposit(amount2, USER);
         vm.stopPrank();
         uint256 sharesTotal = shares1 + shares2;
-        assertEq(stakedusdplus.assetsLocked(address(USER)), total);
-        assertEq(stakedusdplus.sharesLocked(address(USER)), sharesTotal);
+        assertEq(stakedusdplus.assetsLocked(USER), total);
+        assertEq(stakedusdplus.sharesLocked(USER), sharesTotal);
 
-        StakedUsdPlus.Lock[] memory lockSchedule = stakedusdplus.getLockSchedule(address(USER));
+        StakedUsdPlus.Lock[] memory lockSchedule = stakedusdplus.getLockSchedule(USER);
         assertEq(lockSchedule.length, 2);
         assertEq(lockSchedule[0].assets, amount1);
         assertEq(lockSchedule[0].shares, shares1);
@@ -181,18 +207,18 @@ contract StakedUsdPlusTest is Test {
         vm.warp(block.timestamp + 20 days);
 
         // refesh stale lock totals
-        assertEq(stakedusdplus.assetsLocked(address(USER)), total);
-        assertEq(stakedusdplus.sharesLocked(address(USER)), sharesTotal);
-        stakedusdplus.refreshLocks(address(USER));
-        assertEq(stakedusdplus.assetsLocked(address(USER)), amount2);
-        assertEq(stakedusdplus.sharesLocked(address(USER)), shares2);
+        assertEq(stakedusdplus.assetsLocked(USER), total);
+        assertEq(stakedusdplus.sharesLocked(USER), sharesTotal);
+        stakedusdplus.refreshLocks(USER);
+        assertEq(stakedusdplus.assetsLocked(USER), amount2);
+        assertEq(stakedusdplus.sharesLocked(USER), shares2);
 
         // redeem USD+ from stUSD+, early exit loses yield
         vm.prank(USER);
         stakedusdplus.redeem(sharesTotal, USER, USER);
-        assertGe(usdplus.balanceOf(address(USER)), userBalance - 1);
-        assertEq(stakedusdplus.assetsLocked(address(USER)), 0);
-        assertEq(stakedusdplus.sharesLocked(address(USER)), 0);
+        assertGe(usdplus.balanceOf(USER), userBalance - 1);
+        assertEq(stakedusdplus.assetsLocked(USER), 0);
+        assertEq(stakedusdplus.sharesLocked(USER), 0);
     }
 
     function test_transferReverts(address to, uint104 amount) public {
@@ -232,5 +258,38 @@ contract StakedUsdPlusTest is Test {
         // transfer succeeds
         vm.prank(USER);
         stakedusdplus.transfer(to, stakedusdplusBalance);
+    }
+
+    function test_transferManyLocks() public {
+        uint256 n = 1000;
+        usdplus.mint(USER, n * 10);
+        usdplus.mint(USER2, n * 10);
+
+        vm.prank(USER);
+        usdplus.approve(address(stakedusdplus), n * 10);
+        vm.prank(USER2);
+        usdplus.approve(address(stakedusdplus), n * 10);
+        uint256 intialtime = block.timestamp;
+        for (uint256 i = 0; i < n; i++) {
+            vm.prank(USER);
+            stakedusdplus.deposit(10, USER);
+            vm.prank(USER2);
+            stakedusdplus.deposit(10, USER2);
+            vm.warp(intialtime + 1 + i);
+        }
+
+        // transfer with locks
+        uint256 stakedusdplusBalance = stakedusdplus.balanceOf(USER);
+        uint256 assetsLocked = stakedusdplus.assetsLocked(USER);
+        vm.prank(USER);
+        stakedusdplus.transfer(USER2, stakedusdplusBalance);
+        assertEq(stakedusdplus.getLockSchedule(USER).length, 0);
+        assertEq(stakedusdplus.getLockSchedule(USER2).length, n + 1);
+        assertEq(stakedusdplus.balanceOf(USER), 0);
+        assertEq(stakedusdplus.balanceOf(USER2), stakedusdplusBalance * 2);
+        assertEq(stakedusdplus.assetsLocked(USER), 0);
+        assertEq(stakedusdplus.sharesLocked(USER), 0);
+        assertEq(stakedusdplus.assetsLocked(USER2), assetsLocked * 2);
+        assertEq(stakedusdplus.sharesLocked(USER2), stakedusdplusBalance * 2);
     }
 }
