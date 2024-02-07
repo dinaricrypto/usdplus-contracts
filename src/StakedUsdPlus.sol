@@ -17,8 +17,6 @@ import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
 /// @notice stablecoin yield vault
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlusPlus.sol)
 contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, Ownable2StepUpgradeable {
-    // TODO: continuous yield?
-
     /// ------------------ Types ------------------
 
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
@@ -40,7 +38,6 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
     error ZeroValue();
     error ValueOverflow();
     error LockTimeTooShort(uint256 wait);
-    error ValueLocked(uint256 freeValue);
 
     /// ------------------ Storage ------------------
 
@@ -302,10 +299,15 @@ contract StakedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgrad
         if (from != address(0) && to != address(0)) {
             refreshLocks(from);
 
-            // revert if not enough free shares
+            // migrate locks if not enough free shares
             StakedUsdPlusStorage storage $ = _getStakedUsdPlusStorage();
             uint256 freeShares = balanceOf(from) - $._cachedLockTotals[from].shares;
-            if (value > freeShares) revert ValueLocked(freeShares);
+            if (value > freeShares) {
+                uint256 lockedShares = value - freeShares;
+                uint256 assetsDue = consumeLocks(from, lockedShares);
+                // new lock is added to "to" account with extended duration
+                addLock(to, assetsDue, lockedShares);
+            }
         }
 
         super._update(from, to, value);
