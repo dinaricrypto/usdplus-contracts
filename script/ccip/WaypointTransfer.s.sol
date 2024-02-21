@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 import {CCIPWaypoint} from "../../src/bridge/CCIPWaypoint.sol";
 import {UsdPlus} from "../../src/UsdPlus.sol";
 
-contract CCIPWaypointTransfer is Script {
+contract WaypointTransfer is Script {
     struct Config {
         address deployer;
         UsdPlus usdPlus;
@@ -26,7 +26,7 @@ contract CCIPWaypointTransfer is Script {
             receiver: vm.envAddress("CCIP_RECEIVER")
         });
 
-        uint256 amount = 10 * 10 ** cfg.usdPlus.decimals();
+        uint256 amount = 1499955;
 
         console.log("deployer: %s", cfg.deployer);
 
@@ -34,10 +34,11 @@ contract CCIPWaypointTransfer is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // approve
-        cfg.usdPlus.approve(address(cfg.ccipWaypoint), amount);
+        // cfg.usdPlus.approve(address(cfg.ccipWaypoint), amount);
 
         // get fee
         uint256 fee = cfg.ccipWaypoint.getFee(cfg.dest, cfg.receiver, cfg.deployer, amount, false);
+        console.log("fee: %d", fee);
 
         // send to bridge
         bytes32 messageId = cfg.ccipWaypoint.sendUsdPlus{value: fee}(cfg.dest, cfg.deployer, amount, false);
