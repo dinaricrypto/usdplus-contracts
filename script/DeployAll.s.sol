@@ -18,6 +18,10 @@ contract DeployAll is Script {
         address treasury;
         IERC20 usdc;
         AggregatorV3Interface paymentTokenOracle;
+        // UsdPlus usdplus;
+        // StakedUsdPlus stakedusdplus;
+        // UsdPlusMinter minter;
+        // UsdPlusRedeemer redeemer;
     }
 
     function run() external {
@@ -30,6 +34,10 @@ contract DeployAll is Script {
             treasury: vm.envAddress("TREASURY"),
             usdc: IERC20(vm.envAddress("USDC")),
             paymentTokenOracle: AggregatorV3Interface(vm.envAddress("USDCORACLE"))
+            // usdplus: UsdPlus(vm.envAddress("USDPLUS")),
+            // stakedusdplus: StakedUsdPlus(vm.envAddress("STAKEDUSDPLUS")),
+            // minter: UsdPlusMinter(vm.envAddress("USDPLUS_MINTER")),
+            // redeemer: UsdPlusRedeemer(vm.envAddress("USDPLUS_REDEEMER"))
         });
 
         console.log("deployer: %s", deployer);
