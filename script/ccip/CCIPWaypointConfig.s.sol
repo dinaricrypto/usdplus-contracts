@@ -24,11 +24,11 @@ contract CCIPWaypointConfig is Script {
         // uint64 chain = 4949039107694359620;
         // address remoteWaypoint = 0x3A34b7Fa417B51af57936f72b8234C824F816907;
         // Sepolia
-        // uint64 chain = 16015286601757825753;
-        // address remoteWaypoint = 0xE6BD08DA06c0ee96443127007FFD468C46929074;
-        // Base Goerli
-        uint64 chain = 5790810961207155433;
-        address remoteWaypoint = 0xC979d29237bBF6d9Fa3febDB07Bb8e39ca774dEE;
+        uint64 chain = 16015286601757825753;
+        address remoteWaypoint = 0xE6BD08DA06c0ee96443127007FFD468C46929074;
+        // Arbitrum Sepolia
+        // uint64 chain = 3478487238524512106;
+        // address remoteWaypoint = 0x735A476A6b8f5B16025a1492CE61ca55c524AAfb;
 
         console.log("deployer: %s", cfg.deployer);
 
