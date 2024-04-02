@@ -4,7 +4,6 @@ pragma solidity 0.8.23;
 import "forge-std/Script.sol";
 
 contract Mint is Script {
-
     function run() external {
         // load env variables
         uint256 userPrivateKey = vm.envUint("DEPLOYER_KEY");
