@@ -2,10 +2,8 @@
 pragma solidity 0.8.23;
 
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {
-    ERC20PermitUpgradeable,
-    ERC20Upgradeable
-} from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import {ERC20PermitUpgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {ITransferRestrictor} from "./ITransferRestrictor.sol";
