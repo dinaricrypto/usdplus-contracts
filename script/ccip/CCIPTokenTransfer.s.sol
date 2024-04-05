@@ -65,7 +65,7 @@ contract CCIPTokenTransfer is Script {
             extraArgs: Client._argsToBytes(
                 // Additional arguments, setting gas limit to 0 as we are not sending any data
                 Client.EVMExtraArgsV1({gasLimit: 0})
-                )
+            )
         });
     }
 }
