@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.23;
+pragma solidity ^0.8.22;
 
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
@@ -11,14 +11,12 @@ import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/Agg
 
 import {IUsdPlusRedeemer} from "./IUsdPlusRedeemer.sol";
 import {UsdPlus} from "./UsdPlus.sol";
-import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
 contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
-    using SafeERC20 for UsdPlus;
 
     error ZeroAddress();
     error ZeroAmount();
@@ -29,9 +27,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
 
     struct UsdPlusRedeemerStorage {
         // USD+
-        UsdPlus _usdplus;
-        // stUSD+
-        StakedUsdPlus _stakedUsdplus;
+        address _usdplus;
         // is this payment token accepted?
         mapping(IERC20 => AggregatorV3Interface) _paymentTokenOracle;
         // request ticket => request
@@ -52,12 +48,11 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
 
     /// ------------------ Initialization ------------------
 
-    function initialize(StakedUsdPlus initialStakedUsdplus, address initialOwner) public initializer {
+    function initialize(address usdPlus, address initialOwner) public initializer {
         __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
 
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        $._usdplus = UsdPlus(initialStakedUsdplus.asset());
-        $._stakedUsdplus = initialStakedUsdplus;
+        $._usdplus = usdPlus;
         $._nextTicket = 0;
     }
 
@@ -71,15 +66,9 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
     /// ------------------ Getters ------------------
 
     /// @inheritdoc IUsdPlusRedeemer
-    function usdplus() external view returns (UsdPlus) {
+    function usdplus() external view returns (address) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         return $._usdplus;
-    }
-
-    /// @inheritdoc IUsdPlusRedeemer
-    function stakedUsdplus() external view returns (StakedUsdPlus) {
-        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        return $._stakedUsdplus;
     }
 
     /// @inheritdoc IUsdPlusRedeemer
@@ -173,7 +162,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
         emit RequestCreated(ticket, receiver, paymentToken, paymentTokenAmount, usdplusAmount);
 
         if (owner != address(this)) {
-            $._usdplus.safeTransferFrom(owner, address(this), usdplusAmount);
+            IERC20($._usdplus).safeTransferFrom(owner, address(this), usdplusAmount);
         }
     }
 
@@ -198,26 +187,6 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
     }
 
     /// @inheritdoc IUsdPlusRedeemer
-    function previewUnstakeAndRedeem(IERC20 paymentToken, uint256 stakedUsdplusAmount)
-        external
-        view
-        returns (uint256)
-    {
-        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        return previewRedeem(paymentToken, $._stakedUsdplus.previewRedeem(stakedUsdplusAmount));
-    }
-
-    /// @inheritdoc IUsdPlusRedeemer
-    function unstakeAndRequestRedeem(IERC20 paymentToken, uint256 stakedUsdplusAmount, address receiver, address owner)
-        external
-        returns (uint256 ticket)
-    {
-        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        uint256 usdplusAmount = $._stakedUsdplus.redeem(stakedUsdplusAmount, address(this), owner);
-        return requestRedeem(paymentToken, usdplusAmount, receiver, address(this));
-    }
-
-    /// @inheritdoc IUsdPlusRedeemer
     function fulfill(uint256 ticket) external onlyRole(FULFILLER_ROLE) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         Request memory request = $._requests[ticket];
@@ -230,7 +199,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
             ticket, request.receiver, request.paymentToken, request.paymentTokenAmount, request.usdplusAmount
         );
 
-        $._usdplus.burn(request.usdplusAmount);
+        UsdPlus($._usdplus).burn(request.usdplusAmount);
         request.paymentToken.safeTransferFrom(msg.sender, request.receiver, request.paymentTokenAmount);
     }
 
@@ -246,6 +215,6 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
         emit RequestCancelled(ticket, request.receiver);
 
         // return USD+ to requester
-        $._usdplus.safeTransfer(request.owner, request.usdplusAmount);
+        IERC20($._usdplus).safeTransfer(request.owner, request.usdplusAmount);
     }
 }

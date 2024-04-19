@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.23;
+pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
 import {Client} from "ccip/src/v0.8/ccip/libraries/Client.sol";

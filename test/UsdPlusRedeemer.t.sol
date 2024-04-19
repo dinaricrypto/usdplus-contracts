@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.23;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
-import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/UsdPlusRedeemer.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -31,7 +30,6 @@ contract UsdPlusRedeemerTest is Test {
 
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
-    StakedUsdPlus stakedUsdplus;
     UsdPlusRedeemer redeemer;
     ERC20Mock paymentToken;
 
@@ -50,17 +48,11 @@ contract UsdPlusRedeemerTest is Test {
                 )
             )
         );
-        StakedUsdPlus stakedusdplusImpl = new StakedUsdPlus();
-        stakedUsdplus = StakedUsdPlus(
-            address(
-                new ERC1967Proxy(address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, ADMIN)))
-            )
-        );
         UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
         redeemer = UsdPlusRedeemer(
             address(
                 new ERC1967Proxy(
-                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedUsdplus, ADMIN))
+                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), ADMIN))
                 )
             )
         );
@@ -76,8 +68,7 @@ contract UsdPlusRedeemerTest is Test {
     }
 
     function test_initialization() public {
-        assertEq(address(redeemer.stakedUsdplus()), address(stakedUsdplus));
-        assertEq(address(redeemer.usdplus()), address(usdplus));
+        assertEq(redeemer.usdplus(), address(usdplus));
         assertEq(redeemer.nextTicket(), 0);
     }
 
@@ -194,32 +185,6 @@ contract UsdPlusRedeemerTest is Test {
         emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
         vm.prank(USER);
         uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
-
-        IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
-        assertEq(request.paymentTokenAmount, redemptionEstimate);
-    }
-
-    function test_unstakeAndRequestRedeem(uint104 amount) public {
-        vm.assume(amount > 0);
-
-        vm.startPrank(USER);
-        usdplus.approve(address(stakedUsdplus), amount);
-        uint256 stakedAmount = stakedUsdplus.deposit(amount, USER);
-        vm.stopPrank();
-
-        vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
-
-        uint256 redemptionEstimate = redeemer.previewUnstakeAndRedeem(paymentToken, stakedAmount);
-        vm.assume(redemptionEstimate > 0);
-
-        vm.prank(USER);
-        stakedUsdplus.approve(address(redeemer), stakedAmount);
-
-        vm.expectEmit(true, true, true, true);
-        emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
-        vm.prank(USER);
-        uint256 ticket = redeemer.unstakeAndRequestRedeem(paymentToken, stakedAmount, USER, USER);
 
         IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
         assertEq(request.paymentTokenAmount, redemptionEstimate);

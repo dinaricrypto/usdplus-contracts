@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.23;
+pragma solidity ^0.8.22;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
-import {UsdPlus} from "./UsdPlus.sol";
-import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 
 interface IUsdPlusRedeemer {
     struct Request {
@@ -37,10 +34,7 @@ interface IUsdPlusRedeemer {
     error InvalidTicket();
 
     /// @notice USD+
-    function usdplus() external view returns (UsdPlus);
-
-    /// @notice stUSD+
-    function stakedUsdplus() external view returns (StakedUsdPlus);
+    function usdplus() external view returns (address);
 
     /// @notice Oracle for payment token
     /// @param paymentToken payment token
@@ -93,25 +87,6 @@ interface IUsdPlusRedeemer {
     /// @return ticket request ticket number
     /// @dev exchange rate fixed at time of request creation
     function requestRedeem(IERC20 paymentToken, uint256 usdplusAmount, address receiver, address owner)
-        external
-        returns (uint256 ticket);
-
-    /// @notice calculate payment token amount received for unstaking stUSD+ and burning USD+
-    /// @param paymentToken payment token
-    /// @param stakedUsdplusAmount amount of stUSD+
-    function previewUnstakeAndRedeem(IERC20 paymentToken, uint256 stakedUsdplusAmount)
-        external
-        view
-        returns (uint256 paymentTokenAmount);
-
-    /// @notice unstake stUSD+ and create a request to burn USD+ for payment
-    /// @param paymentToken payment token
-    /// @param stakedUsdplusAmount amount of stUSD+ to unstake
-    /// @param receiver recipient
-    /// @param owner stUSD+ owner
-    /// @return ticket request ticket number
-    /// @dev exchange rate fixed at time of request creation
-    function unstakeAndRequestRedeem(IERC20 paymentToken, uint256 stakedUsdplusAmount, address receiver, address owner)
         external
         returns (uint256 ticket);
 

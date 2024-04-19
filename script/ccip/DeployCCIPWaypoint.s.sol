@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.23;
+pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
 import {CCIPWaypoint} from "../../src/bridge/CCIPWaypoint.sol";
-import {UsdPlus} from "../../src/UsdPlus.sol";
-import {StakedUsdPlus} from "../../src/StakedUsdPlus.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployCCIPWaypoint is Script {
     struct DeployConfig {
         address deployer;
-        UsdPlus usdPlus;
-        StakedUsdPlus stakedUsdPlus;
+        address usdPlus;
         address ccipRouter;
     }
 
@@ -21,8 +18,7 @@ contract DeployCCIPWaypoint is Script {
 
         DeployConfig memory cfg = DeployConfig({
             deployer: vm.addr(deployerPrivateKey),
-            usdPlus: UsdPlus(vm.envAddress("USDPLUS")),
-            stakedUsdPlus: StakedUsdPlus(vm.envAddress("STAKEDUSDPLUS")),
+            usdPlus: vm.envAddress("USDPLUS"),
             ccipRouter: vm.envAddress("CCIP_ROUTER")
         });
 
@@ -36,9 +32,7 @@ contract DeployCCIPWaypoint is Script {
             address(
                 new ERC1967Proxy(
                     address(ccipWaypointImpl),
-                    abi.encodeCall(
-                        CCIPWaypoint.initialize, (cfg.usdPlus, cfg.stakedUsdPlus, cfg.ccipRouter, cfg.deployer)
-                    )
+                    abi.encodeCall(CCIPWaypoint.initialize, (cfg.usdPlus, cfg.ccipRouter, cfg.deployer))
                 )
             )
         );

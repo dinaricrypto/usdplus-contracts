@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.23;
+pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../../src/UsdPlus.sol";
-import {StakedUsdPlus} from "../../src/StakedUsdPlus.sol";
 import {TransferRestrictor} from "../../src/TransferRestrictor.sol";
 import "../../src/bridge/CCIPWaypoint.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -21,7 +20,6 @@ contract CCIPWaypointTest is Test {
         address indexed destinationChainWaypoint,
         address to,
         uint256 amount,
-        bool stake,
         uint256 fee
     );
     event Received(
@@ -29,13 +27,11 @@ contract CCIPWaypointTest is Test {
         uint64 indexed sourceChainSelector,
         address indexed sourceChainWaypoint,
         address to,
-        uint256 amount,
-        bool stake
+        uint256 amount
     );
 
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
-    StakedUsdPlus stakedUsdplus;
     CCIPWaypoint waypoint;
     ERC20Mock paymentToken;
     CCIPRouterMock router;
@@ -55,19 +51,13 @@ contract CCIPWaypointTest is Test {
                 )
             )
         );
-        StakedUsdPlus stakedusdplusImpl = new StakedUsdPlus();
-        stakedUsdplus = StakedUsdPlus(
-            address(
-                new ERC1967Proxy(address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, ADMIN)))
-            )
-        );
         router = new CCIPRouterMock();
         CCIPWaypoint waypointImpl = new CCIPWaypoint();
         waypoint = CCIPWaypoint(
             address(
                 new ERC1967Proxy(
                     address(waypointImpl),
-                    abi.encodeCall(CCIPWaypoint.initialize, (usdplus, stakedUsdplus, address(router), ADMIN))
+                    abi.encodeCall(CCIPWaypoint.initialize, (address(usdplus), address(router), ADMIN))
                 )
             )
         );
@@ -152,7 +142,7 @@ contract CCIPWaypointTest is Test {
     function test_sendUsdPlusAndReceive(uint256 amount) public {
         vm.assume(amount > 0);
 
-        uint256 fee = waypoint.getFee(uint64(block.chainid), address(waypoint), OTHER, amount, false);
+        uint256 fee = waypoint.getFee(uint64(block.chainid), address(waypoint), OTHER, amount);
         vm.deal(USER, fee);
 
         vm.prank(USER);
@@ -162,36 +152,9 @@ contract CCIPWaypointTest is Test {
         uint256 userBalanceBefore = usdplus.balanceOf(USER);
         uint256 otherBalanceBefore = usdplus.balanceOf(OTHER);
         vm.prank(USER);
-        waypoint.sendUsdPlus{value: fee}(uint64(block.chainid), OTHER, amount, false);
+        waypoint.sendUsdPlus{value: fee}(uint64(block.chainid), OTHER, amount);
         assertEq(usdplus.balanceOf(USER), userBalanceBefore - amount);
         assertEq(usdplus.balanceOf(OTHER), otherBalanceBefore + amount);
-    }
-
-    function test_sendUsdPlusAndStake(uint104 amount) public {
-        vm.assume(amount > 0);
-        // TODO: replace with maxDeposit check in waypoint
-        vm.assume(amount < type(uint104).max);
-
-        uint256 fee = waypoint.getFee(uint64(block.chainid), address(waypoint), OTHER, amount, true);
-        vm.deal(USER, fee);
-
-        vm.prank(USER);
-        usdplus.approve(address(waypoint), amount);
-
-        vm.expectRevert(CCIPWaypoint.StakingDisabled.selector);
-        vm.prank(USER);
-        waypoint.sendUsdPlus{value: fee}(uint64(block.chainid), OTHER, amount, true);
-
-        vm.prank(ADMIN);
-        waypoint.setStakingEnabled(uint64(block.chainid), true);
-
-        // user sends usdplus to other and stakes
-        uint256 userBalanceBefore = usdplus.balanceOf(USER);
-        uint256 otherBalanceBefore = stakedUsdplus.balanceOf(OTHER);
-        vm.prank(USER);
-        waypoint.sendUsdPlus{value: fee}(uint64(block.chainid), OTHER, amount, true);
-        assertEq(usdplus.balanceOf(USER), userBalanceBefore - amount);
-        assertEq(stakedUsdplus.balanceOf(OTHER), otherBalanceBefore + amount);
     }
 
     function test_rescue(uint256 amount) public {

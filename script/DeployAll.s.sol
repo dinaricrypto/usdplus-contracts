@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.23;
+pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
-import {StakedUsdPlus} from "../src/StakedUsdPlus.sol";
+import {WrappedUsdPlus} from "../src/WrappedUsdPlus.sol";
 import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
 import {UsdPlusRedeemer} from "../src/UsdPlusRedeemer.sol";
 import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
@@ -55,11 +55,12 @@ contract DeployAll is Script {
             )
         );
 
-        StakedUsdPlus stakedusdplusImpl = new StakedUsdPlus();
-        StakedUsdPlus stakedusdplus = StakedUsdPlus(
+        WrappedUsdPlus wrappedusdplusImpl = new WrappedUsdPlus();
+        WrappedUsdPlus wrappedusdplus = WrappedUsdPlus(
             address(
                 new ERC1967Proxy(
-                    address(stakedusdplusImpl), abi.encodeCall(StakedUsdPlus.initialize, (usdplus, cfg.owner))
+                    address(wrappedusdplusImpl),
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
                 )
             )
         );
@@ -71,7 +72,7 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy(
                     address(minterImpl),
-                    abi.encodeCall(UsdPlusMinter.initialize, (stakedusdplus, cfg.treasury, cfg.owner))
+                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner))
                 )
             )
         );
@@ -82,7 +83,7 @@ contract DeployAll is Script {
         UsdPlusRedeemer redeemer = UsdPlusRedeemer(
             address(
                 new ERC1967Proxy(
-                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (stakedusdplus, cfg.owner))
+                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner))
                 )
             )
         );

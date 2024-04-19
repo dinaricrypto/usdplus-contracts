@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.23;
+pragma solidity ^0.8.22;
 
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
@@ -15,6 +15,8 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
 
     event TreasurySet(address indexed treasury);
     event TransferRestrictorSet(ITransferRestrictor indexed transferRestrictor);
+    /// @dev Emitted during rebase
+    event BalancePerShareSet(uint256 balancePerShare);
 
     /// ------------------ Storage ------------------
 
@@ -23,6 +25,8 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
         address _treasury;
         // transfer restrictor
         ITransferRestrictor _transferRestrictor;
+        // Balance per share in ethers decimals
+        uint128 _balancePerShare;
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.UsdPlus")) - 1)) & ~bytes32(uint256(0xff))
@@ -58,12 +62,12 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
     /// ------------------ Getters ------------------
 
     /// @notice Token name
-    function name() public view override returns (string memory) {
+    function name() public pure override returns (string memory) {
         return "USD+";
     }
 
     /// @notice Token symbol
-    function symbol() public view override returns (string memory) {
+    function symbol() public pure override returns (string memory) {
         return "USD+";
     }
 
@@ -98,6 +102,14 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
             return _transferRestrictor.isBlacklisted(account);
         }
         return false;
+    }
+
+    function balancePerShare() public view override returns (uint128) {
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        uint128 _balancePerShare = $._balancePerShare;
+        // Override with default if not set due to upgrade
+        if (_balancePerShare == 0) return _INITIAL_BALANCE_PER_SHARE;
+        return _balancePerShare;
     }
 
     // ------------------ Admin ------------------
@@ -148,11 +160,25 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
         _burn(from, value);
     }
 
+    // ------------------ Rebasing ------------------
+
+    function rebaseAdd(uint128 value) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        uint128 _balancePerShare = $._balancePerShare + value;
+        $._balancePerShare = _balancePerShare;
+        emit BalancePerShareSet(_balancePerShare);
+    }
+
+    function rebaseMul(uint128 factor) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusStorage storage $ = _getUsdPlusStorage();
+        uint128 _balancePerShare = $._balancePerShare * factor;
+        $._balancePerShare = _balancePerShare;
+        emit BalancePerShareSet(_balancePerShare);
+    }
+
     // ------------------ Transfer Restriction ------------------
 
-    function _update(address from, address to, uint256 value) internal virtual override {
+    function _beforeTokenTransfer(address from, address to, uint256) internal view override {
         checkTransferRestricted(from, to);
-
-        super._update(from, to, value);
     }
 }
