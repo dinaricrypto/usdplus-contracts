@@ -2,18 +2,15 @@
 pragma solidity 0.8.23;
 
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {
-    ERC20PermitUpgradeable,
-    ERC20Upgradeable
-} from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
-import {ITransferRestrictor} from "./ITransferRestrictor.sol";
+import {ERC20Rebasing} from "sbt-contracts/src/ERC20Rebasing.sol";
 import {ERC7281Min, IERC7281Min} from "./ERC7281/ERC7281Min.sol";
+import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
-contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, AccessControlDefaultAdminRulesUpgradeable {
+contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDefaultAdminRulesUpgradeable {
     /// ------------------ Types ------------------
 
     event TreasurySet(address indexed treasury);
@@ -44,8 +41,6 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, AccessC
         public
         initializer
     {
-        __ERC20_init("USD+", "USD+");
-        __ERC20Permit_init("USD+");
         __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
 
         UsdPlusStorage storage $ = _getUsdPlusStorage();
@@ -61,6 +56,16 @@ contract UsdPlus is UUPSUpgradeable, ERC20PermitUpgradeable, ERC7281Min, AccessC
     function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// ------------------ Getters ------------------
+
+    /// @notice Token name
+    function name() public view override returns (string memory) {
+        return "USD+";
+    }
+
+    /// @notice Token symbol
+    function symbol() public view override returns (string memory) {
+        return "USD+";
+    }
 
     /// @notice treasury for digital assets backing USD+
     function treasury() public view returns (address) {
