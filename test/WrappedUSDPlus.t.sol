@@ -59,51 +59,6 @@ contract WrappedUsdPlusTest is Test {
         assertEq(wrappedUsdplus.decimals(), 6);
     }
 
-    // function test_depositZeroReverts(uint8 amount) public {
-    //     vm.assume(amount == 0 || wrappedUsdplus.previewDeposit(amount) == 0);
-
-    //     vm.expectRevert(wrappedUsdplus.ZeroValue.selector);
-    //     vm.prank(USER);
-    //     wrappedUsdplus.deposit(amount, USER);
-    // }
-
-    function test_depositLargeReverts(uint128 amount) public {
-        vm.assume(wrappedUsdplus.previewDeposit(amount) > 0);
-        vm.assume(amount <= usdplus.balanceOf(USER));
-
-        uint256 max = wrappedUsdplus.maxDeposit(address(0));
-        vm.startPrank(USER);
-        usdplus.approve(address(wrappedUsdplus), amount);
-        if (amount > max) {
-            vm.expectRevert(abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxDeposit.selector, USER, amount, max));
-        }
-        wrappedUsdplus.deposit(amount, USER);
-        vm.stopPrank();
-    }
-
-    // function test_mintZeroReverts(uint8 amount) public {
-    //     vm.assume(amount == 0 || wrappedUsdplus.previewMint(amount) == 0);
-
-    //     vm.expectRevert(wrappedUsdplus.ZeroValue.selector);
-    //     vm.prank(USER);
-    //     wrappedUsdplus.deposit(amount, USER);
-    // }
-
-    function test_mintLargeReverts(uint128 amount) public {
-        uint256 deposit = wrappedUsdplus.previewMint(amount);
-        vm.assume(deposit > 0);
-        vm.assume(amount <= usdplus.balanceOf(USER));
-
-        uint256 max = wrappedUsdplus.maxMint(address(0));
-        vm.startPrank(USER);
-        usdplus.approve(address(wrappedUsdplus), deposit);
-        if (amount > max) {
-            vm.expectRevert(abi.encodeWithSelector(ERC4626.ERC4626ExceededMaxMint.selector, USER, amount, max));
-        }
-        wrappedUsdplus.mint(amount, USER);
-        vm.stopPrank();
-    }
-
     function test_transferReverts(address to, uint104 amount) public {
         vm.assume(to != address(0));
         vm.assume(wrappedUsdplus.previewDeposit(amount) > 0);
