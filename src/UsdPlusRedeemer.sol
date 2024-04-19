@@ -162,6 +162,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
         emit RequestCreated(ticket, receiver, paymentToken, paymentTokenAmount, usdplusAmount);
 
         if (owner != address(this)) {
+            // slither-disable-next-line arbitrary-send-erc20
             IERC20($._usdplus).safeTransferFrom(owner, address(this), usdplusAmount);
         }
     }
