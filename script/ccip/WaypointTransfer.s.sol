@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.23;
+pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
 import {CCIPWaypoint} from "../../src/bridge/CCIPWaypoint.sol";
@@ -37,11 +37,11 @@ contract WaypointTransfer is Script {
         // cfg.usdPlus.approve(address(cfg.ccipWaypoint), amount);
 
         // get fee
-        uint256 fee = cfg.ccipWaypoint.getFee(cfg.dest, cfg.receiver, cfg.deployer, amount, false);
+        uint256 fee = cfg.ccipWaypoint.getFee(cfg.dest, cfg.receiver, cfg.deployer, amount);
         console.log("fee: %d", fee);
 
         // send to bridge
-        bytes32 messageId = cfg.ccipWaypoint.sendUsdPlus{value: fee}(cfg.dest, cfg.deployer, amount, false);
+        bytes32 messageId = cfg.ccipWaypoint.sendUsdPlus{value: fee}(cfg.dest, cfg.deployer, amount);
 
         console.log("messageId");
         console.logBytes32(messageId);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.23;
+pragma solidity ^0.8.23;
 
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
@@ -10,14 +10,12 @@ import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/Agg
 
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
-import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 
 /// @notice USD+ minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
 contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeable {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
-    using SafeERC20 for UsdPlus;
 
     error ZeroAddress();
     error ZeroAmount();
@@ -26,9 +24,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
 
     struct UsdPlusMinterStorage {
         // USD+
-        UsdPlus _usdplus;
-        // stUSD+
-        StakedUsdPlus _stakedUsdplus;
+        address _usdplus;
         // receiver of payment tokens
         address _paymentRecipient;
         // is this payment token accepted?
@@ -47,17 +43,13 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
 
     /// ------------------ Initialization ------------------
 
-    function initialize(StakedUsdPlus initialStakedUsdplus, address initialPaymentRecipient, address initialOwner)
-        public
-        initializer
-    {
+    function initialize(address usdPlus, address initialPaymentRecipient, address initialOwner) public initializer {
         if (initialPaymentRecipient == address(0)) revert ZeroAddress();
 
         __Ownable_init(initialOwner);
 
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        $._usdplus = UsdPlus(initialStakedUsdplus.asset());
-        $._stakedUsdplus = initialStakedUsdplus;
+        $._usdplus = usdPlus;
         $._paymentRecipient = initialPaymentRecipient;
     }
 
@@ -71,15 +63,9 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
     /// ------------------ Getters ------------------
 
     /// @inheritdoc IUsdPlusMinter
-    function usdplus() external view returns (UsdPlus) {
+    function usdplus() external view returns (address) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._usdplus;
-    }
-
-    /// @inheritdoc IUsdPlusMinter
-    function stakedUsdplus() external view returns (StakedUsdPlus) {
-        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        return $._stakedUsdplus;
     }
 
     /// @inheritdoc IUsdPlusMinter
@@ -156,25 +142,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
 
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         paymentToken.safeTransferFrom(msg.sender, $._paymentRecipient, paymentTokenAmount);
-        $._usdplus.mint(receiver, usdPlusAmount);
-    }
-
-    /// @inheritdoc IUsdPlusMinter
-    function previewDepositAndStake(IERC20 paymentToken, uint256 paymentTokenAmount) external view returns (uint256) {
-        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        return $._stakedUsdplus.previewDeposit(previewDeposit(paymentToken, paymentTokenAmount));
-    }
-
-    /// @inheritdoc IUsdPlusMinter
-    function depositAndStake(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver)
-        external
-        returns (uint256)
-    {
-        uint256 _issueAmount = deposit(paymentToken, paymentTokenAmount, address(this));
-        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        StakedUsdPlus _stakedUsdplus = $._stakedUsdplus;
-        $._usdplus.safeIncreaseAllowance(address(_stakedUsdplus), _issueAmount);
-        return _stakedUsdplus.deposit(_issueAmount, receiver);
+        UsdPlus($._usdplus).mint(receiver, usdPlusAmount);
     }
 
     /// @inheritdoc IUsdPlusMinter
@@ -195,14 +163,5 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
         _issue(paymentToken, paymentTokenAmount, usdPlusAmount, receiver);
-    }
-
-    /// @inheritdoc IUsdPlusMinter
-    function mintAndStake(IERC20 paymentToken, uint256 usdPlusAmount, address receiver) external returns (uint256) {
-        mint(paymentToken, usdPlusAmount, address(this));
-        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        StakedUsdPlus _stakedUsdplus = $._stakedUsdplus;
-        $._usdplus.safeIncreaseAllowance(address(_stakedUsdplus), usdPlusAmount);
-        return _stakedUsdplus.deposit(usdPlusAmount, receiver);
     }
 }

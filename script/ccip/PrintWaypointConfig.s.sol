@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.23;
+pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
 import {CCIPWaypoint} from "../../src/bridge/CCIPWaypoint.sol";
@@ -41,9 +41,6 @@ contract PrintWaypointConfig is Script {
 
             // approved receiver
             console.log("approved receiver: %s", ccipWaypoint.getApprovedReceiver(chains[i].id));
-
-            // is staking enabled
-            console.log("is staking enabled: %s", ccipWaypoint.isStakingEnabled(chains[i].id));
 
             console.log("");
         }

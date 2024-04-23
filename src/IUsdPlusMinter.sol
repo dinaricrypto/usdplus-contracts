@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.23;
+pragma solidity ^0.8.23;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
-import {UsdPlus} from "./UsdPlus.sol";
-import {StakedUsdPlus} from "./StakedUsdPlus.sol";
 
 interface IUsdPlusMinter {
     event PaymentRecipientSet(address indexed paymentRecipient);
@@ -17,10 +14,7 @@ interface IUsdPlusMinter {
     error PaymentTokenNotAccepted();
 
     /// @notice USD+
-    function usdplus() external view returns (UsdPlus);
-
-    /// @notice stUSD+
-    function stakedUsdplus() external view returns (StakedUsdPlus);
+    function usdplus() external view returns (address);
 
     /// @notice receiver of payment tokens
     function paymentRecipient() external view returns (address);
@@ -51,23 +45,6 @@ interface IUsdPlusMinter {
         external
         returns (uint256 usdPlusAmount);
 
-    /// @notice calculate stUSD+ amount to mint for payment
-    /// @param paymentToken payment token
-    /// @param paymentTokenAmount amount of payment token
-    function previewDepositAndStake(IERC20 paymentToken, uint256 paymentTokenAmount)
-        external
-        view
-        returns (uint256 stakedUsdPlusAmount);
-
-    /// @notice mint USD+ for payment and deposit in stUSD+
-    /// @param paymentToken payment token
-    /// @param paymentTokenAmount amount of payment token to spend
-    /// @param receiver recipient
-    /// @return stakedUsdPlusAmount amount of stUSD+ minted
-    function depositAndStake(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver)
-        external
-        returns (uint256 stakedUsdPlusAmount);
-
     /// @notice calculate the payment token amount to spend to mint USD+
     /// @param paymentToken payment token
     /// @param usdPlusAmount amount of USD+ to mint
@@ -84,13 +61,4 @@ interface IUsdPlusMinter {
     function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver)
         external
         returns (uint256 paymentTokenAmount);
-
-    /// @notice mint USD+ for payment and deposit in stUSD+
-    /// @param paymentToken payment token
-    /// @param usdPlusAmount amount of USD+ to mint
-    /// @param receiver recipient
-    /// @return stakedUsdPlusAmount amount of stUSD+ minted
-    function mintAndStake(IERC20 paymentToken, uint256 usdPlusAmount, address receiver)
-        external
-        returns (uint256 stakedUsdPlusAmount);
 }

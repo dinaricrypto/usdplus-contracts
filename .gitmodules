@@ -13,3 +13,6 @@
 [submodule "lib/ccip"]
 	path = lib/ccip
 	url = https://github.com/smartcontractkit/ccip
+[submodule "lib/sbt-contracts"]
+	path = lib/sbt-contracts
+	url = https://github.com/dinaricrypto/sbt-contracts

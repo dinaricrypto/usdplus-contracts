@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.8.23;
+pragma solidity ^0.8.23;
 
 import {
     UUPSUpgradeable,
@@ -13,8 +13,6 @@ import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/Safe
 import {IRouterClient} from "ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {Client} from "ccip/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "./CCIPReceiver.sol";
-import {UsdPlus} from "../UsdPlus.sol";
-import {StakedUsdPlus} from "../StakedUsdPlus.sol";
 
 /// @notice USD+ mint/burn bridge using CCIP
 /// Send and receive USD+ from other chains using CCIP
@@ -25,13 +23,11 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     // TODO: Migrate ccip dependency to official release. Needs fix to forge install (https://github.com/foundry-rs/foundry/issues/5996)
     using Address for address;
     using SafeERC20 for IERC20;
-    using SafeERC20 for UsdPlus;
 
     /// ------------------ Types ------------------
 
     struct BridgeParams {
         address to;
-        bool stake;
     }
 
     error InvalidTransfer();
@@ -40,7 +36,6 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     error InsufficientFunds(uint256 value, uint256 fee);
     error AmountZero();
     error AddressZero();
-    error StakingDisabled();
 
     event ApprovedSenderSet(uint64 indexed sourceChainSelector, address indexed sourceChainWaypoint);
     event ApprovedReceiverSet(uint64 indexed destinationChainSelector, address indexed destinationChainWaypoint);
@@ -50,7 +45,6 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         address indexed destinationChainWaypoint,
         address to,
         uint256 amount,
-        bool stake,
         uint256 fee
     );
     event Received(
@@ -58,8 +52,7 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         uint64 indexed sourceChainSelector,
         address indexed sourceChainWaypoint,
         address to,
-        uint256 amount,
-        bool stake
+        uint256 amount
     );
 
     /// ------------------ Storage ------------------
@@ -69,9 +62,7 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         mapping(uint64 => address) _approvedSender;
         // destinationChainSelector => destinationChainWaypoint
         mapping(uint64 => address) _approvedReceiver;
-        UsdPlus _usdplus;
-        StakedUsdPlus _stakedUsdPlus;
-        mapping(uint64 => bool) _stakingEnabled;
+        address _usdplus;
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.CCIPWaypoint")) - 1)) & ~bytes32(uint256(0xff))
@@ -86,17 +77,13 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     /// ------------------ Initialization ------------------
 
-    function initialize(UsdPlus usdPlus, StakedUsdPlus stakedUsdPlus, address router, address initialOwner)
-        public
-        initializer
-    {
+    function initialize(address usdPlus, address router, address initialOwner) public initializer {
         __CCIPReceiver_init(router);
         __Ownable_init(initialOwner);
         __Pausable_init();
 
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         $._usdplus = usdPlus;
-        $._stakedUsdPlus = stakedUsdPlus;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -118,20 +105,13 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         return $._approvedReceiver[destinationChainSelector];
     }
 
-    function isStakingEnabled(uint64 destinationChainSelector) external view returns (bool) {
-        CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
-        return $._stakingEnabled[destinationChainSelector];
-    }
-
-    function getFee(
-        uint64 destinationChainSelector,
-        address destinationChainWaypoint,
-        address to,
-        uint256 amount,
-        bool stake
-    ) public view returns (uint256) {
+    function getFee(uint64 destinationChainSelector, address destinationChainWaypoint, address to, uint256 amount)
+        public
+        view
+        returns (uint256)
+    {
         return IRouterClient(getRouter()).getFee(
-            destinationChainSelector, _createCCIPMessage(destinationChainWaypoint, to, amount, stake)
+            destinationChainSelector, _createCCIPMessage(destinationChainWaypoint, to, amount)
         );
     }
 
@@ -156,11 +136,6 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         emit ApprovedReceiverSet(destinationChainSelector, destinationChainWaypoint);
     }
 
-    function setStakingEnabled(uint64 destinationChainSelector, bool enabled) external onlyOwner {
-        CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
-        $._stakingEnabled[destinationChainSelector] = enabled;
-    }
-
     function pause() external onlyOwner {
         _pause();
     }
@@ -174,8 +149,8 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
     function _ccipReceive(Client.Any2EVMMessage calldata message) internal override {
         if (message.destTokenAmounts.length != 1) revert InvalidTransfer();
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
-        UsdPlus usdPlus = $._usdplus;
-        if (message.destTokenAmounts[0].token != address(usdPlus)) revert InvalidTransfer();
+        address usdPlus = $._usdplus;
+        if (message.destTokenAmounts[0].token != usdPlus) revert InvalidTransfer();
         address sender = abi.decode(message.sender, (address));
         if (sender != $._approvedSender[message.sourceChainSelector]) {
             revert InvalidSender(message.sourceChainSelector, sender);
@@ -183,18 +158,11 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
         BridgeParams memory params = abi.decode(message.data, (BridgeParams));
         uint256 amount = message.destTokenAmounts[0].amount;
-        emit Received(message.messageId, message.sourceChainSelector, sender, params.to, amount, params.stake);
-        if (params.stake) {
-            StakedUsdPlus stakedUsdPlus = $._stakedUsdPlus;
-            usdPlus.safeIncreaseAllowance(address(stakedUsdPlus), amount);
-            // slither-disable-next-line unused-return
-            stakedUsdPlus.deposit(amount, params.to);
-        } else {
-            usdPlus.safeTransfer(params.to, amount);
-        }
+        emit Received(message.messageId, message.sourceChainSelector, sender, params.to, amount);
+        IERC20(usdPlus).safeTransfer(params.to, amount);
     }
 
-    function _createCCIPMessage(address destinationChainWaypoint, address to, uint256 amount, bool stake)
+    function _createCCIPMessage(address destinationChainWaypoint, address to, uint256 amount)
         internal
         view
         returns (Client.EVM2AnyMessage memory)
@@ -205,14 +173,14 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
         return Client.EVM2AnyMessage({
             receiver: abi.encode(destinationChainWaypoint),
-            data: abi.encode(BridgeParams({to: to, stake: stake})),
+            data: abi.encode(BridgeParams({to: to})),
             tokenAmounts: tokenAmounts,
             feeToken: address(0), // ETH will be used for fees
             extraArgs: bytes("")
         });
     }
 
-    function sendUsdPlus(uint64 destinationChainSelector, address to, uint256 amount, bool stake)
+    function sendUsdPlus(uint64 destinationChainSelector, address to, uint256 amount)
         external
         payable
         whenNotPaused
@@ -223,10 +191,9 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         address destinationChainWaypoint = $._approvedReceiver[destinationChainSelector];
         if (destinationChainWaypoint == address(0)) revert InvalidReceiver(destinationChainSelector);
-        if (stake && !$._stakingEnabled[destinationChainSelector]) revert StakingDisabled();
 
         // compile ccip message
-        Client.EVM2AnyMessage memory message = _createCCIPMessage(destinationChainWaypoint, to, amount, stake);
+        Client.EVM2AnyMessage memory message = _createCCIPMessage(destinationChainWaypoint, to, amount);
 
         // calculate and check fee
         address router = getRouter();
@@ -243,7 +210,7 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
         messageId = IRouterClient(getRouter()).ccipSend{value: msg.value}(destinationChainSelector, message);
 
         // slither-disable-next-line reentrancy-events
-        emit Sent(messageId, destinationChainSelector, destinationChainWaypoint, to, amount, stake, fee);
+        emit Sent(messageId, destinationChainSelector, destinationChainWaypoint, to, amount, fee);
     }
 
     /// ------------------ Rescue ------------------
