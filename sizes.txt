@@ -2,13 +2,13 @@ No files changed, compilation skipped
 | Contract           | Size (B) | Margin (B) |
 |--------------------|----------|------------|
 | Address            |       58 |     24,518 |
-| CCIPRouterMock     |    2,708 |     21,868 |
-| CCIPWaypoint       |    6,697 |     17,879 |
-| Client             |      123 |     24,453 |
+| CCIPRouterMock     |    3,564 |     21,012 |
+| CCIPWaypoint       |    9,679 |     14,897 |
+| Client             |      178 |     24,398 |
 | ECDSA              |       58 |     24,518 |
-| ERC1967Proxy       |      133 |     24,443 |
+| ERC1967Proxy       |      144 |     24,432 |
 | ERC1967Utils       |       58 |     24,518 |
-| ERC20Mock          |    5,249 |     19,327 |
+| ERC20Mock          |    7,246 |     17,330 |
 | Math               |       58 |     24,518 |
 | MessageHashUtils   |       58 |     24,518 |
 | NumberUtils        |       58 |     24,518 |
@@ -18,9 +18,9 @@ No files changed, compilation skipped
 | SignedMath         |       58 |     24,518 |
 | StorageSlot        |       58 |     24,518 |
 | Strings            |       58 |     24,518 |
-| TransferRestrictor |    3,871 |     20,705 |
-| UsdPlus            |   11,392 |     13,184 |
-| UsdPlusMinter      |    4,670 |     19,906 |
-| UsdPlusRedeemer    |    8,674 |     15,902 |
-| WrappedUsdPlus     |   10,946 |     13,630 |
+| TransferRestrictor |    5,677 |     18,899 |
+| UsdPlus            |   16,901 |      7,675 |
+| UsdPlusMinter      |    6,981 |     17,595 |
+| UsdPlusRedeemer    |   12,821 |     11,755 |
+| WrappedUsdPlus     |   15,893 |      8,683 |
 
