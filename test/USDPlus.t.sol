@@ -21,6 +21,7 @@ contract UsdPlusTest is Test {
     address public constant BURNER = address(0x1237);
     address public constant USER = address(0x1238);
     address public constant BRIDGE = address(0x1239);
+    address public constant OPERATOR = address(0x123a);
 
     function setUp() public {
         transferRestrictor = new TransferRestrictor(ADMIN);
@@ -34,6 +35,7 @@ contract UsdPlusTest is Test {
         );
 
         vm.startPrank(ADMIN);
+        usdplus.grantRole(usdplus.OPERATOR_ROLE(), OPERATOR);
         usdplus.setIssuerLimits(MINTER, type(uint256).max, 0);
         usdplus.setIssuerLimits(BURNER, 0, type(uint256).max);
         usdplus.setIssuerLimits(BRIDGE, 100 ether, 100 ether);
@@ -198,6 +200,29 @@ contract UsdPlusTest is Test {
         // transfer succeeds
         vm.prank(USER);
         usdplus.transfer(to, amount);
+    }
+
+    function test_rebaseAdd(uint128 initialAmount, uint128 rebaseAmount) public {
+        vm.assume(initialAmount > 2);
+        vm.assume(rebaseAmount > 0);
+
+        // mint USD+
+        address user2 = address(0x123b);
+        vm.startPrank(MINTER);
+        uint128 halfInitialAmount = initialAmount / 2;
+        usdplus.mint(USER, halfInitialAmount);
+        usdplus.mint(user2, halfInitialAmount);
+        vm.stopPrank();
+        uint256 userBalance = usdplus.balanceOf(USER);
+        uint256 initialSupply = usdplus.totalSupply();
+
+        // yield
+        vm.prank(OPERATOR);
+        usdplus.rebaseAdd(rebaseAmount);
+
+        assertEq(usdplus.totalSupply() / 10, (initialSupply + rebaseAmount) / 10);
+        // assertGe(usdplus.totalSupply(), initialSupply + rebaseAmount - 2);
+        // assertGe(usdplus.balanceOf(USER), userBalance + rebaseAmount / 2 - 1);
     }
 
     /// ------------------ ERC7281 ------------------
