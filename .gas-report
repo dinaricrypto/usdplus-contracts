@@ -3,7 +3,7 @@
 | Deployment Cost                                                                   | Deployment Size |       |        |       |         |
 | 794363                                                                            | 3978            |       |        |       |         |
 | Function Name                                                                     | min             | avg   | median | max   | # calls |
-| approve                                                                           | 45894           | 45976 | 45906  | 46266 | 768     |
+| approve                                                                           | 45894           | 46004 | 45942  | 46266 | 768     |
 | balanceOf                                                                         | 533             | 533   | 533    | 533   | 256     |
 | mint                                                                              | 68205           | 68205 | 68205  | 68205 | 33      |
 | lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy contract |                 |        |        |        |         |
@@ -13,53 +13,56 @@
 | Function Name                                                                             | min             | avg    | median | max    | # calls |
 | DEFAULT_ADMIN_ROLE                                                                        | 5502            | 5660   | 5739   | 5739   | 768     |
 | FULFILLER_ROLE                                                                            | 738             | 738    | 738    | 738    | 526     |
+| OPERATOR_ROLE                                                                             | 1635            | 1635   | 1635   | 1635   | 9       |
 | allowance                                                                                 | 3891            | 3891   | 3891   | 3891   | 256     |
-| approve                                                                                   | 30517           | 50610  | 50657  | 51017  | 2562    |
-| balanceOf                                                                                 | 1042            | 3225   | 1547   | 10047  | 3472    |
-| burn(address,uint256)                                                                     | 35838           | 42364  | 43913  | 57142  | 1280    |
-| burn(uint256)                                                                             | 35200           | 39409  | 39424  | 43906  | 512     |
-| burningCurrentLimitOf                                                                     | 1481            | 2886   | 1481   | 7905   | 1308    |
-| burningMaxLimitOf                                                                         | 1608            | 1999   | 1608   | 3608   | 1308    |
-| cancel                                                                                    | 28614           | 47015  | 39431  | 73080  | 768     |
+| approve                                                                                   | 30517           | 50675  | 50657  | 51017  | 2562    |
+| balanceOf                                                                                 | 1042            | 2919   | 1547   | 10047  | 4241    |
+| burn(address,uint256)                                                                     | 35841           | 42376  | 43955  | 57175  | 1280    |
+| burn(uint256)                                                                             | 35203           | 39394  | 39441  | 43906  | 512     |
+| burningCurrentLimitOf                                                                     | 1481            | 2895   | 1481   | 7908   | 1310    |
+| burningMaxLimitOf                                                                         | 1608            | 1998   | 1608   | 3608   | 1310    |
+| cancel                                                                                    | 28614           | 47026  | 39479  | 73080  | 768     |
 | checkTransferRestricted                                                                   | 4664            | 10368  | 7872   | 15583  | 1026    |
 | decimals                                                                                  | 5211            | 5886   | 5211   | 7236   | 3       |
-| deposit(address,uint256,address)                                                          | 27207           | 72006  | 29518  | 160023 | 769     |
-| deposit(uint256,address)                                                                  | 100764          | 101090 | 100794 | 135240 | 258     |
-| fulfill                                                                                   | 28790           | 62366  | 57771  | 105571 | 1024    |
+| deposit(address,uint256,address)                                                          | 27207           | 72034  | 29554  | 160023 | 769     |
+| deposit(uint256,address)                                                                  | 100794          | 101117 | 100830 | 135270 | 258     |
+| fulfill                                                                                   | 28790           | 62375  | 57772  | 105571 | 1024    |
 | getApprovedReceiver                                                                       | 858             | 858    | 858    | 858    | 256     |
 | getApprovedSender                                                                         | 821             | 821    | 821    | 821    | 256     |
 | getFee                                                                                    | 18855           | 18855  | 18855  | 18855  | 256     |
 | getRouter                                                                                 | 889             | 914    | 889    | 7389   | 257     |
-| grantRole                                                                                 | 55757           | 55757  | 55757  | 55757  | 14      |
-| isBlacklisted                                                                             | 1895            | 3376   | 3169   | 5065   | 2304    |
-| mint(address,uint256)                                                                     | 35390           | 81182  | 87846  | 97438  | 1959    |
-| mint(address,uint256,address)                                                             | 26826           | 71655  | 29140  | 159727 | 769     |
-| mintingCurrentLimitOf                                                                     | 1305            | 5219   | 7723   | 7723   | 1308    |
-| mintingMaxLimitOf                                                                         | 818             | 1992   | 2818   | 2818   | 1308    |
+| grantRole                                                                                 | 55757           | 55808  | 55757  | 55888  | 23      |
+| isBlacklisted                                                                             | 1917            | 3398   | 3191   | 5087   | 2304    |
+| mint(address,uint256)                                                                     | 35393           | 81154  | 87876  | 97483  | 2472    |
+| mint(address,uint256,address)                                                             | 26826           | 71693  | 29176  | 159759 | 769     |
+| mintingCurrentLimitOf                                                                     | 1305            | 5226   | 7726   | 7726   | 1310    |
+| mintingMaxLimitOf                                                                         | 818             | 1990   | 2818   | 2818   | 1310    |
 | nextTicket                                                                                | 3174            | 3174   | 3174   | 3174   | 1       |
 | pause                                                                                     | 28420           | 40049  | 40049  | 51679  | 2       |
 | paused                                                                                    | 741             | 741    | 741    | 741    | 2       |
-| paymentRecipient                                                                          | 629             | 629    | 629    | 629    | 249     |
+| paymentRecipient                                                                          | 629             | 629    | 629    | 629    | 255     |
 | paymentTokenOracle                                                                        | 950             | 1071   | 1071   | 1193   | 512     |
-| previewDeposit(address,uint256)                                                           | 7551            | 16855  | 21499  | 21750  | 768     |
+| previewDeposit(address,uint256)                                                           | 7551            | 16862  | 21499  | 21750  | 768     |
 | previewDeposit(uint256)                                                                   | 23141           | 23141  | 23141  | 23141  | 256     |
-| previewMint                                                                               | 21647           | 21655  | 21647  | 21898  | 256     |
-| previewRedeem                                                                             | 7904            | 19068  | 21849  | 22100  | 1280    |
-| previewWithdraw                                                                           | 7860            | 17222  | 21893  | 22144  | 768     |
-| requestRedeem                                                                             | 27220           | 185275 | 238016 | 238884 | 1025    |
-| requestWithdraw                                                                           | 27158           | 132512 | 27542  | 238909 | 513     |
+| previewMint                                                                               | 21679           | 21697  | 21679  | 21930  | 256     |
+| previewRedeem                                                                             | 7904            | 19078  | 21849  | 22100  | 1280    |
+| previewWithdraw                                                                           | 7860            | 17251  | 21925  | 22176  | 768     |
+| rebaseAdd                                                                                 | 34855           | 54562  | 54611  | 54755  | 256     |
+| requestRedeem                                                                             | 27220           | 185334 | 238046 | 238884 | 1025    |
+| requestWithdraw                                                                           | 27158           | 132571 | 27542  | 238941 | 513     |
 | requests                                                                                  | 1947            | 1947   | 1947   | 1947   | 512     |
-| rescue                                                                                    | 28942           | 48081  | 29591  | 75493  | 1024    |
-| sendUsdPlus                                                                               | 183256          | 184816 | 184644 | 185754 | 256     |
-| setApprovedReceiver                                                                       | 29010           | 41199  | 52711  | 53011  | 521     |
-| setApprovedSender                                                                         | 28636           | 40814  | 52316  | 52616  | 521     |
-| setIssuerLimits                                                                           | 64609           | 82403  | 87514  | 187085 | 466     |
-| setPaymentRecipient                                                                       | 28433           | 31624  | 28661  | 34835  | 505     |
-| setPaymentTokenOracle                                                                     | 28669           | 49112  | 52855  | 52855  | 3328    |
-| setRouter                                                                                 | 28759           | 31964  | 28987  | 35124  | 513     |
-| setTransferRestrictor                                                                     | 28833           | 31066  | 30138  | 35178  | 1024    |
-| setTreasury                                                                               | 29627           | 32785  | 30396  | 35966  | 512     |
-| transfer                                                                                  | 34904           | 50512  | 47755  | 69420  | 1796    |
+| rescue                                                                                    | 28942           | 48472  | 29591  | 75493  | 1024    |
+| sendUsdPlus                                                                               | 183256          | 184947 | 184797 | 185754 | 256     |
+| setApprovedReceiver                                                                       | 29010           | 41088  | 52699  | 53011  | 521     |
+| setApprovedSender                                                                         | 28636           | 40703  | 52304  | 52616  | 521     |
+| setIssuerLimits                                                                           | 60370           | 82619  | 87517  | 187091 | 470     |
+| setPaymentRecipient                                                                       | 28433           | 31660  | 28661  | 34835  | 511     |
+| setPaymentTokenOracle                                                                     | 28657           | 49107  | 52855  | 52855  | 3328    |
+| setRouter                                                                                 | 28759           | 31970  | 28987  | 35124  | 513     |
+| setTransferRestrictor                                                                     | 28833           | 31081  | 30138  | 35178  | 1024    |
+| setTreasury                                                                               | 29627           | 32816  | 30396  | 35966  | 512     |
+| totalSupply                                                                               | 1005            | 1007   | 1005   | 1011   | 768     |
+| transfer                                                                                  | 34904           | 50715  | 47767  | 69420  | 1796    |
 | transferRestrictor                                                                        | 1571            | 1571   | 1571   | 1571   | 256     |
 | treasury                                                                                  | 1043            | 1043   | 1043   | 1043   | 256     |
 | unpause                                                                                   | 28244           | 28860  | 28860  | 29476  | 2       |
@@ -70,50 +73,54 @@
 | 1354284                                                | 6259            |       |        |       |         |
 | Function Name                                          | min             | avg   | median | max   | # calls |
 | isBlacklisted                                          | 892             | 892   | 892    | 892   | 1024    |
-| requireNotRestricted                                   | 861             | 4387  | 4861   | 4874  | 7741    |
-| restrict                                               | 47206           | 47286 | 47218  | 47434 | 1024    |
+| requireNotRestricted                                   | 861             | 4416  | 4861   | 4874  | 8255    |
+| restrict                                               | 47206           | 47288 | 47218  | 47434 | 1024    |
 | unrestrict                                             | 25136           | 25136 | 25136  | 25136 | 512     |
 | src/UsdPlus.sol:UsdPlus contract |                 |        |        |        |         |
 |----------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                  | Deployment Size |        |        |        |         |
-| 3711398                          | 17107           |        |        |        |         |
+| 3743063                          | 17252           |        |        |        |         |
 | Function Name                    | min             | avg    | median | max    | # calls |
 | DEFAULT_ADMIN_ROLE               | 941             | 941    | 941    | 941    | 512     |
+| OPERATOR_ROLE                    | 1337            | 1337   | 1337   | 1337   | 9       |
 | allowance                        | 3587            | 3587   | 3587   | 3587   | 256     |
-| approve                          | 4369            | 24014  | 24269  | 24269  | 2818    |
-| balanceOf                        | 1246            | 2378   | 1246   | 5323   | 3216    |
-| burn(address,uint256)            | 9677            | 20535  | 14686  | 42197  | 1536    |
-| burn(uint256)                    | 9194            | 18058  | 18034  | 27132  | 1024    |
-| burningCurrentLimitOf            | 1180            | 2585   | 1180   | 7604   | 1308    |
-| burningMaxLimitOf                | 1307            | 1698   | 1307   | 3307   | 1308    |
+| approve                          | 4369            | 24064  | 24269  | 24269  | 2818    |
+| balanceOf                        | 1240            | 2159   | 1246   | 5323   | 3985    |
+| burn(address,uint256)            | 9680            | 20646  | 14686  | 42230  | 1536    |
+| burn(uint256)                    | 9197            | 18068  | 18051  | 27132  | 1024    |
+| burningCurrentLimitOf            | 1180            | 2594   | 1180   | 7607   | 1310    |
+| burningMaxLimitOf                | 1307            | 1697   | 1307   | 3307   | 1310    |
 | checkTransferRestricted          | 3071            | 6697   | 4363   | 10778  | 1026    |
 | decimals                         | 413             | 413    | 413    | 413    | 2       |
-| initialize                       | 118091          | 118091 | 118091 | 118091 | 43      |
-| isBlacklisted                    | 1594            | 2443   | 2868   | 2868   | 1536    |
-| mint                             | 9229            | 53590  | 61665  | 71197  | 2727    |
-| mintingCurrentLimitOf            | 1004            | 4918   | 7422   | 7422   | 1308    |
-| mintingMaxLimitOf                | 517             | 1691   | 2517   | 2517   | 1308    |
-| setIssuerLimits                  | 38162           | 55667  | 60635  | 160638 | 466     |
+| grantRole                        | 29359           | 29359  | 29359  | 29359  | 9       |
+| initialize                       | 118091          | 118091 | 118091 | 118091 | 44      |
+| isBlacklisted                    | 1616            | 2465   | 2890   | 2890   | 1536    |
+| mint                             | 9232            | 53799  | 61695  | 71230  | 3240    |
+| mintingCurrentLimitOf            | 1004            | 4925   | 7425   | 7425   | 1310    |
+| mintingMaxLimitOf                | 517             | 1689   | 2517   | 2517   | 1310    |
+| rebaseAdd                        | 8673            | 28495  | 28573  | 28573  | 256     |
+| setIssuerLimits                  | 38168           | 55906  | 60638  | 160644 | 470     |
 | setTransferRestrictor            | 2833            | 7419   | 8948   | 8948   | 1024    |
 | setTreasury                      | 3627            | 6681   | 6681   | 9736   | 512     |
-| transfer                         | 8755            | 27278  | 29115  | 42672  | 1796    |
-| transferFrom                     | 25875           | 43463  | 46975  | 47232  | 1538    |
+| totalSupply                      | 707             | 709    | 707    | 713    | 768     |
+| transfer                         | 8755            | 27581  | 29145  | 42672  | 1796    |
+| transferFrom                     | 25905           | 43510  | 47005  | 47232  | 1538    |
 | transferRestrictor               | 1273            | 1273   | 1273   | 1273   | 256     |
 | treasury                         | 745             | 745    | 745    | 745    | 256     |
 | src/UsdPlusMinter.sol:UsdPlusMinter contract |                 |       |        |        |         |
 |----------------------------------------------|-----------------|-------|--------|--------|---------|
 | Deployment Cost                              | Deployment Size |       |        |        |         |
-| 1574376                                      | 7187            |       |        |        |         |
+| 1574364                                      | 7187            |       |        |        |         |
 | Function Name                                | min             | avg   | median | max    | # calls |
-| deposit                                      | 708             | 46980 | 2971   | 137917 | 769     |
+| deposit                                      | 708             | 46994 | 2971   | 137917 | 769     |
 | initialize                                   | 94793           | 94793 | 94793  | 94793  | 10      |
-| mint                                         | 327             | 46628 | 2593   | 137621 | 769     |
-| paymentRecipient                             | 331             | 331   | 331    | 331    | 249     |
+| mint                                         | 327             | 46653 | 2593   | 137653 | 769     |
+| paymentRecipient                             | 331             | 331   | 331    | 331    | 255     |
 | paymentTokenOracle                           | 649             | 649   | 649    | 649    | 256     |
-| previewDeposit                               | 2746            | 15050 | 21195  | 21446  | 768     |
-| previewMint                                  | 21343           | 21351 | 21343  | 21594  | 256     |
-| setPaymentRecipient                          | 2424            | 5471  | 2441   | 8605   | 505     |
-| setPaymentTokenOracle                        | 2517            | 21349 | 26097  | 26097  | 1280    |
+| previewDeposit                               | 2746            | 15057 | 21195  | 21446  | 768     |
+| previewMint                                  | 21375           | 21393 | 21375  | 21626  | 256     |
+| setPaymentRecipient                          | 2424            | 5508  | 2441   | 8605   | 511     |
+| setPaymentTokenOracle                        | 2517            | 21365 | 26097  | 26097  | 1280    |
 | usdplus                                      | 2595            | 2595  | 2595   | 2595   | 1       |
 | src/UsdPlusRedeemer.sol:UsdPlusRedeemer contract |                 |        |        |        |         |
 |--------------------------------------------------|-----------------|--------|--------|--------|---------|
@@ -122,29 +129,29 @@
 | Function Name                                    | min             | avg    | median | max    | # calls |
 | DEFAULT_ADMIN_ROLE                               | 704             | 704    | 704    | 704    | 256     |
 | FULFILLER_ROLE                                   | 440             | 440    | 440    | 440    | 526     |
-| cancel                                           | 2614            | 27052  | 13413  | 65359  | 768     |
-| fulfill                                          | 2790            | 42925  | 31585  | 105973 | 1024    |
+| cancel                                           | 2614            | 27063  | 13413  | 65359  | 768     |
+| fulfill                                          | 2790            | 42935  | 31586  | 105973 | 1024    |
 | grantRole                                        | 29228           | 29228  | 29228  | 29228  | 14      |
 | initialize                                       | 97467           | 97467  | 97467  | 97467  | 14      |
 | nextTicket                                       | 2876            | 2876   | 2876   | 2876   | 1       |
 | paymentTokenOracle                               | 892             | 892    | 892    | 892    | 256     |
-| previewRedeem                                    | 3099            | 17864  | 21545  | 21796  | 1280    |
-| previewWithdraw                                  | 3055            | 15417  | 21589  | 21840  | 768     |
-| requestRedeem                                    | 563             | 162095 | 216112 | 216620 | 1025    |
-| requestWithdraw                                  | 501             | 108127 | 520    | 216645 | 513     |
+| previewRedeem                                    | 3099            | 17874  | 21545  | 21796  | 1280    |
+| previewWithdraw                                  | 3055            | 15447  | 21621  | 21872  | 768     |
+| requestRedeem                                    | 563             | 162130 | 216142 | 216620 | 1025    |
+| requestWithdraw                                  | 501             | 108167 | 520    | 216677 | 513     |
 | requests                                         | 1628            | 1628   | 1628   | 1628   | 512     |
-| setPaymentTokenOracle                            | 2693            | 23308  | 26254  | 26254  | 2048    |
+| setPaymentTokenOracle                            | 2693            | 23289  | 26254  | 26254  | 2048    |
 | usdplus                                          | 2992            | 2992   | 2992   | 2992   | 1       |
 | src/WrappedUsdPlus.sol:WrappedUsdPlus contract |                 |        |        |        |         |
 |------------------------------------------------|-----------------|--------|--------|--------|---------|
 | Deployment Cost                                | Deployment Size |        |        |        |         |
-| 3494074                                        | 16099           |        |        |        |         |
+| 3494062                                        | 16099           |        |        |        |         |
 | Function Name                                  | min             | avg    | median | max    | # calls |
 | balanceOf                                      | 741             | 741    | 741    | 741    | 256     |
 | decimals                                       | 2438            | 2438   | 2438   | 2438   | 1       |
-| deposit                                        | 79404           | 79669  | 79404  | 113604 | 258     |
+| deposit                                        | 79434           | 79699  | 79434  | 113634 | 258     |
 | initialize                                     | 176329          | 176329 | 176329 | 176329 | 2       |
-| isBlacklisted                                  | 3490            | 4339   | 4764   | 4764   | 768     |
+| isBlacklisted                                  | 3512            | 4361   | 4786   | 4786   | 768     |
 | previewDeposit                                 | 18340           | 18340  | 18340  | 18340  | 256     |
 | transfer                                       | 19196           | 27820  | 21378  | 42888  | 768     |
 | src/bridge/CCIPWaypoint.sol:CCIPWaypoint contract |                 |        |        |        |         |
@@ -152,7 +159,7 @@
 | Deployment Cost                                   | Deployment Size |        |        |        |         |
 | 2155635                                           | 9885            |        |        |        |         |
 | Function Name                                     | min             | avg    | median | max    | # calls |
-| ccipReceive                                       | 37002           | 37065  | 37002  | 37259  | 256     |
+| ccipReceive                                       | 37032           | 37078  | 37032  | 37259  | 256     |
 | getApprovedReceiver                               | 557             | 557    | 557    | 557    | 256     |
 | getApprovedSender                                 | 520             | 520    | 520    | 520    | 256     |
 | getFee                                            | 14039           | 14039  | 14039  | 14039  | 256     |
@@ -160,10 +167,10 @@
 | initialize                                        | 97369           | 97369  | 97369  | 97369  | 9       |
 | pause                                             | 2554            | 14187  | 14187  | 25820  | 2       |
 | paused                                            | 443             | 443    | 443    | 443    | 2       |
-| rescue                                            | 2465            | 22586  | 2564   | 53390  | 1024    |
-| sendUsdPlus                                       | 202379          | 204572 | 204474 | 205502 | 256     |
-| setApprovedReceiver                               | 2858            | 14872  | 26554  | 26554  | 521     |
-| setApprovedSender                                 | 2484            | 14487  | 26159  | 26159  | 521     |
+| rescue                                            | 2465            | 23014  | 2564   | 53390  | 1024    |
+| sendUsdPlus                                       | 202379          | 204739 | 204594 | 205502 | 256     |
+| setApprovedReceiver                               | 2858            | 14757  | 26554  | 26554  | 521     |
+| setApprovedSender                                 | 2484            | 14373  | 26159  | 26159  | 521     |
 | setRouter                                         | 2750            | 5816   | 2782   | 8894   | 513     |
 | unpause                                           | 2378            | 5397   | 5397   | 8417   | 2       |
 | src/mocks/CCIPRouterMock.sol:CCIPRouterMock contract |                 |      |        |      |         |
