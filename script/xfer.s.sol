@@ -3,14 +3,14 @@ pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
 
-contract Mint is Script {
+contract Transfer is Script {
     function run() external {
         // load env variables
         uint256 userPrivateKey = vm.envUint("DEPLOYER_KEY");
         address user = vm.addr(userPrivateKey);
-        address to = 0x2bF22fD411C71b698bF6e0e937b1B948339Ec369;
+        address to = user;
 
-        uint256 amount = 0.5 ether;
+        uint256 amount = 0.01 ether;
 
         console.log("user: %s", user);
 
