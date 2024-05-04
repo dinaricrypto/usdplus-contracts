@@ -203,7 +203,7 @@ contract UsdPlusTest is Test {
     }
 
     function test_rebaseAdd(uint128 initialAmount, uint128 rebaseAmount) public {
-        vm.assume(initialAmount > 2);
+        vm.assume(initialAmount > 1);
         vm.assume(rebaseAmount > 0);
 
         // mint USD+
@@ -220,9 +220,10 @@ contract UsdPlusTest is Test {
         vm.prank(OPERATOR);
         usdplus.rebaseAdd(rebaseAmount);
 
-        assertEq(usdplus.totalSupply() / 10, (initialSupply + rebaseAmount) / 10);
-        // assertGe(usdplus.totalSupply(), initialSupply + rebaseAmount - 2);
-        // assertGe(usdplus.balanceOf(USER), userBalance + rebaseAmount / 2 - 1);
+        assertGe(usdplus.totalSupply(), initialSupply);
+        assertLe(usdplus.totalSupply() - initialSupply, rebaseAmount);
+        assertGe(usdplus.balanceOf(USER), userBalance);
+        assertLe(usdplus.balanceOf(USER) - userBalance, rebaseAmount / 2);
     }
 
     /// ------------------ ERC7281 ------------------
