@@ -11,6 +11,8 @@ import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
 contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDefaultAdminRulesUpgradeable {
+    bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+
     /// ------------------ Types ------------------
 
     event TreasurySet(address indexed treasury);
@@ -162,16 +164,17 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
 
     // ------------------ Rebasing ------------------
 
-    function rebaseAdd(uint128 value) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function rebaseAdd(uint128 value) external onlyRole(OPERATOR_ROLE) {
+        uint256 _supply = totalSupply();
+        uint128 _balancePerShare = uint128(uint256(balancePerShare()) * (_supply + value) / _supply);
         UsdPlusStorage storage $ = _getUsdPlusStorage();
-        uint128 _balancePerShare = $._balancePerShare + value;
         $._balancePerShare = _balancePerShare;
         emit BalancePerShareSet(_balancePerShare);
     }
 
-    function rebaseMul(uint128 factor) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function rebaseMul(uint128 factor) external onlyRole(OPERATOR_ROLE) {
+        uint128 _balancePerShare = balancePerShare() * factor;
         UsdPlusStorage storage $ = _getUsdPlusStorage();
-        uint128 _balancePerShare = $._balancePerShare * factor;
         $._balancePerShare = _balancePerShare;
         emit BalancePerShareSet(_balancePerShare);
     }

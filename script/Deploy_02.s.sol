@@ -57,16 +57,24 @@ contract Deploy_02 is Script {
             // 0x09E365aCDB0d936DD250351aD0E7de3Dad8706E5,
             // 0xECC40Cf598B1e98846267F274559062aE4cd3F9D
             // Arbitrum Sepolia
-            0x625390d982Ce375909dfa7C4c141dfE3d7b8AB50,
-            0x764c37250DDD0D8f1f26b91d9c4FaE83c21fAE94,
-            0x9bf747c2ABfd977BCA42Bdd60030a35593D7c38a,
-            0xa0310CB0Ad4B59c32C4A81094dd6E574Ea8281C4
+            // 0x625390d982Ce375909dfa7C4c141dfE3d7b8AB50,
+            // 0x764c37250DDD0D8f1f26b91d9c4FaE83c21fAE94,
+            // 0x9bf747c2ABfd977BCA42Bdd60030a35593D7c38a,
+            // 0xa0310CB0Ad4B59c32C4A81094dd6E574Ea8281C4
+            // Arbitrum
+            // 0x2855d241119Ce7Ad3ebeE690AC322a1cF03Ed46d,
+            // 0x47910F43ecA6a2355E8b1Ff5F60923939FBB8915,
+            // 0x4c3bD1Ac4F62F25388c02caf8e3e0D32d09Ff8B3,
+            // 0x5C253d333D19C6A64c780D9ad5b5fe97a4a277BC,
+            // 0x991cB35fc5F8328cd385c6fD4E4c8FcE6B57E471,
+            // 0xAa0ed80DE46CF02bde4493A84FE22Af8fE79c01f,
+            // 0xe9477d7C207eC0004Fc7D6221dbB6a29b8d18083
+            // Ethereum
+            0xe1B2FEEDE3ffE7e63a89A669A08688951c94611e,
+            0x9583729A1ECa5fa337D8C05fBd02295B3d53b8F1,
+            0x2855d241119Ce7Ad3ebeE690AC322a1cF03Ed46d,
+            0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8
         ];
-        // Arbitrum
-        // holders[0] = 0x5C253d333D19C6A64c780D9ad5b5fe97a4a277BC;
-        // holders[1] = 0x47910F43ecA6a2355E8b1Ff5F60923939FBB8915;
-        // holders[2] = 0xe9477d7C207eC0004Fc7D6221dbB6a29b8d18083;
-        // holders[3] = 0x2855d241119Ce7Ad3ebeE690AC322a1cF03Ed46d;
 
         uint256[] memory amounts = new uint256[](holders.length);
         for (uint256 i = 0; i < holders.length; i++) {

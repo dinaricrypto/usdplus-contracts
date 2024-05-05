@@ -19,7 +19,7 @@ No files changed, compilation skipped
 | StorageSlot        |       58 |     24,518 |
 | Strings            |       58 |     24,518 |
 | TransferRestrictor |    5,677 |     18,899 |
-| UsdPlus            |   16,901 |      7,675 |
+| UsdPlus            |   17,046 |      7,530 |
 | UsdPlusMinter      |    6,981 |     17,595 |
 | UsdPlusRedeemer    |   12,821 |     11,755 |
 | WrappedUsdPlus     |   15,893 |      8,683 |
