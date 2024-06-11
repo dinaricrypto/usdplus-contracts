@@ -15,6 +15,7 @@
     "@types/node": "^20.10.4",
     "solidity-code-metrics": "^0.0.25",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "viem": "^2.13.8"
   }
 }
