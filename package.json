@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.4",
+    "dotenv": "^16.4.5",
     "solidity-code-metrics": "^0.0.25",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
