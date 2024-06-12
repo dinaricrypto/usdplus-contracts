@@ -1,7 +1,7 @@
 import "dotenv/config";
 import fs from 'fs';
 import path from 'path';
-import { parseAbi, createPublicClient, createWalletClient, http, Hex, getContract, encodeEventTopics, parseEventLogs, decodeEventLog, formatUnits } from 'viem';
+import { parseAbi, createPublicClient, createWalletClient, publicActions, http, Hex, getContract, encodeEventTopics, parseEventLogs, decodeEventLog, formatUnits } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import * as chains from 'viem/chains';
 
@@ -57,7 +57,7 @@ async function main() {
         account,
         chain: chain, 
         transport: http(RPC_URL)
-      })
+      }).extend(publicActions);
     const usdplusAddress = usdplusData.networkAddresses[chainId];
     console.log(`USD+ Address: ${usdplusAddress}`);
     const minterAddress = minterData.networkAddresses[chainId];
@@ -94,7 +94,12 @@ async function main() {
     });
 
     // mint amount
-    const usdcDecimals = await usdc.read.decimals();
+    const usdcDecimals = await publicClient.readContract({
+        address: usdcAddress,
+        abi: tokenAbi,
+        functionName: 'decimals',
+    })
+    // const usdcDecimals = await usdc.read.decimals();
     const usdcAmount = 1 * 10 ** usdcDecimals as unknown as bigint; // 1 USDC
 
     // ------------------ Mint ------------------
