@@ -9,14 +9,15 @@
     "gas": "forge test -f $(grep RPC_URL .env-test | cut -d '=' -f2) --gas-report --fuzz-seed 1 | grep '^|' > .gas-report",
     "metrics": "solidity-code-metrics ./src/**/*.sol --html > metrics.html",
     "deploy:all": "forge script script/DeployAll.s.sol:DeployAllScript --rpc-url $(grep RPC_URL .env | cut -d '=' -f2) --broadcast --verify -vvv",
-    "errors": "npx ts-node script/errors_parse_ast.ts"
+    "errors": "npx ts-node script/errors_parse_ast.ts",
+    "viemtest": "npx ts-node script/examples/test.ts"
   },
   "devDependencies": {
-    "@types/node": "^20.10.4",
+    "@types/node": "^20.14.2",
     "dotenv": "^16.4.5",
-    "solidity-code-metrics": "^0.0.25",
+    "solidity-code-metrics": "^0.0.27",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3",
+    "typescript": "^5.4.5",
     "viem": "^2.13.8"
   }
 }

@@ -9,6 +9,9 @@ const publicClient = createPublicClient({
 
 async function main() {
 
+    const chainId = await publicClient.getChainId();
+    console.log(`Chain ID: ${chainId}`);
+
     const blockNumber = await publicClient.getBlockNumber();
     console.log(`Block number: ${blockNumber}`);
 }
