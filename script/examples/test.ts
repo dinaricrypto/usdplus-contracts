@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { createPublicClient, http } from 'viem';
 import {arbitrum} from 'viem/chains';
 

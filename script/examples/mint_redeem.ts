@@ -69,28 +69,28 @@ async function main() {
     const usdplus = getContract({
         address: usdplusAddress,
         abi: usdplusAbi,
-        client
+        client: { public: publicClient, wallet: client}
     });
 
     // connect to USD+ Minter contract
     const minter = getContract({
         address: minterAddress,
         abi: minterAbi,
-        client
+        client: { public: publicClient, wallet: client}
     });
 
     // connect to USD+ Redeemer contract
     const redeemer = getContract({
         address: redeemerAddress,
         abi: redeemerAbi,
-        client
+        client: { public: publicClient, wallet: client}
     });
 
     // usdc token contract
     const usdc = getContract({
         address: usdcAddress,
         abi: tokenAbi,
-        client
+        client: { public: publicClient, wallet: client}
     });
 
     // mint amount
@@ -118,7 +118,7 @@ async function main() {
     // const mintLog = decodeEventLog({ abi: minterAbi, data: mintLogs[0].data, topics: mintLogs[0].topics });
     const issuedTopic = encodeEventTopics({ abi: minterAbi, eventName: 'Issued' })[0];
     const mintLog = mintTxReceipt.logs.filter(log => log.topics[0] === issuedTopic)[0];
-    const usdplusAmount = (decodeEventLog({ abi: minterAbi, data: mintLog.data, topics: mintLog.topics }) as any).usdPlusAmount;
+    const usdplusAmount = (decodeEventLog({ abi: minterAbi, data: mintLog.data, topics: mintLog.topics }) as any).usdPlusAmount as bigint;
     console.log(`Minted USD+: ${formatUnits(usdplusAmount, 6)}`);
 
     // ------------------ Redeem ------------------
