@@ -3,33 +3,30 @@ pragma solidity ^0.8.23;
 
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {IUsdPlusPrivateMinter} from "./IUsdPlusPrivateMinter.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {UsdPlusMinter} from "./UsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 
-contract UsdPlusPrivateMinter is UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
+contract UsdPlusPrivateMinter is IUsdPlusPrivateMinter, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
     error ZeroAmount();
+    error ExpiredSignature();
 
-    event Issued(
-        address indexed receiver, IERC20 indexed paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount
-    );
-    
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-
-    struct Signature {
-        uint256 deadline;
-        bytes signature;
-    }
+    bytes32 public constant MINT_ORDER_HASH = keccak256("MintOrder(address tokenReceiver,uint256 amount)");
+    bytes32 private constant MINT_REQUEST_HASH = keccak256("MintRequest(uint256 id,uint64 deadline)");
 
     /// ------------------ Storage ------------------
     struct UsdPlusPrivateMinterStorage {
         address _usdplus;
-        address _paymentToken;
+        address _initialPaymentToken;
         address _vault;
     }
 
@@ -43,14 +40,13 @@ contract UsdPlusPrivateMinter is UUPSUpgradeable, AccessControlDefaultAdminRules
         }
     }
 
-
     /// ------------------ Initialization ------------------
-    
-    function initialize(address usdPlus, address _paymentToken, address initialOwner) public virtual initializer() {
+
+    function initialize(address usdPlus, address _paymentToken, address initialOwner) public virtual initializer {
         __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
         UsdPlusPrivateMinterStorage storage $ = _getUsdPlusPrivateMinterStorage();
         $._usdplus = usdPlus;
-        $._paymentToken = _paymentToken;
+        $._initialPaymentToken = _paymentToken;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -66,23 +62,56 @@ contract UsdPlusPrivateMinter is UUPSUpgradeable, AccessControlDefaultAdminRules
         return _getUsdPlusPrivateMinterStorage()._usdplus;
     }
 
-
-    function getPaymentToken() external view returns (address) {
-        return _getUsdPlusPrivateMinterStorage()._paymentToken;
+    function paymentToken() external view returns (address) {
+        return _getUsdPlusPrivateMinterStorage()._initialPaymentToken;
     }
 
     function vault() external view returns (address) {
         return _getUsdPlusPrivateMinterStorage()._vault;
     }
 
-    /// ------------------ Internal ------------------
-    function _issue(IERC20 paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount, address receiver)
-        internal
-    {
-        emit Issued(receiver, paymentToken, paymentTokenAmount, usdPlusAmount);
+    /// ------------------ Setters ------------------
+
+    function setVault(address _newVault) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_newVault == address(0)) revert ZeroAddress();
 
         UsdPlusPrivateMinterStorage storage $ = _getUsdPlusPrivateMinterStorage();
-        paymentToken.safeTransferFrom(msg.sender, $._vault, paymentTokenAmount);
-        UsdPlus($._usdplus).mint(receiver, usdPlusAmount);
+        $._vault = _newVault;
+        emit VaultSet(_newVault);
+    }
+
+    function setPaymentToken(address _newPaymentToken) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_newPaymentToken == address(0)) revert ZeroAddress();
+
+        UsdPlusPrivateMinterStorage storage $ = _getUsdPlusPrivateMinterStorage();
+        $._initialPaymentToken = _newPaymentToken;
+
+        emit PaymentTokenSet(_newPaymentToken);
+    }
+
+    /// ------------------ Mint ------------------
+    function mint(MintOrder calldata mintOrder, Signature calldata mintSignature) external onlyRole(MINTER_ROLE) {
+        if (mintSignature.deadline < block.timestamp) revert ExpiredSignature();
+
+        address requester = ECDSA.
+    }
+
+    function hashMintRequest(MintOrder calldata mintOrder, uint256 deadline) public pure returns (bytes32) {
+        return keccak256(abi.encode(MINT_REQUEST_HASH, hashMintOrder(mintOrder), deadline));
+    }
+
+    function hashMintOrder(MintOrder calldata mintOrder) public pure returns (uint256) {
+        return uint256(keccak256(abi.encode(MINT_ORDER_HASH, mintOrder.tokenReceiver, mintOrder.paymentAmount)));
+    }
+
+    /// ------------------ Internal ------------------
+    function _issue(IERC20 _paymentToken, uint256 _paymentTokenAmount, uint256 _usdPlusAmount, address _receiver)
+        internal
+    {
+        emit Issued(_receiver, _paymentToken, _paymentTokenAmount, _usdPlusAmount);
+
+        UsdPlusPrivateMinterStorage storage $ = _getUsdPlusPrivateMinterStorage();
+        _paymentToken.safeTransferFrom(msg.sender, $._vault, _paymentTokenAmount);
+        UsdPlus($._usdplus).mint(_receiver, _usdPlusAmount);
     }
 }
