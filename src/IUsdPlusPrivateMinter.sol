@@ -11,6 +11,7 @@ interface IUsdPlusPrivateMinter  {
 
     event VaultSet(address indexed vault);
     event PaymentTokenSet(address indexed paymentToken);
+    event MinterSet(address indexed minter);
 
     struct Signature {
         bytes signature;

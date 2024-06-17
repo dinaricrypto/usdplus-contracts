@@ -100,6 +100,13 @@ contract UsdPlusPrivateMinter is IUsdPlusPrivateMinter, EIP712Upgradeable, UUPSU
         emit PaymentTokenSet(_newPaymentToken);
     }
 
+    function setMinter(address _minter) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_minter == address(0)) revert ZeroAddress();
+
+        UsdPlusPrivateMinterStorage storage $ = _getUsdPlusPrivateMinterStorage();
+        $._usdPlusMinter = _minter;
+    }
+
     /// ------------------ Mint ------------------
     function mint(MintOrder calldata mintOrder, Signature calldata mintSignature) external onlyRole(MINTER_ROLE) {
         if (mintSignature.deadline < block.timestamp) revert ExpiredSignature();
