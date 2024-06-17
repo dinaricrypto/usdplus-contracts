@@ -7,17 +7,21 @@ import {IUsdPlusPrivateMinter} from "./IUsdPlusPrivateMinter.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+import {EIP712Upgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/cryptography/EIP712Upgradeable.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {UsdPlusMinter} from "./UsdPlusMinter.sol";
+import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {SelfPermit} from "./common/SelfPermit.sol";
+import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 
-contract UsdPlusPrivateMinter is IUsdPlusPrivateMinter, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
+contract UsdPlusPrivateMinter is IUsdPlusPrivateMinter, EIP712Upgradeable, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable, SelfPermit {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
     error ZeroAmount();
     error ExpiredSignature();
+    error InvalidSignature();
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant MINT_ORDER_HASH = keccak256("MintOrder(address tokenReceiver,uint256 amount)");
@@ -27,6 +31,7 @@ contract UsdPlusPrivateMinter is IUsdPlusPrivateMinter, UUPSUpgradeable, AccessC
     struct UsdPlusPrivateMinterStorage {
         address _usdplus;
         address _initialPaymentToken;
+        address _usdPlusMinter;
         address _vault;
     }
 
@@ -70,6 +75,12 @@ contract UsdPlusPrivateMinter is IUsdPlusPrivateMinter, UUPSUpgradeable, AccessC
         return _getUsdPlusPrivateMinterStorage()._vault;
     }
 
+    function previewDeposit(IERC20 _paymentToken, uint256 _paymentTokenAmount) public view returns (uint256) {
+        UsdPlusPrivateMinterStorage storage $ = _getUsdPlusPrivateMinterStorage();
+        (uint256 price, uint8 oracleDecimals) = IUsdPlusMinter($._usdPlusMinter).getOraclePrice(_paymentToken);
+        return Math.mulDiv(_paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Floor);
+    }
+
     /// ------------------ Setters ------------------
 
     function setVault(address _newVault) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -93,7 +104,17 @@ contract UsdPlusPrivateMinter is IUsdPlusPrivateMinter, UUPSUpgradeable, AccessC
     function mint(MintOrder calldata mintOrder, Signature calldata mintSignature) external onlyRole(MINTER_ROLE) {
         if (mintSignature.deadline < block.timestamp) revert ExpiredSignature();
 
-        address requester = ECDSA.
+        address requester = ECDSA.recover(
+            _hashTypedDataV4(hashMintRequest(mintOrder, mintSignature.deadline)), mintSignature.signature
+        );
+
+        if (requester != msg.sender) revert InvalidSignature();
+
+        UsdPlusPrivateMinterStorage storage $ = _getUsdPlusPrivateMinterStorage();
+
+        uint256 usdPlusAmount = previewDeposit(IERC20($._initialPaymentToken), mintOrder.paymentAmount);
+
+        _issue(IERC20($._initialPaymentToken), mintOrder.paymentAmount, usdPlusAmount, mintOrder.tokenReceiver);
     }
 
     function hashMintRequest(MintOrder calldata mintOrder, uint256 deadline) public pure returns (bytes32) {

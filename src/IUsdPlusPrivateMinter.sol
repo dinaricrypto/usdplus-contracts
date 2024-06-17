@@ -2,8 +2,9 @@
 pragma solidity ^0.8.23;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 
-interface IUsdPlusPrivateMinter {
+interface IUsdPlusPrivateMinter  {
     event Issued(
         address indexed receiver, IERC20 indexed paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount
     );
