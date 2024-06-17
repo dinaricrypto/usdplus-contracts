@@ -3,13 +3,11 @@ pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
 import {ERC20Mock} from "../src/mocks/ERC20Mock.sol";
-import {UsdPlus} from "../src/UsdPlus.sol";
 import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
 
 contract Mint is Script {
     struct DeployConfig {
         ERC20Mock usdc;
-        UsdPlus usdPlus;
         UsdPlusMinter minter;
     }
 
@@ -20,11 +18,10 @@ contract Mint is Script {
 
         DeployConfig memory cfg = DeployConfig({
             usdc: ERC20Mock(vm.envAddress("USDC")),
-            usdPlus: UsdPlus(vm.envAddress("USDPLUS")),
-            minter: UsdPlusMinter(vm.envAddress("MINTER"))
+            minter: UsdPlusMinter(vm.envAddress("USDPLUS_MINTER"))
         });
 
-        uint256 amount = 1000 * 10 ** cfg.usdc.decimals();
+        uint256 amount = cfg.usdc.balanceOf(user);
 
         console.log("user: %s", user);
 
@@ -34,7 +31,7 @@ contract Mint is Script {
         // mint usd+
         cfg.usdc.approve(address(cfg.minter), amount);
         cfg.minter.deposit(cfg.usdc, amount, user);
-        uint256 usdplusBalance = cfg.usdPlus.balanceOf(user);
+        uint256 usdplusBalance = ERC20Mock(cfg.minter.usdplus()).balanceOf(user);
         console.log("user %s USD+", usdplusBalance);
 
         vm.stopBroadcast();

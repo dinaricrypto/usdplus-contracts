@@ -16,3 +16,6 @@
 [submodule "lib/sbt-contracts"]
 	path = lib/sbt-contracts
 	url = https://github.com/dinaricrypto/sbt-contracts
+[submodule "lib/usdplus-deployments"]
+	path = lib/usdplus-deployments
+	url = https://github.com/dinaricrypto/usdplus-deployments
