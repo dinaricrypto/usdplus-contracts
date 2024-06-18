@@ -147,16 +147,20 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         usdPlusAmount = previewDeposit(paymentToken, paymentTokenAmount);
         if (usdPlusAmount == 0) revert ZeroAmount();
 
-        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, receiver);
+        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
     }
 
-    function _issue(IERC20 paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount, address receiver)
-        internal
-    {
+    function _issue(
+        IERC20 paymentToken,
+        uint256 paymentTokenAmount,
+        uint256 usdPlusAmount,
+        address spender,
+        address receiver
+    ) internal {
         emit Issued(receiver, paymentToken, paymentTokenAmount, usdPlusAmount);
 
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        paymentToken.safeTransferFrom(msg.sender, $._paymentRecipient, paymentTokenAmount);
+        paymentToken.safeTransferFrom(spender, $._paymentRecipient, paymentTokenAmount);
         UsdPlus($._usdplus).mint(receiver, usdPlusAmount);
     }
 
@@ -177,10 +181,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
         usdPlusAmount = permit.value;
 
-        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        paymentToken.safeTransferFrom(permit.owner, $._paymentRecipient, permit.value);
-        UsdPlus($._usdplus).mint(permit.owner, permit.value);
-        emit Issued(permit.owner, paymentToken, permit.value, permit.value);
+        _issue(paymentToken, permit.value, permit.value, permit.owner, permit.owner);
     }
 
     /// @inheritdoc IUsdPlusMinter
@@ -194,6 +195,6 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         paymentTokenAmount = previewMint(paymentToken, usdPlusAmount);
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
-        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, receiver);
+        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
     }
 }
