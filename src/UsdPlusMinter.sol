@@ -176,7 +176,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         // Use SelfPermit to approve token spending
         IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
         usdPlusAmount = permit.value;
-        
+
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         paymentToken.safeTransferFrom(permit.owner, $._paymentRecipient, permit.value);
         UsdPlus($._usdplus).mint(permit.owner, permit.value);
