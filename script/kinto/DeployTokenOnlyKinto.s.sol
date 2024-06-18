@@ -3,15 +3,14 @@ pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
 
-import "@aa/core/EntryPoint.sol";
+import "account-abstraction/interfaces/IEntryPoint.sol";
 
-import "@kinto-core/sample/Counter.sol";
-import "@kinto-core/interfaces/IKintoWallet.sol";
-import "@kinto-core/interfaces/IKintoWalletFactory.sol";
-import "@kinto-core/paymasters/SponsorPaymaster.sol";
+import "./external/IKintoWallet.sol";
+import "./external/IKintoWalletFactory.sol";
+import "./external/ISponsorPaymaster.sol";
 
-import "@kinto-core-test/helpers/AASetup.sol";
-import "@kinto-core-test/helpers/UserOp.sol";
+import "./external/AASetup.sol";
+import "./external/UserOp.sol";
 
 import {TransferRestrictor} from "../../src/TransferRestrictor.sol";
 import {UsdPlus} from "../../src/UsdPlus.sol";
@@ -19,9 +18,9 @@ import {WrappedUsdPlus} from "../../src/WrappedUsdPlus.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployTokenOnlyKinto is AASetup, UserOp {
-    EntryPoint _entryPoint;
+    IEntryPoint _entryPoint;
     IKintoWalletFactory _walletFactory;
-    SponsorPaymaster _sponsorPaymaster;
+    ISponsorPaymaster _sponsorPaymaster;
     IKintoWallet _newWallet;
 
     function setUp() public {
