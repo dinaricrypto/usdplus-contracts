@@ -58,7 +58,6 @@ interface IUsdPlusMinter {
         external
         returns (uint256 usdPlusAmount);
 
-    
     /// @notice mint USD+ for payment with permit
     /// @param permit permit
     /// @param permitSignature permit signature
