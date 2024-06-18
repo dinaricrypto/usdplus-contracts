@@ -143,6 +143,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, EIP712Upgradeable, Ow
     /// @notice hash a permit
     /// @param permit The permit struct
     /// @return The hash of the permit
+
     function hashPermit(Permit calldata permit) internal view returns (bytes32) {
         return keccak256(
             abi.encode(PERMIT_HASH_TYPE, permit.owner, permit.spender, permit.value, permit.nonce, permit.deadline)
@@ -203,7 +204,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, EIP712Upgradeable, Ow
     function privateMint(Permit calldata permit, Signature calldata permitSignature, address paymentToken)
         external
         returns (uint256 usdPlusAmount)
-    {   
+    {
         // get v, r, s from signature
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(permitSignature.signature);
         // Use SelfPermit to approve token spending
