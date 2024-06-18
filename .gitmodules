@@ -16,6 +16,3 @@
 [submodule "lib/sbt-contracts"]
 	path = lib/sbt-contracts
 	url = https://github.com/dinaricrypto/sbt-contracts
-[submodule "lib/kinto-core"]
-	path = lib/kinto-core
-	url = https://github.com/KintoXYZ/kinto-core
