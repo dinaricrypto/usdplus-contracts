@@ -102,21 +102,6 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
 
     /// ------------------ Permit ------------------
 
-    /// @notice Permits this contract to spend a given token from `msg.sender`
-    /// @dev The `spender` is always address(this).
-    /// @param token The address of the token spent
-    /// @param owner The address of the holder of the token
-    /// @param value The amount that can be spent of token
-    /// @param deadline A timestamp, the current blocktime must be less than or equal to this timestamp
-    /// @param v Must produce valid secp256k1 signature from the holder along with `r` and `s`
-    /// @param r Must produce valid secp256k1 signature from the holder along with `v` and `s`
-    /// @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
-    function selfPermit(address token, address owner, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        public
-    {
-        IERC20Permit(token).permit(owner, address(this), value, deadline, v, r, s);
-    }
-
     /// @notice Split a signature into `v`, `r`, `s` components
     /// @param sig The signature
     /// @param v secp256k1 signature from the holder along with `r` and `s`
@@ -189,10 +174,10 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         // get v, r, s from signature
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
         // Use SelfPermit to approve token spending
-        selfPermit(address(paymentToken), permit.owner, permit.value, permit.deadline, v, r, s);
+        IERC20Permit(paymentToken).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
         usdPlusAmount = permit.value;
         // Issue the USD+ tokens (1:1 minting)
-        _issue(IERC20(paymentToken), permit.value, permit.value, msg.sender);
+        _issue(IERC20(paymentToken), permit.value, permit.value, permit.owner);
     }
 
     /// @inheritdoc IUsdPlusMinter
