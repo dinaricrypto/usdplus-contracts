@@ -21,11 +21,6 @@ interface IUsdPlusMinter {
         uint256 deadline;
     }
 
-    struct Signature {
-        bytes signature;
-        uint256 deadline;
-    }
-
     /// @notice USD+
     function usdplus() external view returns (address);
 
@@ -59,13 +54,13 @@ interface IUsdPlusMinter {
         returns (uint256 usdPlusAmount);
 
     /// @notice mint USD+ for payment with permit
-    /// @param permit permit
-    /// @param permitSignature permit signature
     /// @param paymentToken payment token
-    /// @return paymentTokenAmount amount of payment token spent
-    function privateMint(Permit calldata permit, Signature calldata permitSignature, address paymentToken)
+    /// @param permit permit
+    /// @param signature permit signature
+    /// @return usdPlusAmount amount of usd+ minted
+    function privateMint(address paymentToken, Permit calldata permit, bytes calldata signature)
         external
-        returns (uint256 paymentTokenAmount);
+        returns (uint256 usdPlusAmount);
 
     /// @notice calculate the payment token amount to spend to mint USD+
     /// @param paymentToken payment token
