@@ -6,8 +6,9 @@ import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/UsdPlusMinter.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {SigUtils} from "./utils/SigUtils.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
+import {MockToken} from "./utils/mocks/MockToken.sol";
 
 contract UsdPlusMinterTest is Test {
     event PaymentRecipientSet(address indexed paymentRecipient);
@@ -17,14 +18,22 @@ contract UsdPlusMinterTest is Test {
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
     UsdPlusMinter minter;
-    ERC20Mock paymentToken;
+    MockToken paymentToken;
+    SigUtils sigUtils;
+
+    uint256 public userPrivateKey;
 
     address public constant ADMIN = address(0x1234);
     address public constant TREASURY = address(0x1235);
-    address public constant USER = address(0x1238);
+    address public USER;
     address constant usdcPriceOracle = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
+    bytes32 private constant PERMIT_TYPEHASH =
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+
     function setUp() public {
+        userPrivateKey = 0x1236;
+        USER = vm.addr(userPrivateKey);
         transferRestrictor = new TransferRestrictor(ADMIN);
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
@@ -42,7 +51,8 @@ contract UsdPlusMinterTest is Test {
                 )
             )
         );
-        paymentToken = new ERC20Mock();
+        paymentToken = new MockToken("Money", "$");
+        sigUtils = new SigUtils(paymentToken.DOMAIN_SEPARATOR());
 
         paymentToken.mint(USER, type(uint256).max);
 
@@ -164,5 +174,47 @@ contract UsdPlusMinterTest is Test {
         vm.prank(USER);
         uint256 issued = minter.mint(paymentToken, amount, USER);
         assertEq(issued, paymentEstimate);
+    }
+
+    function test_mint_permit(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+        console.log(vm.addr(userPrivateKey));
+        SigUtils.Permit memory sigPermit = SigUtils.Permit({
+            owner: USER,
+            spender: address(minter),
+            value: amount,
+            nonce: 0,
+            deadline: block.timestamp + 30 days
+        });
+        bytes32 digest = sigUtils.getTypedDataHash(sigPermit);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(ADMIN);
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        assertEq(usdplus.balanceOf(USER), 0);
+        uint256 balanceBefore = paymentToken.balanceOf(USER);
+
+        IUsdPlusMinter.Permit memory permit = IUsdPlusMinter.Permit({
+            owner: sigPermit.owner,
+            spender: sigPermit.spender,
+            value: sigPermit.value,
+            nonce: sigPermit.nonce,
+            deadline: sigPermit.deadline
+        });
+
+        bytes memory wrongSignature = abi.encodePacked(r, v, s);
+        // should revert for ECDSAInvalidSignature next ECDSAInvalidSignatureS(bytesS)
+        vm.expectRevert();
+        minter.privateMint(paymentToken, permit, wrongSignature);
+
+        vm.prank(ADMIN);
+        uint256 issued = minter.privateMint(paymentToken, permit, signature);
+
+        assertEq(issued, amount);
+        assertEq(usdplus.balanceOf(USER), issued);
+        assertEq(paymentToken.balanceOf(USER), balanceBefore - issued);
     }
 }

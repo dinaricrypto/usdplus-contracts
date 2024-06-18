@@ -7,7 +7,7 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
+import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 
@@ -100,6 +100,21 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         emit PaymentTokenOracleSet(paymentToken, oracle);
     }
 
+    /// ------------------ Permit ------------------
+
+    /// @notice Split a signature into `v`, `r`, `s` components
+    /// @param sig The signature
+    /// @param v secp256k1 signature from the holder along with `r` and `s`
+    /// @param r signature from the holder along with `v` and `s`
+    /// @param s signature from the holder along with `r` and `v`
+    function splitSignature(bytes memory sig) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
+        assembly {
+            r := mload(add(sig, 0x20))
+            s := mload(add(sig, 0x40))
+            v := byte(0, mload(add(sig, 0x60)))
+        }
+    }
+
     // ------------------ Mint ------------------
 
     /// @inheritdoc IUsdPlusMinter
@@ -132,16 +147,20 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         usdPlusAmount = previewDeposit(paymentToken, paymentTokenAmount);
         if (usdPlusAmount == 0) revert ZeroAmount();
 
-        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, receiver);
+        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
     }
 
-    function _issue(IERC20 paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount, address receiver)
-        internal
-    {
+    function _issue(
+        IERC20 paymentToken,
+        uint256 paymentTokenAmount,
+        uint256 usdPlusAmount,
+        address spender,
+        address receiver
+    ) internal {
         emit Issued(receiver, paymentToken, paymentTokenAmount, usdPlusAmount);
 
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        paymentToken.safeTransferFrom(msg.sender, $._paymentRecipient, paymentTokenAmount);
+        paymentToken.safeTransferFrom(spender, $._paymentRecipient, paymentTokenAmount);
         UsdPlus($._usdplus).mint(receiver, usdPlusAmount);
     }
 
@@ -149,6 +168,20 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
     function previewMint(IERC20 paymentToken, uint256 usdPlusAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
         return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Ceil);
+    }
+
+    /// @inheritdoc IUsdPlusMinter
+    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
+        external
+        returns (uint256 usdPlusAmount)
+    {
+        // get v, r, s from signature
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+        // Use SelfPermit to approve token spending
+        IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
+        usdPlusAmount = permit.value;
+
+        _issue(paymentToken, permit.value, permit.value, permit.owner, permit.owner);
     }
 
     /// @inheritdoc IUsdPlusMinter
@@ -162,6 +195,6 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         paymentTokenAmount = previewMint(paymentToken, usdPlusAmount);
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
-        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, receiver);
+        _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
     }
 }
