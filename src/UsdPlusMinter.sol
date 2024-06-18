@@ -20,10 +20,6 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
     error ZeroAddress();
     error ZeroAmount();
 
-    /// ------------------ Constants ------------------
-    bytes32 public constant PERMIT_HASH_TYPE =
-        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-
     /// ------------------ Storage ------------------
 
     struct UsdPlusMinterStorage {
