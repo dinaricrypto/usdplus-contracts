@@ -167,17 +167,20 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
     }
 
     /// @inheritdoc IUsdPlusMinter
-    function privateMint(address paymentToken, Permit calldata permit, bytes calldata signature)
+    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
         external
         returns (uint256 usdPlusAmount)
     {
         // get v, r, s from signature
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
         // Use SelfPermit to approve token spending
-        IERC20Permit(paymentToken).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
+        IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
         usdPlusAmount = permit.value;
-        // Issue the USD+ tokens (1:1 minting)
-        _issue(IERC20(paymentToken), permit.value, permit.value, permit.owner);
+        
+        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
+        paymentToken.safeTransferFrom(permit.owner, $._paymentRecipient, permit.value);
+        UsdPlus($._usdplus).mint(permit.owner, permit.value);
+        emit Issued(permit.owner, paymentToken, permit.value, permit.value);
     }
 
     /// @inheritdoc IUsdPlusMinter

@@ -58,7 +58,7 @@ interface IUsdPlusMinter {
     /// @param permit permit
     /// @param signature permit signature
     /// @return usdPlusAmount amount of usd+ minted
-    function privateMint(address paymentToken, Permit calldata permit, bytes calldata signature)
+    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
         external
         returns (uint256 usdPlusAmount);
 

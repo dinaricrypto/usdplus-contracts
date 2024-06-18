@@ -208,10 +208,10 @@ contract UsdPlusMinterTest is Test {
         bytes memory wrongSignature = abi.encodePacked(r, v, s);
         // should revert for ECDSAInvalidSignature next ECDSAInvalidSignatureS(bytesS)
         vm.expectRevert();
-        minter.privateMint(address(paymentToken), permit, wrongSignature);
+        minter.privateMint(paymentToken, permit, wrongSignature);
 
-        vm.prank(USER);
-        uint256 issued = minter.privateMint(address(paymentToken), permit, signature);
+        vm.prank(ADMIN);
+        uint256 issued = minter.privateMint(paymentToken, permit, signature);
 
         assertEq(issued, amount);
         assertEq(usdplus.balanceOf(USER), issued);
