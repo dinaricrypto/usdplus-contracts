@@ -13,6 +13,19 @@ interface IUsdPlusMinter {
 
     error PaymentTokenNotAccepted();
 
+    struct Permit {
+        address owner;
+        address spender;
+        uint256 value;
+        uint256 nonce;
+        uint256 deadline;
+    }
+
+    struct Signature {
+        bytes signature;
+        uint256 deadline;
+    }
+
     /// @notice USD+
     function usdplus() external view returns (address);
 
@@ -44,6 +57,16 @@ interface IUsdPlusMinter {
     function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver)
         external
         returns (uint256 usdPlusAmount);
+
+    
+    /// @notice mint USD+ for payment with permit
+    /// @param permit permit
+    /// @param permitSignature permit signature
+    /// @param paymentToken payment token
+    /// @return paymentTokenAmount amount of payment token spent
+    function privateMint(Permit calldata permit, Signature calldata permitSignature, address paymentToken)
+        external
+        returns (uint256 paymentTokenAmount);
 
     /// @notice calculate the payment token amount to spend to mint USD+
     /// @param paymentToken payment token

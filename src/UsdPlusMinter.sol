@@ -3,22 +3,32 @@ pragma solidity ^0.8.23;
 
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
+import {EIP712Upgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/cryptography/EIP712Upgradeable.sol";
+import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
+import {SelfPermit} from "./common/SelfPermit.sol";
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 
 /// @notice USD+ minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
-contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeable {
+contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, EIP712Upgradeable, Ownable2StepUpgradeable, SelfPermit {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
+    using ECDSA for bytes32;
 
     error ZeroAddress();
     error ZeroAmount();
+    error SignatureExpired();
+    error InvalidSignature();
+
+    /// ------------------ Constants ------------------
+    bytes32 public constant PERMIT_HASH_TYPE =
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /// ------------------ Storage ------------------
 
@@ -149,6 +159,37 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
     function previewMint(IERC20 paymentToken, uint256 usdPlusAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
         return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Ceil);
+    }
+
+    function hashPermit(Permit calldata permit) internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(PERMIT_HASH_TYPE, permit.owner, permit.spender, permit.value, permit.nonce, permit.deadline)
+        );
+    }
+
+    function privateMint(Permit calldata permit, Signature calldata permitSignature, address paymentToken)
+        external
+        returns (uint256 paymentTokenAmount)
+    {
+        if (permitSignature.deadline < block.timestamp) revert SignatureExpired();
+        address signer =
+            ECDSA.recover(MessageHashUtils.toEthSignedMessageHash(hashPermit(permit)), permitSignature.signature);
+        if (signer != permit.owner) revert InvalidSignature();
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(permitSignature.signature);
+        // Use SelfPermit to approve token spending
+        selfPermit(address(paymentToken), permit.owner, permit.value, permit.deadline, v, r, s);
+        paymentTokenAmount = permit.value;
+        // Issue the USD+ tokens (1:1 minting)
+        _issue(IERC20(paymentToken), paymentTokenAmount, paymentTokenAmount, msg.sender);
+    }
+
+    function splitSignature(bytes memory sig) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
+        if (sig.length != 65) revert InvalidSignature();
+        assembly {
+            r := mload(add(sig, 0x20))
+            s := mload(add(sig, 0x40))
+            v := byte(0, mload(add(sig, 0x60)))
+        }
     }
 
     /// @inheritdoc IUsdPlusMinter
