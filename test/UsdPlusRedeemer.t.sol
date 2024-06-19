@@ -6,9 +6,10 @@ import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/UsdPlusRedeemer.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {SigUtils} from "./utils/SigUtils.sol";
 import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
-import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
+import {MockToken} from "./utils/mocks/MockToken.sol";
 
 contract UsdPlusRedeemerTest is Test {
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
@@ -31,14 +32,19 @@ contract UsdPlusRedeemerTest is Test {
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
     UsdPlusRedeemer redeemer;
-    ERC20Mock paymentToken;
+    MockToken paymentToken;
+    SigUtils sigUtils;
 
-    address public constant ADMIN = address(0x1234);
+    uint256 public userPrivateKey;
+
+    address public ADMIN = address(0x1234);
     address public constant FULFILLER = address(0x1235);
-    address public constant USER = address(0x1238);
+    address public USER;
     address constant usdcPriceOracle = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
     function setUp() public {
+        userPrivateKey = 0x1236;
+        USER = vm.addr(userPrivateKey);
         transferRestrictor = new TransferRestrictor(ADMIN);
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
@@ -56,7 +62,8 @@ contract UsdPlusRedeemerTest is Test {
                 )
             )
         );
-        paymentToken = new ERC20Mock();
+        paymentToken = new MockToken("Money", "$");
+        sigUtils = new SigUtils(usdplus.DOMAIN_SEPARATOR());
 
         vm.startPrank(ADMIN);
         usdplus.setIssuerLimits(address(this), type(uint256).max, 0);
@@ -188,6 +195,54 @@ contract UsdPlusRedeemerTest is Test {
 
         IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
         assertEq(request.paymentTokenAmount, redemptionEstimate);
+    }
+
+    function test_privateEequestRedeem(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        SigUtils.Permit memory sigPermit = SigUtils.Permit({
+            owner: USER,
+            spender: address(redeemer),
+            value: amount,
+            nonce: 0,
+            deadline: block.timestamp + 30 days
+        });
+        bytes32 digest = sigUtils.getTypedDataHash(sigPermit);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+
+        bytes memory signature = abi.encodePacked(r, s, v);
+        bytes memory wrongSignatre = abi.encodePacked(r, s, v + 1);
+
+        IUsdPlusRedeemer.Permit memory permit = IUsdPlusRedeemer.Permit({
+            owner: sigPermit.owner,
+            spender: sigPermit.spender,
+            value: sigPermit.value,
+            nonce: sigPermit.nonce,
+            deadline: sigPermit.deadline
+        });
+
+        vm.expectRevert();
+        redeemer.privateRequestRedeem(paymentToken, permit, wrongSignatre);
+
+        vm.startPrank(ADMIN);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, ADMIN, redeemer.PRIVATE_REDEEMER_ROLE()
+            )
+        );
+        redeemer.privateRequestRedeem(paymentToken, permit, signature);
+        vm.stopPrank();
+
+        vm.startPrank(ADMIN);
+        redeemer.grantRole(redeemer.PRIVATE_REDEEMER_ROLE(), ADMIN);
+        uint256 ticket = redeemer.privateRequestRedeem(paymentToken, permit, signature);
+        vm.stopPrank();
+
+        IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
+        assertEq(request.paymentTokenAmount, permit.value);
     }
 
     function test_fulfillInvalidTicketReverts(uint256 ticket) public {
