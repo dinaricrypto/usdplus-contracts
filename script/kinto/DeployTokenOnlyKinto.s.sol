@@ -15,7 +15,7 @@ import "./external/UserOp.sol";
 import {TransferRestrictor} from "../../src/TransferRestrictor.sol";
 import {UsdPlus} from "../../src/UsdPlus.sol";
 import {WrappedUsdPlus} from "../../src/WrappedUsdPlus.sol";
-import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployTokenOnlyKinto is AASetup, UserOp {
     IEntryPoint _entryPoint;
