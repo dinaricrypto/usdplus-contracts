@@ -3,6 +3,10 @@ pragma solidity ^0.8.23;
 
 import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
+import {
+    IAccessControlDefaultAdminRules,
+    IAccessControl
+} from "openzeppelin-contracts/contracts/access/extensions/IAccessControlDefaultAdminRules.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/UsdPlusMinter.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -73,7 +77,11 @@ contract UsdPlusMinterTest is Test {
         }
 
         // non-admin cannot set payment recipient
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), minter.DEFAULT_ADMIN_ROLE()
+            )
+        );
         minter.setPaymentRecipient(recipient);
 
         // admin can set payment recipient
@@ -86,7 +94,11 @@ contract UsdPlusMinterTest is Test {
 
     function test_setPaymentTokenOracle(IERC20 token, address oracle) public {
         // non-admin cannot set payment token oracle
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), minter.DEFAULT_ADMIN_ROLE()
+            )
+        );
         minter.setPaymentTokenOracle(token, AggregatorV3Interface(oracle));
 
         // admin can set payment token oracle
@@ -205,13 +217,31 @@ contract UsdPlusMinterTest is Test {
             deadline: sigPermit.deadline
         });
 
+        assertEq(minter.hasRole(minter.DEFAULT_ADMIN_ROLE(), ADMIN), true);
+
+        vm.startPrank(ADMIN);
+        minter.grantRole(minter.PRIVATE_MINTER_ROLE(), address(this));
+        vm.stopPrank();
+
         bytes memory wrongSignature = abi.encodePacked(r, v, s);
         // should revert for ECDSAInvalidSignature next ECDSAInvalidSignatureS(bytesS)
         vm.expectRevert();
         minter.privateMint(paymentToken, permit, wrongSignature);
 
-        vm.prank(ADMIN);
+        vm.startPrank(ADMIN);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, ADMIN, minter.PRIVATE_MINTER_ROLE()
+            )
+        );
+        minter.privateMint(paymentToken, permit, signature);
+        vm.stopPrank();
+
+        vm.startPrank(ADMIN);
+        minter.grantRole(minter.PRIVATE_MINTER_ROLE(), ADMIN);
+
         uint256 issued = minter.privateMint(paymentToken, permit, signature);
+        vm.stopPrank();
 
         assertEq(issued, amount);
         assertEq(usdplus.balanceOf(USER), issued);

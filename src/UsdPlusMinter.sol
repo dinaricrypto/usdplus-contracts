@@ -2,23 +2,28 @@
 pragma solidity ^0.8.23;
 
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 
 /// @notice USD+ minter
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
-contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeable {
+contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
     error ZeroAmount();
+
+    // Define the role identifier for the private minter role
+    bytes32 public constant PRIVATE_MINTER_ROLE = keccak256("PRIVATE_MINTER_ROLE");
 
     /// ------------------ Storage ------------------
 
@@ -44,9 +49,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
     /// ------------------ Initialization ------------------
 
     function initialize(address usdPlus, address initialPaymentRecipient, address initialOwner) public initializer {
-        if (initialPaymentRecipient == address(0)) revert ZeroAddress();
-
-        __Ownable_init(initialOwner);
+        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
 
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         $._usdplus = usdPlus;
@@ -58,7 +61,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         _disableInitializers();
     }
 
-    function _authorizeUpgrade(address) internal override onlyOwner {}
+    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// ------------------ Getters ------------------
 
@@ -83,7 +86,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
     /// ------------------ Admin ------------------
 
     /// @notice set payment recipient
-    function setPaymentRecipient(address newPaymentRecipient) external onlyOwner {
+    function setPaymentRecipient(address newPaymentRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newPaymentRecipient == address(0)) revert ZeroAddress();
 
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
@@ -94,7 +97,10 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
     /// @notice set payment token oracle
     /// @param paymentToken payment token
     /// @param oracle oracle
-    function setPaymentTokenOracle(IERC20 paymentToken, AggregatorV3Interface oracle) external onlyOwner {
+    function setPaymentTokenOracle(IERC20 paymentToken, AggregatorV3Interface oracle)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         $._paymentTokenOracle[paymentToken] = oracle;
         emit PaymentTokenOracleSet(paymentToken, oracle);
@@ -171,20 +177,6 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
     }
 
     /// @inheritdoc IUsdPlusMinter
-    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
-        external
-        returns (uint256 usdPlusAmount)
-    {
-        // get v, r, s from signature
-        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
-        // Use SelfPermit to approve token spending
-        IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
-        usdPlusAmount = permit.value;
-
-        _issue(paymentToken, permit.value, permit.value, permit.owner, permit.owner);
-    }
-
-    /// @inheritdoc IUsdPlusMinter
     function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver)
         public
         returns (uint256 paymentTokenAmount)
@@ -196,5 +188,20 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, Ownable2StepUpgradeab
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
         _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
+    }
+
+    /// @inheritdoc IUsdPlusMinter
+    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
+        external
+        onlyRole(PRIVATE_MINTER_ROLE)
+        returns (uint256 usdPlusAmount)
+    {
+        // get v, r, s from signature
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+        // Use SelfPermit to approve token spending
+        IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
+        usdPlusAmount = permit.value;
+
+        _issue(paymentToken, permit.value, permit.value, permit.owner, permit.owner);
     }
 }
