@@ -96,7 +96,10 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     /// @notice set payment token oracle
     /// @param paymentToken payment token
     /// @param oracle oracle
-    function setPaymentTokenOracle(IERC20 paymentToken, AggregatorV3Interface oracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setPaymentTokenOracle(IERC20 paymentToken, AggregatorV3Interface oracle)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         $._paymentTokenOracle[paymentToken] = oracle;
         emit PaymentTokenOracleSet(paymentToken, oracle);
@@ -174,7 +177,8 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
     /// @inheritdoc IUsdPlusMinter
     function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
-        external onlyRole(PRIVATE_MINTER_ROLE)
+        external
+        onlyRole(PRIVATE_MINTER_ROLE)
         returns (uint256 usdPlusAmount)
     {
         // get v, r, s from signature

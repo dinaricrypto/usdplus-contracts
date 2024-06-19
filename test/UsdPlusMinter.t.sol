@@ -228,7 +228,6 @@ contract UsdPlusMinterTest is Test {
         vm.expectRevert();
         minter.privateMint(paymentToken, permit, wrongSignature);
 
-        
         vm.startPrank(ADMIN);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -240,8 +239,7 @@ contract UsdPlusMinterTest is Test {
 
         vm.startPrank(ADMIN);
         minter.grantRole(minter.PRIVATE_MINTER_ROLE(), ADMIN);
-    
-    
+
         uint256 issued = minter.privateMint(paymentToken, permit, signature);
         vm.stopPrank();
 
