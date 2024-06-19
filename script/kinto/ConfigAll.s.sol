@@ -14,12 +14,14 @@ import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC19
 
 contract ConfigAll is Script {
     struct Config {
-        address rebaser;
         TransferRestrictor transferRestrictor;
-        address restrictorAccount;
         UsdPlus usdplus;
-        address usdc;
-        address usdcOracle;
+        UsdPlusMinter minter;
+        UsdPlusRedeemer redeemer;
+        address operator;
+        address operator2;
+        IERC20 usdc;
+        // AggregatorV3Interface usdcOracle;
     }
 
     function run() external {
@@ -28,12 +30,14 @@ contract ConfigAll is Script {
         address deployer = vm.addr(deployerPrivateKey);
 
         Config memory cfg = Config({
-            rebaser: vm.envAddress("REBASER"),
             transferRestrictor: TransferRestrictor(vm.envAddress("TRANSFER_RESTRICTOR")),
-            restrictorAccount: vm.envAddress("RESTRICTOR_ACCOUNT"),
             usdplus: UsdPlus(vm.envAddress("USDPLUS")),
-            usdc: vm.envAddress("USDC"),
-            usdcOracle: vm.envAddress("USDC_ORACLE")
+            minter: UsdPlusMinter(vm.envAddress("MINTER")),
+            redeemer: UsdPlusRedeemer(vm.envAddress("REDEEMER")),
+            operator: vm.envAddress("OPERATOR"),
+            operator2: vm.envAddress("OPERATOR2"),
+            usdc: IERC20(vm.envAddress("USDC"))
+            // usdcOracle: AggregatorV3Interface(vm.envAddress("USDC_ORACLE"))
         });
 
         console.log("deployer: %s", deployer);
@@ -41,37 +45,33 @@ contract ConfigAll is Script {
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
-        cfg.transferRestrictor.grantRole(cfg.transferRestrictor.RESTRICTOR_ROLE(), cfg.restrictorAccount);
+        // permissions to call
+        // - restrict(address account)
+        // - unrestrict(address account)
+        cfg.transferRestrictor.grantRole(cfg.transferRestrictor.RESTRICTOR_ROLE(), cfg.operator);
+        cfg.transferRestrictor.grantRole(cfg.transferRestrictor.RESTRICTOR_ROLE(), cfg.operator2);
 
-        cfg.usdplus.grantRole(cfg.usdplus.OPERATOR_ROLE(), cfg.rebaser);
-        // usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
-        // usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
+        // permissions to call
+        // - rebaseAdd(uint128 value)
+        // - rebaseMul(uint128 factor)
+        cfg.usdplus.grantRole(cfg.usdplus.OPERATOR_ROLE(), cfg.operator);
+        cfg.usdplus.grantRole(cfg.usdplus.OPERATOR_ROLE(), cfg.operator2);
+        // permissions to call
+        // - mint(address to, uint256 value)
+        cfg.usdplus.setIssuerLimits(address(cfg.minter), type(uint256).max, 0);
+        // permissions to call
+        // - burn(address from, uint256 value)
+        // - burn(uint256 value)
+        cfg.usdplus.setIssuerLimits(address(cfg.redeemer), 0, type(uint256).max);
 
-        /// ------------------ usd+ minter/redeemer ------------------
+        // cfg.minter.setPaymentTokenOracle(cfg.usdc, cfg.usdcOracle);
 
-        // UsdPlusMinter minterImpl = new UsdPlusMinter{ salt: keccak256("UsdPlusMinter1") }();
-        // UsdPlusMinter minter = UsdPlusMinter(
-        //     address(
-        //         new ERC1967Proxy{ salt: keccak256("UsdPlusMinterProxy") }(
-        //             address(minterImpl),
-        //             abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), treasury, deployer))
-        //         )
-        //     )
-        // );
-        // usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
-        // minter.setPaymentTokenOracle(usdc, paymentTokenOracle);
-
-        // UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
-        // UsdPlusRedeemer redeemer = UsdPlusRedeemer(
-        //     address(
-        //         new ERC1967Proxy(
-        //             address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), deployer))
-        //         )
-        //     )
-        // );
-        // usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
-        // redeemer.grantRole(redeemer.FULFILLER_ROLE(), treasury);
-        // redeemer.setPaymentTokenOracle(usdc, paymentTokenOracle);
+        // permissions to call
+        // - fulfill(uint256 ticket)
+        // - cancel(uint256 ticket)
+        cfg.redeemer.grantRole(cfg.redeemer.FULFILLER_ROLE(), cfg.operator);
+        cfg.redeemer.grantRole(cfg.redeemer.FULFILLER_ROLE(), cfg.operator2);
+        // cfg.redeemer.setPaymentTokenOracle(cfg.usdc, cfg.usdcOracle);
 
         vm.stopBroadcast();
     }

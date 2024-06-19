@@ -18,8 +18,8 @@ contract DeployAllCreate2 is Script {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         address treasury = vm.envAddress("TREASURY");
-        address usdc = vm.envAddress("USDC");
-        address paymentTokenOracle = vm.envAddress("USDC_ORACLE");
+        // address usdc = vm.envAddress("USDC");
+        // address paymentTokenOracle = vm.envAddress("USDC_ORACLE");
 
         console.log("deployer: %s", deployer);
 
@@ -29,6 +29,7 @@ contract DeployAllCreate2 is Script {
         /// ------------------ usd+ ------------------
 
         TransferRestrictor transferRestrictor = new TransferRestrictor{salt: keccak256("TransferRestrictor")}(deployer);
+        console.log("transferRestrictor: %s", address(transferRestrictor));
 
         UsdPlus usdplusImpl = new UsdPlus{salt: keccak256("UsdPlus1")}();
         UsdPlus usdplus = UsdPlus(
@@ -38,6 +39,7 @@ contract DeployAllCreate2 is Script {
                 )
             )
         );
+        console.log("usdplus: %s", address(usdplus));
 
         WrappedUsdPlus wrappedusdplusImpl = new WrappedUsdPlus{salt: keccak256("WrappedUsdPlus1")}();
         WrappedUsdPlus wrappedusdplus = WrappedUsdPlus(
@@ -47,32 +49,33 @@ contract DeployAllCreate2 is Script {
                 )
             )
         );
+        console.log("wrappedusdplus: %s", address(wrappedusdplus));
 
         /// ------------------ usd+ minter/redeemer ------------------
 
-        // UsdPlusMinter minterImpl = new UsdPlusMinter{ salt: keccak256("UsdPlusMinter1") }();
-        // UsdPlusMinter minter = UsdPlusMinter(
-        //     address(
-        //         new ERC1967Proxy{ salt: keccak256("UsdPlusMinterProxy") }(
-        //             address(minterImpl),
-        //             abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), treasury, deployer))
-        //         )
-        //     )
-        // );
-        // usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
-        // minter.setPaymentTokenOracle(usdc, paymentTokenOracle);
+        UsdPlusMinter minterImpl = new UsdPlusMinter{salt: keccak256("UsdPlusMinter0.2.1")}();
+        UsdPlusMinter minter = UsdPlusMinter(
+            address(
+                new ERC1967Proxy{salt: keccak256("UsdPlusMinterProxy0.2")}(
+                    address(minterImpl),
+                    abi.encodeCall(
+                        UsdPlusMinter.initialize, (0xe1605b6B2748E46234389b9107C829e33F2dB65c, treasury, deployer)
+                    )
+                )
+            )
+        );
+        console.log("minter: %s", address(minter));
 
-        // UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
-        // UsdPlusRedeemer redeemer = UsdPlusRedeemer(
-        //     address(
-        //         new ERC1967Proxy(
-        //             address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), deployer))
-        //         )
-        //     )
-        // );
-        // usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
-        // redeemer.grantRole(redeemer.FULFILLER_ROLE(), treasury);
-        // redeemer.setPaymentTokenOracle(usdc, paymentTokenOracle);
+        UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer{salt: keccak256("UsdPlusRedeemer0.2.1")}();
+        UsdPlusRedeemer redeemer = UsdPlusRedeemer(
+            address(
+                new ERC1967Proxy{salt: keccak256("UsdPlusRedeemerProxy0.2")}(
+                    address(redeemerImpl),
+                    abi.encodeCall(UsdPlusRedeemer.initialize, (0xe1605b6B2748E46234389b9107C829e33F2dB65c, deployer))
+                )
+            )
+        );
+        console.log("redeemer: %s", address(redeemer));
 
         vm.stopBroadcast();
     }
