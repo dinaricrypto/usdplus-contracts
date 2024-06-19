@@ -9,6 +9,7 @@ import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/Safe
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 
@@ -173,21 +174,6 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     function previewMint(IERC20 paymentToken, uint256 usdPlusAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
         return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Ceil);
-    }
-
-    /// @inheritdoc IUsdPlusMinter
-    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
-        external
-        onlyRole(PRIVATE_MINTER_ROLE)
-        returns (uint256 usdPlusAmount)
-    {
-        // get v, r, s from signature
-        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
-        // Use SelfPermit to approve token spending
-        IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
-        usdPlusAmount = permit.value;
-
-        _issue(paymentToken, permit.value, permit.value, permit.owner, permit.owner);
     }
 
     /// @inheritdoc IUsdPlusMinter
