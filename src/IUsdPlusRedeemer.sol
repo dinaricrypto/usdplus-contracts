@@ -33,6 +33,14 @@ interface IUsdPlusRedeemer {
     error PaymentTokenNotAccepted();
     error InvalidTicket();
 
+    struct Permit {
+        address owner;
+        address spender;
+        uint256 value;
+        uint256 nonce;
+        uint256 deadline;
+    }
+
     /// @notice USD+
     function usdplus() external view returns (address);
 
