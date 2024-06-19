@@ -2,10 +2,9 @@
 pragma solidity ^0.8.18;
 
 import "forge-std/Test.sol";
-// import {LibString} from "solady/utils/LibString.sol";
 
 import "account-abstraction/interfaces/IEntryPoint.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 import "../IKintoWallet.sol";
 import "./SignerHelper.sol";
@@ -16,8 +15,7 @@ import "forge-std/console2.sol";
 import {Script} from "forge-std/Script.sol";
 
 abstract contract UserOp is Test, SignerHelper {
-    using ECDSA for bytes32;
-    // using LibString for *;
+    using MessageHashUtils for bytes32;
 
     uint256 constant SECP256K1_MAX_PRIVATE_KEY = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
 

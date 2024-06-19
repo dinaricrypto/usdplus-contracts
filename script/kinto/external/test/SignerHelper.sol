@@ -2,16 +2,15 @@
 pragma solidity ^0.8.18;
 
 import "forge-std/Test.sol";
-// import {LibString} from "solady/utils/LibString.sol";
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 import "forge-std/Vm.sol";
 import "forge-std/console2.sol";
 
 abstract contract SignerHelper is Test {
-    using ECDSA for bytes32;
-    // using LibString for *;
+    using MessageHashUtils for bytes32;
 
     function signWithHW(uint256 hwType, bytes32 hash) internal returns (bytes memory signature) {
         string memory hashString = toHexString(hash);
@@ -31,7 +30,7 @@ abstract contract SignerHelper is Test {
 
         signature = makeEIP191Compliant(signature);
 
-        (address signer,) = ECDSAUpgradeable.tryRecover(hash.toEthSignedMessageHash(), signature);
+        (address signer,,) = ECDSA.tryRecover(hash.toEthSignedMessageHash(), signature);
         console2.log("signer:", signer);
     }
 

@@ -9,8 +9,8 @@ import "./external/IKintoWallet.sol";
 import "./external/IKintoWalletFactory.sol";
 import "./external/ISponsorPaymaster.sol";
 
-import "./external/AASetup.sol";
-import "./external/UserOp.sol";
+import "./external/test/AASetup.sol";
+import "./external/test/UserOp.sol";
 
 import {TransferRestrictor} from "../../src/TransferRestrictor.sol";
 import {UsdPlus} from "../../src/UsdPlus.sol";

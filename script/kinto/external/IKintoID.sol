@@ -25,8 +25,8 @@ interface IKintoID {
         uint256 updatedAt;
         uint8 sanctionsCount;
         bool individual;
-        BitMapsUpgradeable.BitMap traits;
-        BitMapsUpgradeable.BitMap sanctions; // Follows ISO-3661 numeric codes https://en.wikipedia.org/wiki/ISO_3166-1_numeric
+        BitMaps.BitMap traits;
+        BitMaps.BitMap sanctions; // Follows ISO-3661 numeric codes https://en.wikipedia.org/wiki/ISO_3166-1_numeric
     }
 
     struct SignatureData {

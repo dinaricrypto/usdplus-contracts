@@ -5,9 +5,9 @@ import "forge-std/console.sol";
 
 import "account-abstraction/interfaces/IEntryPoint.sol";
 
-import "./IKintoWalletFactory.sol";
-import "./ISponsorPaymaster.sol";
-import "./IKintoID.sol";
+import "../IKintoWalletFactory.sol";
+import "../ISponsorPaymaster.sol";
+import "../IKintoID.sol";
 
 import "./Create2Helper.sol";
 import "./ArtifactsReader.sol";

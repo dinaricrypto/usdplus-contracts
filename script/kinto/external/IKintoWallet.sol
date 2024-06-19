@@ -4,6 +4,7 @@ pragma solidity ^0.8.18;
 import {IKintoWalletFactory} from "./IKintoWalletFactory.sol";
 import {IKintoID} from "./IKintoID.sol";
 import {IKintoAppRegistry} from "./IKintoAppRegistry.sol";
+import {IEntryPoint} from "account-abstraction/interfaces/IEntryPoint.sol";
 
 interface IKintoWallet {
     /* ============ Errors ============ */
@@ -92,4 +93,6 @@ interface IKintoWallet {
     function RECOVERY_TIME() external view returns (uint256);
 
     function WALLET_TARGET_LIMIT() external view returns (uint256);
+
+    function entryPoint() external view returns (IEntryPoint);
 }
