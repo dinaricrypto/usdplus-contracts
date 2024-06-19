@@ -189,4 +189,19 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
         _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
     }
+
+    /// @inheritdoc IUsdPlusMinter
+    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
+        external
+        onlyRole(PRIVATE_MINTER_ROLE)
+        returns (uint256 usdPlusAmount)
+    {
+        // get v, r, s from signature
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+        // Use SelfPermit to approve token spending
+        IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
+        usdPlusAmount = permit.value;
+
+        _issue(paymentToken, permit.value, permit.value, permit.owner, permit.owner);
+    }
 }
