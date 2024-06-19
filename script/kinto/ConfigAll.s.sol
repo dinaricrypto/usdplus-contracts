@@ -21,8 +21,8 @@ contract ConfigAll is Script {
         address operator;
         address operator2;
         IERC20 usdc;
-        // AggregatorV3Interface usdcOracle;
     }
+    // AggregatorV3Interface usdcOracle;
 
     function run() external {
         // load env variables
@@ -37,8 +37,8 @@ contract ConfigAll is Script {
             operator: vm.envAddress("OPERATOR"),
             operator2: vm.envAddress("OPERATOR2"),
             usdc: IERC20(vm.envAddress("USDC"))
-            // usdcOracle: AggregatorV3Interface(vm.envAddress("USDC_ORACLE"))
         });
+        // usdcOracle: AggregatorV3Interface(vm.envAddress("USDC_ORACLE"))
 
         console.log("deployer: %s", deployer);
 
