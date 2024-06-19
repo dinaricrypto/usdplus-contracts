@@ -5,6 +5,7 @@ import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/prox
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -21,6 +22,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
     error ZeroAddress();
     error ZeroAmount();
 
+    bytes32 public constant PRIVATE_REDEEMER_ROLE = keccak256("PRIVATE_REDEEMER_ROLE");
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
 
     /// ------------------ Storage ------------------
@@ -103,6 +105,21 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
         emit PaymentTokenOracleSet(payment, oracle);
     }
 
+    /// ------------------ Permit ------------------
+
+    /// @notice Split a signature into `v`, `r`, `s` components
+    /// @param sig The signature
+    /// @param v secp256k1 signature from the holder along with `r` and `s`
+    /// @param r signature from the holder along with `v` and `s`
+    /// @param s signature from the holder along with `r` and `v`
+    function splitSignature(bytes memory sig) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
+        assembly {
+            r := mload(add(sig, 0x20))
+            s := mload(add(sig, 0x40))
+            v := byte(0, mload(add(sig, 0x60)))
+        }
+    }
+
     // ----------------- Requests -----------------
 
     /// @inheritdoc IUsdPlusRedeemer
@@ -171,6 +188,22 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
     function previewRedeem(IERC20 paymentToken, uint256 usdplusAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
         return Math.mulDiv(usdplusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Floor);
+    }
+
+    function privateRequestRedeem(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
+        public
+        onlyRole(PRIVATE_REDEEMER_ROLE)
+        returns (uint256 ticket)
+    {
+        if (permit.owner == address(0)) revert ZeroAddress();
+        if (permit.value == 0) revert ZeroAmount();
+        // get v, r, s from signature
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        IERC20Permit($._usdplus).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
+
+        return _request(paymentToken, permit.value, permit.value, permit.owner, permit.owner);
     }
 
     /// @inheritdoc IUsdPlusRedeemer
