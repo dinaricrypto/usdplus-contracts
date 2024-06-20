@@ -66,7 +66,7 @@ contract ApproveApps is EntryPointHelper {
         //     }
         // }
         // TODO: withdraw deposit for deployer
-        _entryPoint.depositTo{ value: 0.0007 ether }(owner);
+        _entryPoint.depositTo{value: 0.0007 ether}(owner);
 
         _handleOps(
             _entryPoint,
