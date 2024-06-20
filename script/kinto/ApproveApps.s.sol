@@ -10,7 +10,7 @@ import {UsdPlusRedeemer} from "../../src/UsdPlusRedeemer.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC20Mock} from "../../src/mocks/ERC20Mock.sol";
 import {IKintoWallet} from "./external/IKintoWallet.sol";
-// import {ISponsorPaymaster} from "./external/ISponsorPaymaster.sol";
+import {ISponsorPaymaster} from "./external/ISponsorPaymaster.sol";
 
 import "./EntryPointHelper.sol";
 
@@ -29,7 +29,7 @@ contract ApproveApps is EntryPointHelper {
         address deployer = vm.addr(deployerPrivateKey);
         address owner = vm.envAddress("OWNER");
         IEntryPoint _entryPoint = IEntryPoint(vm.envAddress("ENTRYPOINT"));
-        // ISponsorPaymaster _sponsorPaymaster = ISponsorPaymaster(vm.envAddress("SPONSOR_PAYMASTER"));
+        ISponsorPaymaster _sponsorPaymaster = ISponsorPaymaster(vm.envAddress("SPONSOR_PAYMASTER"));
 
         Config memory cfg = Config({
             transferRestrictor: vm.envAddress("TRANSFER_RESTRICTOR"),
@@ -75,6 +75,7 @@ contract ApproveApps is EntryPointHelper {
             abi.encodeWithSelector(IKintoWallet.whitelistApp.selector, apps, flags),
             owner,
             owner,
+            address(_sponsorPaymaster),
             deployerPrivateKey
         );
 
