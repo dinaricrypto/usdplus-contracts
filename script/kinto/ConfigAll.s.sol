@@ -8,9 +8,13 @@ import {UsdPlusMinter} from "../../src/UsdPlusMinter.sol";
 import {UsdPlusRedeemer} from "../../src/UsdPlusRedeemer.sol";
 // import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {ERC20Mock} from "../../src/mocks/ERC20Mock.sol";
+import {IKintoWallet} from "./external/IKintoWallet.sol";
 
+import "./EntryPointHelper.sol";
+import "./external/test/AASetup.sol";
 
-contract ConfigAll is Script {
+contract ConfigAll is AASetup, EntryPointHelper {
     struct Config {
         TransferRestrictor transferRestrictor;
         UsdPlus usdplus;
@@ -21,6 +25,13 @@ contract ConfigAll is Script {
         IERC20 usdc;
     }
     // AggregatorV3Interface usdcOracle;
+
+    IEntryPoint _entryPoint;
+
+    function setUp() public {
+        (, _entryPoint,,) = _checkAccountAbstraction();
+        console.log("All AA setup is correct");
+    }
 
     function run() external {
         // load env variables
@@ -40,6 +51,7 @@ contract ConfigAll is Script {
         // usdcOracle: AggregatorV3Interface(vm.envAddress("USDC_ORACLE"))
 
         console.log("deployer: %s", deployer);
+        console.log("owner: %s", owner);
 
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
@@ -50,7 +62,7 @@ contract ConfigAll is Script {
         apps[1] = address(cfg.usdplus);
         apps[2] = address(cfg.minter);
         apps[3] = address(cfg.redeemer);
-        apps[4] = 0x90AB5E52Dfcce749CA062f4e04292fd8a67E86b3; //MockUSDC
+        apps[4] = address(cfg.usdc); //MockUSDC
 
         bool[] memory flags = new bool[](5);
         flags[0] = true;
@@ -59,7 +71,13 @@ contract ConfigAll is Script {
         flags[3] = true;
         flags[4] = true;
 
-        _handleOps(abi.encodeWithSelector(IKintoWallet.whitelistApp.selector, apps, flags), _wallet, _wallet, _signerPk);
+        _handleOps(
+            _entryPoint,
+            abi.encodeWithSelector(IKintoWallet.whitelistApp.selector, apps, flags),
+            owner,
+            owner,
+            deployerPrivateKey
+        );
 
         // permissions to call
         // - restrict(address account)
@@ -88,6 +106,16 @@ contract ConfigAll is Script {
         cfg.redeemer.grantRole(cfg.redeemer.FULFILLER_ROLE(), cfg.operator);
         cfg.redeemer.grantRole(cfg.redeemer.FULFILLER_ROLE(), cfg.operator2);
         // cfg.redeemer.setPaymentTokenOracle(cfg.usdc, cfg.usdcOracle);
+
+        // permissions to call
+        // - mint(address to, uint256 value)
+        // - burnFrom(address from, uint256 value)
+        // - burn(uint256 value)
+        ERC20Mock mockUSDC = ERC20Mock(address(cfg.usdc));
+        mockUSDC.grantRole(mockUSDC.MINTER_ROLE(), cfg.operator);
+        mockUSDC.grantRole(mockUSDC.MINTER_ROLE(), cfg.operator2);
+        mockUSDC.grantRole(mockUSDC.BURNER_ROLE(), cfg.operator);
+        mockUSDC.grantRole(mockUSDC.BURNER_ROLE(), cfg.operator2);
 
         vm.stopBroadcast();
     }
