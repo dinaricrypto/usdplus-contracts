@@ -9,13 +9,14 @@ contract DeployMockTokenCreate2 is Script {
         // load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
+        address owner = vm.envAddress("OWNER");
 
         console.log("deployer: %s", deployer);
 
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
-        ERC20Mock mockUSDC = new ERC20Mock{salt: keccak256("MockUSDC")}("USD Coin - Dinari", "USDC", 6, deployer);
+        ERC20Mock mockUSDC = new ERC20Mock{salt: keccak256("MockUSDC")}("USD Coin - Dinari", "USDC", 6, owner);
         console.log("mockUSDC: %s", address(mockUSDC));
 
         vm.stopBroadcast();
