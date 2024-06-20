@@ -22,13 +22,16 @@ contract MintDirect is Script, EntryPointHelper {
         console.log("deployer: %s", deployer);
         console.log("owner: %s", owner);
 
+        address target = 0x26E508D5d63499e549D958B42c4e2630272Ce2a2;
+        uint256 amount = 10 * 10 ** 6;
+
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
         // usdplus.mint(deployer, 10 ** 6);
         _handleOps(
             _entryPoint,
-            abi.encodeCall(IERC7281Min.mint, (owner, 10 ** 6)),
+            abi.encodeCall(IERC7281Min.mint, (target, amount)),
             owner,
             address(usdplus),
             address(_sponsorPaymaster),
@@ -36,14 +39,14 @@ contract MintDirect is Script, EntryPointHelper {
         );
 
         // usdplus.burn(deployer, 10 ** 6);
-        _handleOps(
-            _entryPoint,
-            abi.encodeCall(IERC7281Min.burn, (owner, 10 ** 6)),
-            owner,
-            address(usdplus),
-            address(_sponsorPaymaster),
-            deployerPrivateKey
-        );
+        // _handleOps(
+        //     _entryPoint,
+        //     abi.encodeCall(IERC7281Min.burn, (owner, 10 ** 6)),
+        //     owner,
+        //     address(usdplus),
+        //     address(_sponsorPaymaster),
+        //     deployerPrivateKey
+        // );
 
         vm.stopBroadcast();
     }
