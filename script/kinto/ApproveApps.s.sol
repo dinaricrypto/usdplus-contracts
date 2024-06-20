@@ -14,7 +14,7 @@ import {ISponsorPaymaster} from "./external/ISponsorPaymaster.sol";
 
 import "./EntryPointHelper.sol";
 
-contract ApproveApps is EntryPointHelper {
+contract ApproveApps is Script, EntryPointHelper {
     struct Config {
         address transferRestrictor;
         address usdplus;

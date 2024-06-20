@@ -5,7 +5,6 @@ import "account-abstraction/interfaces/IEntryPoint.sol";
 import "./external/IKintoWallet.sol";
 
 import "./external/test/UserOp.sol";
-import "./external/test/ArtifactsReader.sol";
 
 abstract contract EntryPointHelper is UserOp {
     function _handleOps(
@@ -29,6 +28,20 @@ abstract contract EntryPointHelper is UserOp {
         uint256[] memory privateKeys = new uint256[](1);
         privateKeys[0] = _signerPk;
         _handleOps(_entryPoint, _selectorAndParams, _from, _to, 0, _sponsorPaymaster, privateKeys);
+    }
+
+    function _handleOps(
+        IEntryPoint _entryPoint,
+        bytes memory _selectorAndParams,
+        address _from,
+        address _to,
+        uint256 value,
+        address _sponsorPaymaster,
+        uint256 _signerPk
+    ) internal {
+        uint256[] memory privateKeys = new uint256[](1);
+        privateKeys[0] = _signerPk;
+        _handleOps(_entryPoint, _selectorAndParams, _from, _to, value, _sponsorPaymaster, privateKeys);
     }
 
     function _handleOps(

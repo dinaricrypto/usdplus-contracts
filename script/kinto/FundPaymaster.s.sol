@@ -2,14 +2,12 @@
 pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
-import {UsdPlus} from "../../src/UsdPlus.sol";
-import {IERC7281Min} from "../../src/ERC7281/IERC7281Min.sol";
 import {IKintoWallet} from "./external/IKintoWallet.sol";
 import {ISponsorPaymaster} from "./external/ISponsorPaymaster.sol";
 
 import "./EntryPointHelper.sol";
 
-contract MintDirect is Script, EntryPointHelper {
+contract FundPaymaster is Script, EntryPointHelper {
     function run() external {
         // load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
@@ -17,7 +15,6 @@ contract MintDirect is Script, EntryPointHelper {
         address owner = vm.envAddress("OWNER");
         IEntryPoint _entryPoint = IEntryPoint(vm.envAddress("ENTRYPOINT"));
         ISponsorPaymaster _sponsorPaymaster = ISponsorPaymaster(vm.envAddress("SPONSOR_PAYMASTER"));
-        UsdPlus usdplus = UsdPlus(vm.envAddress("USDPLUS"));
 
         console.log("deployer: %s", deployer);
         console.log("owner: %s", owner);
@@ -25,22 +22,14 @@ contract MintDirect is Script, EntryPointHelper {
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
-        // usdplus.mint(deployer, 10 ** 6);
+        // Note: Fails due to SenderKYCRequired
+        // _sponsorPaymaster.addDepositFor{value: 0.0007 ether}(owner);
         _handleOps(
             _entryPoint,
-            abi.encodeCall(IERC7281Min.mint, (owner, 10 ** 6)),
+            abi.encodeCall(ISponsorPaymaster.addDepositFor, (owner)),
             owner,
-            address(usdplus),
             address(_sponsorPaymaster),
-            deployerPrivateKey
-        );
-
-        // usdplus.burn(deployer, 10 ** 6);
-        _handleOps(
-            _entryPoint,
-            abi.encodeCall(IERC7281Min.burn, (owner, 10 ** 6)),
-            owner,
-            address(usdplus),
+            0.01 ether,
             address(_sponsorPaymaster),
             deployerPrivateKey
         );
