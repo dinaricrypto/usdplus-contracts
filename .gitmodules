@@ -16,6 +16,3 @@
 [submodule "lib/sbt-contracts"]
 	path = lib/sbt-contracts
 	url = https://github.com/dinaricrypto/sbt-contracts
-[submodule "lib/account-abstraction"]
-	path = lib/account-abstraction
-	url = https://github.com/KintoXYZ/account-abstraction
