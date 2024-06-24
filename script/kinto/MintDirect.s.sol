@@ -4,10 +4,10 @@ pragma solidity ^0.8.23;
 import "forge-std/Script.sol";
 import {UsdPlus} from "../../src/UsdPlus.sol";
 import {IERC7281Min} from "../../src/ERC7281/IERC7281Min.sol";
-import {IKintoWallet} from "./external/IKintoWallet.sol";
-import {ISponsorPaymaster} from "./external/ISponsorPaymaster.sol";
+import {IKintoWallet} from "kinto-contracts-helpers/interfaces/IKintoWallet.sol";
+import {ISponsorPaymaster} from "kinto-contracts-helpers/interfaces/ISponsorPaymaster.sol";
 
-import "./EntryPointHelper.sol";
+import "kinto-contracts-helpers/EntryPointHelper.sol";
 
 contract MintDirect is Script, EntryPointHelper {
     function run() external {

@@ -2,10 +2,10 @@
 pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
-import {IKintoWallet} from "./external/IKintoWallet.sol";
-import {ISponsorPaymaster} from "./external/ISponsorPaymaster.sol";
+import {IKintoWallet} from "kinto-contracts-helpers/interfaces/IKintoWallet.sol";
+import {ISponsorPaymaster} from "kinto-contracts-helpers/interfaces/ISponsorPaymaster.sol";
 
-import "./EntryPointHelper.sol";
+import "kinto-contracts-helpers/EntryPointHelper.sol";
 
 contract FundPaymaster is Script, EntryPointHelper {
     function run() external {
