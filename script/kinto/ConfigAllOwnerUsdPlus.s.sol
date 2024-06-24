@@ -4,11 +4,11 @@ pragma solidity ^0.8.23;
 import "forge-std/Script.sol";
 import {TransferRestrictor} from "../../src/TransferRestrictor.sol";
 import {UsdPlus} from "../../src/UsdPlus.sol";
-import {IKintoWallet} from "./external/IKintoWallet.sol";
-import {ISponsorPaymaster} from "./external/ISponsorPaymaster.sol";
+import {IKintoWallet} from "kinto-contracts-helpers/interfaces/IKintoWallet.sol";
+import {ISponsorPaymaster} from "kinto-contracts-helpers/interfaces/ISponsorPaymaster.sol";
 import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
-import "./EntryPointHelper.sol";
+import "kinto-contracts-helpers/EntryPointHelper.sol";
 
 // gives owner all permissions to TransferRestrictor and UsdPlus
 contract ConfigAllOwnerUsdPlus is Script, EntryPointHelper {

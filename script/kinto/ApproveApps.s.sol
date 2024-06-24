@@ -9,10 +9,10 @@ import {UsdPlusRedeemer} from "../../src/UsdPlusRedeemer.sol";
 // import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC20Mock} from "../../src/mocks/ERC20Mock.sol";
-import {IKintoWallet} from "./external/IKintoWallet.sol";
-import {ISponsorPaymaster} from "./external/ISponsorPaymaster.sol";
+import {IKintoWallet} from "kinto-contracts-helpers/interfaces/IKintoWallet.sol";
+import {ISponsorPaymaster} from "kinto-contracts-helpers/interfaces/ISponsorPaymaster.sol";
 
-import "./EntryPointHelper.sol";
+import "kinto-contracts-helpers/EntryPointHelper.sol";
 
 contract ApproveApps is Script, EntryPointHelper {
     struct Config {
