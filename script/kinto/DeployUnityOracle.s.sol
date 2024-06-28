@@ -14,6 +14,7 @@ contract DeployUnityOracle is Script, EntryPointHelper {
         address owner = vm.envAddress("OWNER");
         string memory environmentName = vm.envString("ENVIRONMENT");
         IEntryPoint _entryPoint = IEntryPoint(vm.envAddress("ENTRYPOINT"));
+        address _sponsorPaymaster = vm.envAddress("SPONSOR_PAYMASTER");
 
         console.log("deployer: %s", deployer);
         console.log("owner: %s", owner);
@@ -30,7 +31,9 @@ contract DeployUnityOracle is Script, EntryPointHelper {
             type(UnityOracle).creationCode,
             keccak256(abi.encode(string.concat("UnityOracle", environmentName, version)))
         );
-        _handleOps(_entryPoint, _selectorAndParams, owner, CREATE2_FACTORY, deployerPrivateKey);
+        _handleOps(
+            _entryPoint, _selectorAndParams, owner, CREATE2_FACTORY, _sponsorPaymaster, deployerPrivateKey
+        );
 
         vm.stopBroadcast();
     }

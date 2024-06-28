@@ -27,11 +27,14 @@ contract ConfigAll is Script, EntryPointHelper {
     }
 
     IEntryPoint private _entryPoint;
+    address private _sponsorPaymaster;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         address owner = vm.envAddress("OWNER");
+        _entryPoint = IEntryPoint(vm.envAddress("ENTRYPOINT"));
+        _sponsorPaymaster = vm.envAddress("SPONSOR_PAYMASTER");
 
         Config memory cfg = Config({
             transferRestrictor: TransferRestrictor(vm.envAddress("TRANSFER_RESTRICTOR")),
@@ -51,6 +54,7 @@ contract ConfigAll is Script, EntryPointHelper {
 
         _grantRoles(cfg, owner, deployerPrivateKey);
         _setIssuerLimits(cfg, owner, deployerPrivateKey);
+        // TODO: switch on env
         _grantERC20Roles(cfg, owner, deployerPrivateKey);
         _setOracles(cfg, owner, deployerPrivateKey);
 
@@ -109,6 +113,7 @@ contract ConfigAll is Script, EntryPointHelper {
             abi.encodeWithSelector(UsdPlusMinter.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle),
             owner,
             address(cfg.minter),
+            _sponsorPaymaster,
             deployerPrivateKey
         );
         _handleOps(
@@ -116,6 +121,7 @@ contract ConfigAll is Script, EntryPointHelper {
             abi.encodeWithSelector(UsdPlusRedeemer.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle),
             owner,
             address(cfg.redeemer),
+            _sponsorPaymaster,
             deployerPrivateKey
         );
     }
@@ -146,6 +152,7 @@ contract ConfigAll is Script, EntryPointHelper {
             abi.encodeWithSelector(contractAccessControl.grantRole.selector, role, account),
             owner,
             contractAddress,
+            _sponsorPaymaster,
             deployerPrivateKey
         );
     }
@@ -163,6 +170,7 @@ contract ConfigAll is Script, EntryPointHelper {
             abi.encodeWithSelector(usdplus.setIssuerLimits.selector, account, mintLimit, burnLimit),
             owner,
             address(usdplus),
+            _sponsorPaymaster,
             deployerPrivateKey
         );
     }
