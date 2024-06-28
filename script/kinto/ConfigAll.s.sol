@@ -61,20 +61,34 @@ contract ConfigAll is AASetup, EntryPointHelper {
 
     function _grantRoles(Config memory cfg, address owner, uint256 deployerPrivateKey) internal {
         // Grant RESTRICTOR_ROLE to operators
+        // permissions to call
+        // - restrict(address account)
+        // - unrestrict(address account)
         _grantRole(address(cfg.transferRestrictor), cfg.transferRestrictor.RESTRICTOR_ROLE(), cfg.operator, owner, deployerPrivateKey);
         _grantRole(address(cfg.transferRestrictor), cfg.transferRestrictor.RESTRICTOR_ROLE(), cfg.operator2, owner, deployerPrivateKey);
 
         // Grant OPERATOR_ROLE to operators
+        // permissions to call
+        // - rebaseAdd(uint128 value)
+        // - rebaseMul(uint128 factor)
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator, owner, deployerPrivateKey);
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator2, owner, deployerPrivateKey);
 
         // Grant FULFILLER_ROLE to operators
+         // permissions to call
+        // - fulfill(uint256 ticket)
+        // - cancel(uint256 ticket)
         _grantRole(address(cfg.redeemer), cfg.redeemer.FULFILLER_ROLE(), cfg.operator, owner, deployerPrivateKey);
         _grantRole(address(cfg.redeemer), cfg.redeemer.FULFILLER_ROLE(), cfg.operator2, owner, deployerPrivateKey);
     }
 
     function _setIssuerLimits(Config memory cfg, address owner, uint256 deployerPrivateKey) internal {
         // Set issuer limits for minter and redeemer
+        // permissions to call
+        // - mint(address to, uint256 value)
+        // permissions to call
+        // - burn(address from, uint256 value)
+        // - burn(uint256 value)
         _setIssuerLimit(cfg.usdplus, address(cfg.minter), type(uint256).max, 0, owner, deployerPrivateKey);
         _setIssuerLimit(cfg.usdplus, address(cfg.redeemer), 0, type(uint256).max, owner, deployerPrivateKey);
     }
@@ -83,6 +97,9 @@ contract ConfigAll is AASetup, EntryPointHelper {
         // Grant roles for ERC20Mock (USDC)
         ERC20Mock mockUSDC = ERC20Mock(address(cfg.usdc));
 
+        // permissions to call
+        // - mint(address to, uint256 value)
+        // - burn(address from, uint256 value)
         _grantRole(address(mockUSDC), mockUSDC.MINTER_ROLE(), cfg.operator, owner, deployerPrivateKey);
         _grantRole(address(mockUSDC), mockUSDC.MINTER_ROLE(), cfg.operator2, owner, deployerPrivateKey);
         _grantRole(address(mockUSDC), mockUSDC.BURNER_ROLE(), cfg.operator, owner, deployerPrivateKey);
