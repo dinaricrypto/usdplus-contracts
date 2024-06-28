@@ -14,7 +14,6 @@ import "kinto-contracts-helpers/EntryPointHelper.sol";
 import "kinto-contracts-helpers/AASetup.sol";
 
 contract ConfigAll is AASetup, EntryPointHelper {
-
     struct Config {
         TransferRestrictor transferRestrictor;
         UsdPlus usdplus;
@@ -64,8 +63,20 @@ contract ConfigAll is AASetup, EntryPointHelper {
         // permissions to call
         // - restrict(address account)
         // - unrestrict(address account)
-        _grantRole(address(cfg.transferRestrictor), cfg.transferRestrictor.RESTRICTOR_ROLE(), cfg.operator, owner, deployerPrivateKey);
-        _grantRole(address(cfg.transferRestrictor), cfg.transferRestrictor.RESTRICTOR_ROLE(), cfg.operator2, owner, deployerPrivateKey);
+        _grantRole(
+            address(cfg.transferRestrictor),
+            cfg.transferRestrictor.RESTRICTOR_ROLE(),
+            cfg.operator,
+            owner,
+            deployerPrivateKey
+        );
+        _grantRole(
+            address(cfg.transferRestrictor),
+            cfg.transferRestrictor.RESTRICTOR_ROLE(),
+            cfg.operator2,
+            owner,
+            deployerPrivateKey
+        );
 
         // Grant OPERATOR_ROLE to operators
         // permissions to call
@@ -75,7 +86,7 @@ contract ConfigAll is AASetup, EntryPointHelper {
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator2, owner, deployerPrivateKey);
 
         // Grant FULFILLER_ROLE to operators
-         // permissions to call
+        // permissions to call
         // - fulfill(uint256 ticket)
         // - cancel(uint256 ticket)
         _grantRole(address(cfg.redeemer), cfg.redeemer.FULFILLER_ROLE(), cfg.operator, owner, deployerPrivateKey);
@@ -107,10 +118,10 @@ contract ConfigAll is AASetup, EntryPointHelper {
     }
 
     function _grantRole(
-        address contractAddress, 
-        bytes32 role, 
-        address account, 
-        address owner, 
+        address contractAddress,
+        bytes32 role,
+        address account,
+        address owner,
         uint256 deployerPrivateKey
     ) internal {
         AccessControl contractAccessControl = AccessControl(contractAddress);
@@ -124,11 +135,11 @@ contract ConfigAll is AASetup, EntryPointHelper {
     }
 
     function _setIssuerLimit(
-        UsdPlus usdplus, 
-        address account, 
-        uint256 mintLimit, 
-        uint256 burnLimit, 
-        address owner, 
+        UsdPlus usdplus,
+        address account,
+        uint256 mintLimit,
+        uint256 burnLimit,
+        address owner,
         uint256 deployerPrivateKey
     ) internal {
         _handleOps(
