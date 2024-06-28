@@ -10,10 +10,11 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC20Mock} from "../../src/mocks/ERC20Mock.sol";
 import {IKintoWallet} from "kinto-contracts-helpers/interfaces/IKintoWallet.sol";
 import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
-import "kinto-contracts-helpers/EntryPointHelper.sol";
-import "kinto-contracts-helpers/AASetup.sol";
+import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-contract ConfigAll is AASetup, EntryPointHelper {
+import "kinto-contracts-helpers/EntryPointHelper.sol";
+
+contract ConfigAll is Script, EntryPointHelper {
     struct Config {
         TransferRestrictor transferRestrictor;
         UsdPlus usdplus;
@@ -22,14 +23,10 @@ contract ConfigAll is AASetup, EntryPointHelper {
         address operator;
         address operator2;
         IERC20 usdc;
+        AggregatorV3Interface usdcOracle;
     }
 
     IEntryPoint private _entryPoint;
-
-    function setUp() public {
-        (, _entryPoint,,) = _checkAccountAbstraction();
-        console.log("All AA setup is correct");
-    }
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
@@ -43,7 +40,8 @@ contract ConfigAll is AASetup, EntryPointHelper {
             redeemer: UsdPlusRedeemer(vm.envAddress("REDEEMER")),
             operator: vm.envAddress("OPERATOR"),
             operator2: vm.envAddress("OPERATOR2"),
-            usdc: IERC20(vm.envAddress("USDC"))
+            usdc: IERC20(vm.envAddress("USDC")),
+            usdcOracle: AggregatorV3Interface(vm.envAddress("USDC_ORACLE"))
         });
 
         console.log("deployer: %s", deployer);
@@ -54,6 +52,7 @@ contract ConfigAll is AASetup, EntryPointHelper {
         _grantRoles(cfg, owner, deployerPrivateKey);
         _setIssuerLimits(cfg, owner, deployerPrivateKey);
         _grantERC20Roles(cfg, owner, deployerPrivateKey);
+        _setOracles(cfg, owner, deployerPrivateKey);
 
         vm.stopBroadcast();
     }
@@ -102,6 +101,23 @@ contract ConfigAll is AASetup, EntryPointHelper {
         // - burn(uint256 value)
         _setIssuerLimit(cfg.usdplus, address(cfg.minter), type(uint256).max, 0, owner, deployerPrivateKey);
         _setIssuerLimit(cfg.usdplus, address(cfg.redeemer), 0, type(uint256).max, owner, deployerPrivateKey);
+    }
+
+    function _setOracles(Config memory cfg, address owner, uint256 deployerPrivateKey) internal {
+        _handleOps(
+            _entryPoint,
+            abi.encodeWithSelector(UsdPlusMinter.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle),
+            owner,
+            address(cfg.minter),
+            deployerPrivateKey
+        );
+        _handleOps(
+            _entryPoint,
+            abi.encodeWithSelector(UsdPlusRedeemer.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle),
+            owner,
+            address(cfg.redeemer),
+            deployerPrivateKey
+        );
     }
 
     function _grantERC20Roles(Config memory cfg, address owner, uint256 deployerPrivateKey) internal {
