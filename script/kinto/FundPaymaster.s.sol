@@ -19,20 +19,27 @@ contract FundPaymaster is Script, EntryPointHelper {
         console.log("deployer: %s", deployer);
         console.log("owner: %s", owner);
 
+        address contractToFund = 0xa7D259925f951b674bCDbcF7a63Ab2f5923483dB;
+
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
+        uint256 balance = _sponsorPaymaster.balances(contractToFund);
+        console.log("balance: %s", balance);
+        uint256 selfBalance = _sponsorPaymaster.balances(address(_sponsorPaymaster));
+        console.log("selfBalance: %s", selfBalance);
+
         // Note: Fails due to SenderKYCRequired
-        // _sponsorPaymaster.addDepositFor{value: 0.0007 ether}(owner);
-        _handleOps(
-            _entryPoint,
-            abi.encodeCall(ISponsorPaymaster.addDepositFor, (owner)),
-            owner,
-            address(_sponsorPaymaster),
-            0.01 ether,
-            address(_sponsorPaymaster),
-            deployerPrivateKey
-        );
+        // _sponsorPaymaster.addDepositFor{value: 0.0007 ether}(contractToFund);
+        // _handleOps(
+        //     _entryPoint,
+        //     abi.encodeCall(ISponsorPaymaster.addDepositFor, (contractToFund)),
+        //     owner,
+        //     address(_sponsorPaymaster),
+        //     0.007 ether,
+        //     address(_sponsorPaymaster),
+        //     deployerPrivateKey
+        // );
 
         vm.stopBroadcast();
     }

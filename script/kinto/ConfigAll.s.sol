@@ -82,6 +82,7 @@ contract ConfigAll is Script, EntryPointHelper {
             owner,
             deployerPrivateKey
         );
+        console.log("RESTRICTOR_ROLE granted");
 
         // Grant OPERATOR_ROLE to operators
         // permissions to call
@@ -89,6 +90,23 @@ contract ConfigAll is Script, EntryPointHelper {
         // - rebaseMul(uint128 factor)
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator, owner, deployerPrivateKey);
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator2, owner, deployerPrivateKey);
+        console.log("OPERATOR_ROLE granted");
+
+        // Grant PRIVATE_MINTER_ROLE to operators
+        // permissions to call
+        // - privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
+        _grantRole(address(cfg.minter), cfg.minter.PRIVATE_MINTER_ROLE(), cfg.operator, owner, deployerPrivateKey);
+        _grantRole(address(cfg.minter), cfg.minter.PRIVATE_MINTER_ROLE(), cfg.operator2, owner, deployerPrivateKey);
+        console.log("PRIVATE_MINTER_ROLE granted");
+
+        // Grant PRIVATE_REDEEMER_ROLE to operators
+        // permissions to call
+        // - privateRequestRedeem(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
+        _grantRole(address(cfg.redeemer), cfg.redeemer.PRIVATE_REDEEMER_ROLE(), cfg.operator, owner, deployerPrivateKey);
+        _grantRole(
+            address(cfg.redeemer), cfg.redeemer.PRIVATE_REDEEMER_ROLE(), cfg.operator2, owner, deployerPrivateKey
+        );
+        console.log("PRIVATE_REDEEMER_ROLE granted");
 
         // Grant FULFILLER_ROLE to operators
         // permissions to call
@@ -96,6 +114,7 @@ contract ConfigAll is Script, EntryPointHelper {
         // - cancel(uint256 ticket)
         _grantRole(address(cfg.redeemer), cfg.redeemer.FULFILLER_ROLE(), cfg.operator, owner, deployerPrivateKey);
         _grantRole(address(cfg.redeemer), cfg.redeemer.FULFILLER_ROLE(), cfg.operator2, owner, deployerPrivateKey);
+        console.log("FULFILLER_ROLE granted");
     }
 
     function _setIssuerLimits(Config memory cfg, address owner, uint256 deployerPrivateKey) internal {
