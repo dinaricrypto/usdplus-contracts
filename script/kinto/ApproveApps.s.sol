@@ -46,19 +46,21 @@ contract ApproveApps is Script, EntryPointHelper {
         vm.startBroadcast(deployerPrivateKey);
 
         // authorize kinto wallet to call contracts
-        address[] memory apps = new address[](5);
+        address[] memory apps = new address[](6);
         apps[0] = cfg.transferRestrictor;
         apps[1] = cfg.usdplus;
         apps[2] = cfg.minter;
         apps[3] = cfg.redeemer;
-        apps[4] = cfg.usdc; //MockUSDC
+        apps[4] = CREATE2_FACTORY;
+        apps[5] = cfg.usdc; //MockUSDC
 
-        bool[] memory flags = new bool[](5);
+        bool[] memory flags = new bool[](6);
         flags[0] = true;
         flags[1] = true;
         flags[2] = true;
         flags[3] = true;
         flags[4] = true;
+        flags[5] = true;
 
         // for (uint256 i = 0; i < apps.length; i++) {
         //     uint256 _balance = _sponsorPaymaster.balances(apps[i]);
