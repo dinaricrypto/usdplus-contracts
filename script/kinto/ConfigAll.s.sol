@@ -33,6 +33,7 @@ contract ConfigAll is Script, EntryPointHelper {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
         address owner = vm.envAddress("OWNER");
+        string memory environmentName = vm.envString("ENVIRONMENT");
         _entryPoint = IEntryPoint(vm.envAddress("ENTRYPOINT"));
         _sponsorPaymaster = vm.envAddress("SPONSOR_PAYMASTER");
 
@@ -54,8 +55,9 @@ contract ConfigAll is Script, EntryPointHelper {
 
         _grantRoles(cfg, owner, deployerPrivateKey);
         _setIssuerLimits(cfg, owner, deployerPrivateKey);
-        // TODO: switch on env
-        _grantERC20Roles(cfg, owner, deployerPrivateKey);
+        if (keccak256(abi.encode(environmentName)) == keccak256(abi.encode("STAGING"))) {
+            _grantERC20Roles(cfg, owner, deployerPrivateKey);
+        }
         _setOracles(cfg, owner, deployerPrivateKey);
 
         vm.stopBroadcast();
