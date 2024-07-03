@@ -190,7 +190,7 @@ contract UsdPlusMinterTest is Test {
 
     function test_mint_permit(uint256 amount) public {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
-        console.log(vm.addr(userPrivateKey));
+
         SigUtils.Permit memory sigPermit = SigUtils.Permit({
             owner: USER,
             spender: address(minter),
