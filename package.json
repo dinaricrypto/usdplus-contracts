@@ -9,7 +9,8 @@
     "gas": "forge test -f $(grep RPC_URL .env-test | cut -d '=' -f2) --gas-report --fuzz-seed 1 | grep '^|' > .gas-report",
     "metrics": "solidity-code-metrics ./src/**/*.sol --html > metrics.html",
     "deploy:all": "forge script script/DeployAll.s.sol:DeployAllScript --rpc-url $(grep RPC_URL .env | cut -d '=' -f2) --broadcast --verify -vvv",
-    "errors": "npx ts-node script/errors_parse_ast.ts"
+    "errors": "npx ts-node script/errors_parse_ast.ts",
+    "anvil:kinto": "anvil -f https://rpc.kinto-rpc.com/"
   },
   "devDependencies": {
     "@types/node": "^20.10.4",
