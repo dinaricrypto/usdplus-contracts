@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import "forge-std/Test.sol";
-import {UnityOracle} from "../src/oracles/UnityOracle.sol";
+import {UnityOracle} from "../src/mocks/UnityOracle.sol";
 
 contract UnityOracleTest is Test {
     UnityOracle private oracle;
