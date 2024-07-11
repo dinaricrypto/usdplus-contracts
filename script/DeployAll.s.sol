@@ -63,58 +63,72 @@ contract DeployAll is Script {
 
         /// ------------------ usd+ ------------------
 
-        TransferRestrictor transferRestrictor = TransferRestrictor(deployWithCreate2(salt, implBytecodes.transferRestrictorBytecode));
+        TransferRestrictor transferRestrictor =
+            TransferRestrictor(deployWithCreate2(salt, implBytecodes.transferRestrictorBytecode));
 
         UsdPlus usdplusImpl = UsdPlus(deployWithCreate2(salt, implBytecodes.usdplusImplBytecode));
 
-        UsdPlus usdplus = UsdPlus(deployWithCreate2(
-            salt,
-            abi.encodePacked(
-                type(ERC1967Proxy).creationCode,
-                abi.encode(
-                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
+        UsdPlus usdplus = UsdPlus(
+            deployWithCreate2(
+                salt,
+                abi.encodePacked(
+                    type(ERC1967Proxy).creationCode,
+                    abi.encode(
+                        address(usdplusImpl),
+                        abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
+                    )
                 )
             )
-        ));
+        );
 
-        WrappedUsdPlus wrappedusdplusImpl = WrappedUsdPlus(deployWithCreate2(salt, implBytecodes.wrappedusdplusImplBytecode));
+        WrappedUsdPlus wrappedusdplusImpl =
+            WrappedUsdPlus(deployWithCreate2(salt, implBytecodes.wrappedusdplusImplBytecode));
 
-        WrappedUsdPlus wrappedusdplus = WrappedUsdPlus(deployWithCreate2(
-            salt,
-            abi.encodePacked(
-                type(ERC1967Proxy).creationCode,
-                abi.encode(
-                    address(wrappedusdplusImpl), abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
+        WrappedUsdPlus wrappedusdplus = WrappedUsdPlus(
+            deployWithCreate2(
+                salt,
+                abi.encodePacked(
+                    type(ERC1967Proxy).creationCode,
+                    abi.encode(
+                        address(wrappedusdplusImpl),
+                        abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
+                    )
                 )
             )
-        ));
+        );
 
         /// ------------------ usd+ minter/redeemer ------------------
 
         UsdPlusMinter minterImpl = UsdPlusMinter(deployWithCreate2(salt, implBytecodes.minterImplBytecode));
 
-        UsdPlusMinter minter = UsdPlusMinter(deployWithCreate2(
-            salt,
-            abi.encodePacked(
-                type(ERC1967Proxy).creationCode,
-                abi.encode(
-                    address(minterImpl),
-                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner))
+        UsdPlusMinter minter = UsdPlusMinter(
+            deployWithCreate2(
+                salt,
+                abi.encodePacked(
+                    type(ERC1967Proxy).creationCode,
+                    abi.encode(
+                        address(minterImpl),
+                        abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner))
+                    )
                 )
             )
-        ));
+        );
         usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
         minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
         UsdPlusRedeemer redeemerImpl = UsdPlusRedeemer(deployWithCreate2(salt, implBytecodes.redeemerImplBytecode));
 
-        UsdPlusRedeemer redeemer = UsdPlusRedeemer(deployWithCreate2(
-            salt,
-            abi.encodePacked(
-                type(ERC1967Proxy).creationCode,
-                abi.encode(address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner)))
+        UsdPlusRedeemer redeemer = UsdPlusRedeemer(
+            deployWithCreate2(
+                salt,
+                abi.encodePacked(
+                    type(ERC1967Proxy).creationCode,
+                    abi.encode(
+                        address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner))
+                    )
+                )
             )
-        ));
+        );
         usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.treasury);
         redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
