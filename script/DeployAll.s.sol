@@ -14,7 +14,7 @@ import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC19
 
 contract DeployAll is Script {
     error ContractDeploymentFailed();
-    
+
     struct DeployConfig {
         address owner;
         address treasury;
@@ -47,10 +47,8 @@ contract DeployAll is Script {
 
         /// ------------------ usd+ ------------------
 
-        bytes memory transferRestrictorBytecode = abi.encodePacked(
-            type(TransferRestrictor).creationCode,
-            abi.encode(cfg.owner)
-        );
+        bytes memory transferRestrictorBytecode =
+            abi.encodePacked(type(TransferRestrictor).creationCode, abi.encode(cfg.owner));
 
         TransferRestrictor transferRestrictor = TransferRestrictor(deployWithCreate2(salt, transferRestrictorBytecode));
 
@@ -60,8 +58,7 @@ contract DeployAll is Script {
         bytes memory usdplusProxyBytecode = abi.encodePacked(
             type(ERC1967Proxy).creationCode,
             abi.encode(
-                address(usdplusImpl),
-                abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
+                address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
             )
         );
         UsdPlus usdplus = UsdPlus(deployWithCreate2(salt, usdplusProxyBytecode));
@@ -72,8 +69,7 @@ contract DeployAll is Script {
         bytes memory wrappedusdplusProxyBytecode = abi.encodePacked(
             type(ERC1967Proxy).creationCode,
             abi.encode(
-                address(wrappedusdplusImpl),
-                abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
+                address(wrappedusdplusImpl), abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
             )
         );
         WrappedUsdPlus wrappedusdplus = WrappedUsdPlus(deployWithCreate2(salt, wrappedusdplusProxyBytecode));
@@ -99,9 +95,7 @@ contract DeployAll is Script {
 
         bytes memory redeemerProxyBytecode = abi.encodePacked(
             type(ERC1967Proxy).creationCode,
-            abi.encode(
-                address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner))
-            )
+            abi.encode(address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner)))
         );
         UsdPlusRedeemer redeemer = UsdPlusRedeemer(deployWithCreate2(salt, redeemerProxyBytecode));
         usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
@@ -111,10 +105,9 @@ contract DeployAll is Script {
         vm.stopBroadcast();
     }
 
-
     function deployWithCreate2(bytes32 salt, bytes memory bytecode) internal returns (address addr) {
         assembly {
-            addr:= create2(0, add(bytecode, 0x20), mload(bytecode), salt)
+            addr := create2(0, add(bytecode, 0x20), mload(bytecode), salt)
         }
         if (addr == address(0)) revert ContractDeploymentFailed();
     }
