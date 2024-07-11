@@ -13,8 +13,6 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract DeployAll is Script {
-    error ContractDeploymentFailed();
-
     struct DeployConfig {
         address owner;
         address treasury;
@@ -31,7 +29,7 @@ contract DeployAll is Script {
     }
 
     function run() external {
-        // load env variables
+        // Load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
 
@@ -54,78 +52,57 @@ contract DeployAll is Script {
 
         console.log("deployer: %s", deployer);
 
-        // send txs as deployer
+        // Send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
         /// ------------------ usdc ------------------
-
         // cfg.usdc = new ERC20Mock("USD Coin", "USDC", 6, cfg.owner);
 
         /// ------------------ usd+ ------------------
+        TransferRestrictor transferRestrictor = new TransferRestrictor{salt: salt}(cfg.owner);
 
-        TransferRestrictor transferRestrictor =
-            TransferRestrictor(deployWithCreate2(salt, implBytecodes.transferRestrictorBytecode));
-
-        UsdPlus usdplusImpl = UsdPlus(deployWithCreate2(salt, implBytecodes.usdplusImplBytecode));
+        UsdPlus usdplusImpl = new UsdPlus{salt: salt}();
 
         UsdPlus usdplus = UsdPlus(
-            deployWithCreate2(
-                salt,
-                abi.encodePacked(
-                    type(ERC1967Proxy).creationCode,
-                    abi.encode(
-                        address(usdplusImpl),
-                        abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
-                    )
+            address(
+                new ERC1967Proxy{salt: salt}(
+                    address(usdplusImpl),
+                    abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
                 )
             )
         );
 
-        WrappedUsdPlus wrappedusdplusImpl =
-            WrappedUsdPlus(deployWithCreate2(salt, implBytecodes.wrappedusdplusImplBytecode));
+        WrappedUsdPlus wrappedusdplusImpl = new WrappedUsdPlus{salt: salt}();
 
         WrappedUsdPlus wrappedusdplus = WrappedUsdPlus(
-            deployWithCreate2(
-                salt,
-                abi.encodePacked(
-                    type(ERC1967Proxy).creationCode,
-                    abi.encode(
-                        address(wrappedusdplusImpl),
-                        abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
-                    )
+            address(
+                new ERC1967Proxy{salt: salt}(
+                    address(wrappedusdplusImpl),
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
                 )
             )
         );
 
         /// ------------------ usd+ minter/redeemer ------------------
-
-        UsdPlusMinter minterImpl = UsdPlusMinter(deployWithCreate2(salt, implBytecodes.minterImplBytecode));
+        UsdPlusMinter minterImpl = new UsdPlusMinter{salt: salt}();
 
         UsdPlusMinter minter = UsdPlusMinter(
-            deployWithCreate2(
-                salt,
-                abi.encodePacked(
-                    type(ERC1967Proxy).creationCode,
-                    abi.encode(
-                        address(minterImpl),
-                        abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner))
-                    )
+            address(
+                new ERC1967Proxy{salt: salt}(
+                    address(minterImpl),
+                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner))
                 )
             )
         );
         usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
         minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
-        UsdPlusRedeemer redeemerImpl = UsdPlusRedeemer(deployWithCreate2(salt, implBytecodes.redeemerImplBytecode));
+        UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer{salt: salt}();
 
         UsdPlusRedeemer redeemer = UsdPlusRedeemer(
-            deployWithCreate2(
-                salt,
-                abi.encodePacked(
-                    type(ERC1967Proxy).creationCode,
-                    abi.encode(
-                        address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner))
-                    )
+            address(
+                new ERC1967Proxy{salt: salt}(
+                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner))
                 )
             )
         );
@@ -134,12 +111,5 @@ contract DeployAll is Script {
         redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
         vm.stopBroadcast();
-    }
-
-    function deployWithCreate2(bytes32 salt, bytes memory bytecode) internal returns (address addr) {
-        assembly {
-            addr := create2(0, add(bytecode, 0x20), mload(bytecode), salt)
-        }
-        if (addr == address(0)) revert ContractDeploymentFailed();
     }
 }
