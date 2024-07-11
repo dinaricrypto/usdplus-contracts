@@ -24,7 +24,7 @@ metrics.html
 
 # env
 .env
-.env-*
+.env*
 
 # logs
 *.log
