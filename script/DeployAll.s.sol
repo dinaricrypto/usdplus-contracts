@@ -22,6 +22,14 @@ contract DeployAll is Script {
         AggregatorV3Interface paymentTokenOracle;
     }
 
+    struct ImplementationBytecodes {
+        bytes transferRestrictorBytecode;
+        bytes usdplusImplBytecode;
+        bytes wrappedusdplusImplBytecode;
+        bytes minterImplBytecode;
+        bytes redeemerImplBytecode;
+    }
+
     function run() external {
         // load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
@@ -36,6 +44,14 @@ contract DeployAll is Script {
             paymentTokenOracle: AggregatorV3Interface(vm.envAddress("USDCORACLE"))
         });
 
+        ImplementationBytecodes memory implBytecodes = ImplementationBytecodes({
+            transferRestrictorBytecode: abi.encodePacked(type(TransferRestrictor).creationCode, abi.encode(cfg.owner)),
+            usdplusImplBytecode: type(UsdPlus).creationCode,
+            wrappedusdplusImplBytecode: type(WrappedUsdPlus).creationCode,
+            minterImplBytecode: type(UsdPlusMinter).creationCode,
+            redeemerImplBytecode: type(UsdPlusRedeemer).creationCode
+        });
+
         console.log("deployer: %s", deployer);
 
         // send txs as deployer
@@ -47,57 +63,58 @@ contract DeployAll is Script {
 
         /// ------------------ usd+ ------------------
 
-        bytes memory transferRestrictorBytecode =
-            abi.encodePacked(type(TransferRestrictor).creationCode, abi.encode(cfg.owner));
+        TransferRestrictor transferRestrictor = TransferRestrictor(deployWithCreate2(salt, implBytecodes.transferRestrictorBytecode));
 
-        TransferRestrictor transferRestrictor = TransferRestrictor(deployWithCreate2(salt, transferRestrictorBytecode));
+        UsdPlus usdplusImpl = UsdPlus(deployWithCreate2(salt, implBytecodes.usdplusImplBytecode));
 
-        bytes memory usdplusImplBytecode = type(UsdPlus).creationCode;
-        UsdPlus usdplusImpl = UsdPlus(deployWithCreate2(salt, usdplusImplBytecode));
-
-        bytes memory usdplusProxyBytecode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(
-                address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
+        UsdPlus usdplus = UsdPlus(deployWithCreate2(
+            salt,
+            abi.encodePacked(
+                type(ERC1967Proxy).creationCode,
+                abi.encode(
+                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
+                )
             )
-        );
-        UsdPlus usdplus = UsdPlus(deployWithCreate2(salt, usdplusProxyBytecode));
+        ));
 
-        bytes memory wrappedusdplusImplBytecode = type(WrappedUsdPlus).creationCode;
-        WrappedUsdPlus wrappedusdplusImpl = WrappedUsdPlus(deployWithCreate2(salt, wrappedusdplusImplBytecode));
+        WrappedUsdPlus wrappedusdplusImpl = WrappedUsdPlus(deployWithCreate2(salt, implBytecodes.wrappedusdplusImplBytecode));
 
-        bytes memory wrappedusdplusProxyBytecode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(
-                address(wrappedusdplusImpl), abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
+        WrappedUsdPlus wrappedusdplus = WrappedUsdPlus(deployWithCreate2(
+            salt,
+            abi.encodePacked(
+                type(ERC1967Proxy).creationCode,
+                abi.encode(
+                    address(wrappedusdplusImpl), abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
+                )
             )
-        );
-        WrappedUsdPlus wrappedusdplus = WrappedUsdPlus(deployWithCreate2(salt, wrappedusdplusProxyBytecode));
+        ));
 
         /// ------------------ usd+ minter/redeemer ------------------
 
-        bytes memory minterImplBytecode = type(UsdPlusMinter).creationCode;
-        UsdPlusMinter minterImpl = UsdPlusMinter(deployWithCreate2(salt, minterImplBytecode));
+        UsdPlusMinter minterImpl = UsdPlusMinter(deployWithCreate2(salt, implBytecodes.minterImplBytecode));
 
-        bytes memory minterProxyBytecode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(
-                address(minterImpl),
-                abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner))
+        UsdPlusMinter minter = UsdPlusMinter(deployWithCreate2(
+            salt,
+            abi.encodePacked(
+                type(ERC1967Proxy).creationCode,
+                abi.encode(
+                    address(minterImpl),
+                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner))
+                )
             )
-        );
-        UsdPlusMinter minter = UsdPlusMinter(deployWithCreate2(salt, minterProxyBytecode));
+        ));
         usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
         minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
-        bytes memory redeemerImplBytecode = type(UsdPlusRedeemer).creationCode;
-        UsdPlusRedeemer redeemerImpl = UsdPlusRedeemer(deployWithCreate2(salt, redeemerImplBytecode));
+        UsdPlusRedeemer redeemerImpl = UsdPlusRedeemer(deployWithCreate2(salt, implBytecodes.redeemerImplBytecode));
 
-        bytes memory redeemerProxyBytecode = abi.encodePacked(
-            type(ERC1967Proxy).creationCode,
-            abi.encode(address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner)))
-        );
-        UsdPlusRedeemer redeemer = UsdPlusRedeemer(deployWithCreate2(salt, redeemerProxyBytecode));
+        UsdPlusRedeemer redeemer = UsdPlusRedeemer(deployWithCreate2(
+            salt,
+            abi.encodePacked(
+                type(ERC1967Proxy).creationCode,
+                abi.encode(address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner)))
+            )
+        ));
         usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.treasury);
         redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
