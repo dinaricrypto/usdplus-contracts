@@ -20,14 +20,6 @@ contract DeployAll is Script {
         AggregatorV3Interface paymentTokenOracle;
     }
 
-    struct ImplementationBytecodes {
-        bytes transferRestrictorBytecode;
-        bytes usdplusImplBytecode;
-        bytes wrappedusdplusImplBytecode;
-        bytes minterImplBytecode;
-        bytes redeemerImplBytecode;
-    }
-
     function run() external {
         // Load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
