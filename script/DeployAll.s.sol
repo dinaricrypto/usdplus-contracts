@@ -42,14 +42,6 @@ contract DeployAll is Script {
             paymentTokenOracle: AggregatorV3Interface(vm.envAddress("USDCORACLE"))
         });
 
-        ImplementationBytecodes memory implBytecodes = ImplementationBytecodes({
-            transferRestrictorBytecode: abi.encodePacked(type(TransferRestrictor).creationCode, abi.encode(cfg.owner)),
-            usdplusImplBytecode: type(UsdPlus).creationCode,
-            wrappedusdplusImplBytecode: type(WrappedUsdPlus).creationCode,
-            minterImplBytecode: type(UsdPlusMinter).creationCode,
-            redeemerImplBytecode: type(UsdPlusRedeemer).creationCode
-        });
-
         console.log("deployer: %s", deployer);
 
         // Send txs as deployer
