@@ -15,29 +15,14 @@ import {ISponsorPaymaster} from "kinto-contracts-helpers/interfaces/ISponsorPaym
 import "kinto-contracts-helpers/EntryPointHelper.sol";
 
 contract ApproveApps is Script, EntryPointHelper {
-    struct Config {
-        address transferRestrictor;
-        address usdplus;
-        address minter;
-        address redeemer;
-        address usdc;
-    }
-
     function run() external {
         // load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
-        address owner = vm.envAddress("OWNER");
+        address owner = vm.envAddress("KINTO_WALLET");
+        address app = vm.envAddress("KINTO_APP");
         IEntryPoint _entryPoint = IEntryPoint(vm.envAddress("ENTRYPOINT"));
         ISponsorPaymaster _sponsorPaymaster = ISponsorPaymaster(vm.envAddress("SPONSOR_PAYMASTER"));
-
-        Config memory cfg = Config({
-            transferRestrictor: vm.envAddress("TRANSFER_RESTRICTOR"),
-            usdplus: vm.envAddress("USDPLUS"),
-            minter: vm.envAddress("MINTER"),
-            redeemer: vm.envAddress("REDEEMER"),
-            usdc: vm.envAddress("USDC")
-        });
 
         console.log("deployer: %s", deployer);
         console.log("owner: %s", owner);
@@ -46,21 +31,13 @@ contract ApproveApps is Script, EntryPointHelper {
         vm.startBroadcast(deployerPrivateKey);
 
         // authorize kinto wallet to call contracts
-        address[] memory apps = new address[](6);
-        apps[0] = cfg.transferRestrictor;
-        apps[1] = cfg.usdplus;
-        apps[2] = cfg.minter;
-        apps[3] = cfg.redeemer;
-        apps[4] = CREATE2_FACTORY;
-        apps[5] = cfg.usdc; //MockUSDC
+        address[] memory apps = new address[](2);
+        apps[0] = 0xB2eEc63Cdc175d6d07B8f69804C0Ab5F66aCC3cb;
+        apps[1] = 0xF34f9C994E28254334C83AcE353d814E5fB90815;
 
-        bool[] memory flags = new bool[](6);
+        bool[] memory flags = new bool[](2);
         flags[0] = true;
         flags[1] = true;
-        flags[2] = true;
-        flags[3] = true;
-        flags[4] = true;
-        flags[5] = true;
 
         // for (uint256 i = 0; i < apps.length; i++) {
         //     uint256 _balance = _sponsorPaymaster.balances(apps[i]);
