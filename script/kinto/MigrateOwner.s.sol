@@ -43,44 +43,45 @@ contract MigrateOwner is Script, EntryPointHelper {
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
-        _handleOps(
-            _entryPoint,
-            abi.encodeCall(IAccessControlDefaultAdminRules.beginDefaultAdminTransfer, (deployer)),
-            kintoWallet,
-            address(cfg.transferRestrictor),
-            address(_sponsorPaymaster),
-            deployerPrivateKey
-        );
+        // _handleOps(
+        //     _entryPoint,
+        //     abi.encodeCall(IAccessControlDefaultAdminRules.beginDefaultAdminTransfer, (newOwner)),
+        //     kintoWallet,
+        //     address(cfg.transferRestrictor),
+        //     address(_sponsorPaymaster),
+        //     deployerPrivateKey
+        // );
+
+        // _handleOps(
+        //     _entryPoint,
+        //     abi.encodeCall(IAccessControlDefaultAdminRules.beginDefaultAdminTransfer, (newOwner)),
+        //     kintoWallet,
+        //     address(cfg.usdplus),
+        //     address(_sponsorPaymaster),
+        //     deployerPrivateKey
+        // );
+
+        // _handleOps(
+        //     _entryPoint,
+        //     abi.encodeCall(IAccessControlDefaultAdminRules.beginDefaultAdminTransfer, (newOwner)),
+        //     kintoWallet,
+        //     address(cfg.minter),
+        //     address(_sponsorPaymaster),
+        //     deployerPrivateKey
+        // );
+
+        // _handleOps(
+        //     _entryPoint,
+        //     abi.encodeCall(IAccessControlDefaultAdminRules.beginDefaultAdminTransfer, (newOwner)),
+        //     kintoWallet,
+        //     address(cfg.redeemer),
+        //     address(_sponsorPaymaster),
+        //     deployerPrivateKey
+        // );
+
         cfg.transferRestrictor.acceptDefaultAdminTransfer();
-
-        _handleOps(
-            _entryPoint,
-            abi.encodeCall(IAccessControlDefaultAdminRules.beginDefaultAdminTransfer, (deployer)),
-            kintoWallet,
-            address(cfg.usdplus),
-            address(_sponsorPaymaster),
-            deployerPrivateKey
-        );
         cfg.usdplus.acceptDefaultAdminTransfer();
-
-        _handleOps(
-            _entryPoint,
-            abi.encodeCall(IAccessControlDefaultAdminRules.beginDefaultAdminTransfer, (deployer)),
-            kintoWallet,
-            address(cfg.minter),
-            address(_sponsorPaymaster),
-            deployerPrivateKey
-        );
         cfg.minter.acceptDefaultAdminTransfer();
-
-        _handleOps(
-            _entryPoint,
-            abi.encodeCall(IAccessControlDefaultAdminRules.beginDefaultAdminTransfer, (deployer)),
-            kintoWallet,
-            address(cfg.redeemer),
-            address(_sponsorPaymaster),
-            deployerPrivateKey
-        );
         cfg.redeemer.acceptDefaultAdminTransfer();
 
         vm.stopBroadcast();
