@@ -99,15 +99,6 @@ contract ConfigAll is Script, EntryPointHelper {
         _grantRole(address(cfg.minter), cfg.minter.PRIVATE_MINTER_ROLE(), cfg.operator2, owner, deployerPrivateKey);
         console.log("PRIVATE_MINTER_ROLE granted");
 
-        // Grant PRIVATE_REDEEMER_ROLE to operators
-        // permissions to call
-        // - privateRequestRedeem(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
-        _grantRole(address(cfg.redeemer), cfg.redeemer.PRIVATE_REDEEMER_ROLE(), cfg.operator, owner, deployerPrivateKey);
-        _grantRole(
-            address(cfg.redeemer), cfg.redeemer.PRIVATE_REDEEMER_ROLE(), cfg.operator2, owner, deployerPrivateKey
-        );
-        console.log("PRIVATE_REDEEMER_ROLE granted");
-
         // Grant FULFILLER_ROLE to operators
         // permissions to call
         // - fulfill(uint256 ticket)

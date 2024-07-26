@@ -10,17 +10,13 @@ contract RedeemMulticall is Script {
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
     bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
 
-    function getPermitStructHash(IUsdPlusRedeemer.Permit memory _permit) internal pure returns (bytes32) {
+    function getPermitStructHash(Permit memory _permit) internal pure returns (bytes32) {
         return keccak256(
             abi.encode(PERMIT_TYPEHASH, _permit.owner, _permit.spender, _permit.value, _permit.nonce, _permit.deadline)
         );
     }
 
-    function getPermitTypedDataHash(bytes32 domainSeparator, IUsdPlusRedeemer.Permit memory _permit)
-        public
-        pure
-        returns (bytes32)
-    {
+    function getPermitTypedDataHash(bytes32 domainSeparator, Permit memory _permit) public pure returns (bytes32) {
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator, getPermitStructHash(_permit)));
     }
 
@@ -41,7 +37,7 @@ contract RedeemMulticall is Script {
         // User sign USD+ permit
         vm.startBroadcast(userPrivateKey);
 
-        IUsdPlusRedeemer.Permit memory permit = IUsdPlusRedeemer.Permit({
+        Permit memory permit = Permit({
             owner: user,
             spender: address(redeemer),
             value: amount,
