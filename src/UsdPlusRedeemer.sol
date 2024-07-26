@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {MulticallUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/MulticallUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -15,7 +16,12 @@ import {UsdPlus} from "./UsdPlus.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
-contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
+contract UsdPlusRedeemer is
+    IUsdPlusRedeemer,
+    UUPSUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable,
+    MulticallUpgradeable
+{
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
@@ -118,6 +124,16 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
             s := mload(add(sig, 0x40))
             v := byte(0, mload(add(sig, 0x60)))
         }
+    }
+
+    /// @notice Permits this contract to spend a given token from `msg.sender`
+    /// @dev The `spender` is always address(this).
+    /// @param token The address of the token spent
+    /// @param permit The permit data
+    /// @param signature The signature of the owner
+    function selfPermit(address token, Permit calldata permit, bytes calldata signature) public {
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+        IERC20Permit(token).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
     }
 
     // ----------------- Requests -----------------
