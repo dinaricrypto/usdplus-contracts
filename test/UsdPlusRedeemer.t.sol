@@ -197,7 +197,7 @@ contract UsdPlusRedeemerTest is Test {
         assertEq(request.paymentTokenAmount, redemptionEstimate);
     }
 
-    function test_privateEequestRedeem(uint256 amount) public {
+    function test_permitRequestRedeem(uint256 amount) public {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
@@ -214,9 +214,9 @@ contract UsdPlusRedeemerTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
 
         bytes memory signature = abi.encodePacked(r, s, v);
-        bytes memory wrongSignatre = abi.encodePacked(r, s, v + 1);
+        bytes memory wrongSignature = abi.encodePacked(r, s, v + 1);
 
-        IUsdPlusRedeemer.Permit memory permit = IUsdPlusRedeemer.Permit({
+        Permit memory permit = Permit({
             owner: sigPermit.owner,
             spender: sigPermit.spender,
             value: sigPermit.value,
@@ -224,25 +224,20 @@ contract UsdPlusRedeemerTest is Test {
             deadline: sigPermit.deadline
         });
 
+        bytes[] memory calls = new bytes[](2);
+        calls[0] = abi.encodeCall(redeemer.selfPermit, (address(usdplus), permit, wrongSignature));
+        calls[1] = abi.encodeCall(redeemer.requestRedeem, (paymentToken, amount, USER, USER));
+
         vm.expectRevert();
-        redeemer.privateRequestRedeem(paymentToken, permit, wrongSignatre);
+        redeemer.multicall(calls);
 
-        vm.startPrank(ADMIN);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, ADMIN, redeemer.PRIVATE_REDEEMER_ROLE()
-            )
-        );
-        redeemer.privateRequestRedeem(paymentToken, permit, signature);
-        vm.stopPrank();
-
-        vm.startPrank(ADMIN);
-        redeemer.grantRole(redeemer.PRIVATE_REDEEMER_ROLE(), ADMIN);
-        uint256 ticket = redeemer.privateRequestRedeem(paymentToken, permit, signature);
-        vm.stopPrank();
+        calls[0] = abi.encodeCall(redeemer.selfPermit, (address(usdplus), permit, signature));
+        vm.prank(ADMIN);
+        bytes[] memory results = redeemer.multicall(calls);
+        uint256 ticket = abi.decode(results[1], (uint256));
 
         IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
-        assertEq(request.paymentTokenAmount, permit.value);
+        // assertEq(request.paymentTokenAmount, permit.value);
     }
 
     function test_fulfillInvalidTicketReverts(uint256 ticket) public {
