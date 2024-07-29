@@ -23,8 +23,8 @@ contract FillRedeem is Script, EntryPointHelper {
         console.log("deployer: %s", deployer);
         console.log("owner: %s", owner);
 
-        uint256 ticket = 12;
-        uint256 fillAmount = 168187733;
+        uint256 ticket = 17;
+        uint256 fillAmount = 899999999;
 
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
