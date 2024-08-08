@@ -21,7 +21,7 @@ contract RebaseAdd is Script, EntryPointHelper {
         console.log("deployer: %s", deployer);
         console.log("owner: %s", owner);
 
-        uint128 rebaseAddAmount = 16737976266;
+        uint128 rebaseAddAmount = 21447990145;
 
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
