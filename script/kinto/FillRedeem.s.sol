@@ -12,9 +12,9 @@ import "kinto-contracts-helpers/EntryPointHelper.sol";
 contract FillRedeem is Script, EntryPointHelper {
     function run() external {
         // load env variables
-        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY_STAGE");
         address deployer = vm.addr(deployerPrivateKey);
-        address owner = vm.envAddress("OWNER");
+        address owner = vm.envAddress("KINTO_WALLET");
         IEntryPoint _entryPoint = IEntryPoint(vm.envAddress("ENTRYPOINT"));
         ISponsorPaymaster _sponsorPaymaster = ISponsorPaymaster(vm.envAddress("SPONSOR_PAYMASTER"));
         UsdPlusRedeemer redeemer = UsdPlusRedeemer(vm.envAddress("REDEEMER"));
@@ -23,8 +23,8 @@ contract FillRedeem is Script, EntryPointHelper {
         console.log("deployer: %s", deployer);
         console.log("owner: %s", owner);
 
-        uint256 ticket = 4;
-        uint256 fillAmount = 47325080;
+        uint256 ticket = 17;
+        uint256 fillAmount = 899999999;
 
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);

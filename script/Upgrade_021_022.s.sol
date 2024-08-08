@@ -2,11 +2,13 @@
 pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
+import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
 import {UsdPlusRedeemer} from "../src/UsdPlusRedeemer.sol";
 
-contract Upgrade_redeemer_fix is Script {
+contract Upgrade_021_022 is Script {
     struct DeployConfig {
         address deployer;
+        UsdPlusMinter usdPlusMinter;
         UsdPlusRedeemer usdPlusRedeemer;
     }
 
@@ -16,14 +18,17 @@ contract Upgrade_redeemer_fix is Script {
 
         DeployConfig memory cfg = DeployConfig({
             deployer: vm.addr(deployerPrivateKey),
-            usdPlusRedeemer: UsdPlusRedeemer(vm.envAddress("USDPLUS_REDEEMER"))
+            usdPlusMinter: UsdPlusMinter(vm.envAddress("MINTER")),
+            usdPlusRedeemer: UsdPlusRedeemer(vm.envAddress("REDEEMER"))
         });
 
         console.log("deployer: %s", cfg.deployer);
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // upgrade
+        UsdPlusMinter usdPlusMinterImpl = new UsdPlusMinter();
+        cfg.usdPlusMinter.upgradeToAndCall(address(usdPlusMinterImpl), "");
+
         UsdPlusRedeemer usdPlusRedeemerImpl = new UsdPlusRedeemer();
         cfg.usdPlusRedeemer.upgradeToAndCall(address(usdPlusRedeemerImpl), "");
 

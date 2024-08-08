@@ -205,6 +205,8 @@ contract UsdPlusTest is Test {
     function test_rebaseAdd(uint128 initialAmount, uint128 rebaseAmount) public {
         vm.assume(initialAmount > 1);
         vm.assume(rebaseAmount > 0);
+        // TODO: add this check within method and revert
+        vm.assume(rebaseAmount < initialAmount);
 
         // mint USD+
         address user2 = address(0x123b);

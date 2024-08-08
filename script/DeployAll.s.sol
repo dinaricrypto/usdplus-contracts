@@ -21,9 +21,11 @@ contract DeployAll is Script {
     }
 
     function run() external {
-        // load env variables
+        // Load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         address deployer = vm.addr(deployerPrivateKey);
+
+        bytes32 salt = keccak256(abi.encodePacked(deployer));
 
         DeployConfig memory cfg = DeployConfig({
             owner: deployer,
@@ -34,31 +36,31 @@ contract DeployAll is Script {
 
         console.log("deployer: %s", deployer);
 
-        // send txs as deployer
+        // Send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
         /// ------------------ usdc ------------------
-
         // cfg.usdc = new ERC20Mock("USD Coin", "USDC", 6, cfg.owner);
 
         /// ------------------ usd+ ------------------
+        TransferRestrictor transferRestrictor = new TransferRestrictor{salt: salt}(cfg.owner);
 
-        TransferRestrictor transferRestrictor = new TransferRestrictor(cfg.owner);
+        UsdPlus usdplusImpl = new UsdPlus{salt: salt}();
 
-        UsdPlus usdplusImpl = new UsdPlus();
         UsdPlus usdplus = UsdPlus(
             address(
-                new ERC1967Proxy(
+                new ERC1967Proxy{salt: salt}(
                     address(usdplusImpl),
                     abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
                 )
             )
         );
 
-        WrappedUsdPlus wrappedusdplusImpl = new WrappedUsdPlus();
+        WrappedUsdPlus wrappedusdplusImpl = new WrappedUsdPlus{salt: salt}();
+
         WrappedUsdPlus wrappedusdplus = WrappedUsdPlus(
             address(
-                new ERC1967Proxy(
+                new ERC1967Proxy{salt: salt}(
                     address(wrappedusdplusImpl),
                     abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
                 )
@@ -66,11 +68,11 @@ contract DeployAll is Script {
         );
 
         /// ------------------ usd+ minter/redeemer ------------------
+        UsdPlusMinter minterImpl = new UsdPlusMinter{salt: salt}();
 
-        UsdPlusMinter minterImpl = new UsdPlusMinter();
         UsdPlusMinter minter = UsdPlusMinter(
             address(
-                new ERC1967Proxy(
+                new ERC1967Proxy{salt: salt}(
                     address(minterImpl),
                     abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner))
                 )
@@ -79,10 +81,11 @@ contract DeployAll is Script {
         usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
         minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
 
-        UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
+        UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer{salt: salt}();
+
         UsdPlusRedeemer redeemer = UsdPlusRedeemer(
             address(
-                new ERC1967Proxy(
+                new ERC1967Proxy{salt: salt}(
                     address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner))
                 )
             )

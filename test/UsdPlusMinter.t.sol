@@ -209,7 +209,7 @@ contract UsdPlusMinterTest is Test {
         assertEq(usdplus.balanceOf(USER), 0);
         uint256 balanceBefore = paymentToken.balanceOf(USER);
 
-        IUsdPlusMinter.Permit memory permit = IUsdPlusMinter.Permit({
+        Permit memory permit = Permit({
             owner: sigPermit.owner,
             spender: sigPermit.spender,
             value: sigPermit.value,
