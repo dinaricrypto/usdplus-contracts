@@ -24,7 +24,7 @@ contract Mint is Script {
             minter: UsdPlusMinter(vm.envAddress("MINTER"))
         });
 
-        uint256 amount = 1000 * 10 ** cfg.usdc.decimals();
+        uint256 amount = 100 * 10 ** cfg.usdc.decimals();
 
         console.log("user: %s", user);
 
