@@ -11,7 +11,7 @@ import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/Agg
 
 import {IUsdPlusRedeemer} from "./IUsdPlusRedeemer.sol";
 import {UsdPlus} from "./UsdPlus.sol";
-import {SelfPermit, Permit} from "./SelfPermit.sol";
+import {SelfPermit} from "./SelfPermit.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)

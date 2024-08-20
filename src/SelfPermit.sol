@@ -13,28 +13,20 @@ struct Permit {
 }
 
 /// @notice Allows contract to call permit before other methods in the same transaction
-/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
+/// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/SelfPermit.sol)
 abstract contract SelfPermit is MulticallUpgradeable {
-    /// @notice Split a signature into `v`, `r`, `s` components
-    /// @param sig The signature
-    /// @param v secp256k1 signature from the holder along with `r` and `s`
-    /// @param r signature from the holder along with `v` and `s`
-    /// @param s signature from the holder along with `r` and `v`
-    function splitSignature(bytes memory sig) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
-        assembly {
-            r := mload(add(sig, 0x20))
-            s := mload(add(sig, 0x40))
-            v := byte(0, mload(add(sig, 0x60)))
-        }
-    }
-
     /// @notice Permits this contract to spend a given token from `msg.sender`
     /// @dev The `spender` is always address(this).
     /// @param token The address of the token spent
-    /// @param permit The permit data
-    /// @param signature The signature of the owner
-    function selfPermit(address token, Permit calldata permit, bytes calldata signature) public {
-        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
-        IERC20Permit(token).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
+    /// @param owner The address of the holder of the token
+    /// @param value The amount that can be spent of token
+    /// @param deadline A timestamp, the current blocktime must be less than or equal to this timestamp
+    /// @param v Must produce valid secp256k1 signature from the holder along with `r` and `s`
+    /// @param r Must produce valid secp256k1 signature from the holder along with `v` and `s`
+    /// @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
+    function selfPermit(address token, address owner, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        public
+    {
+        IERC20Permit(token).permit(owner, address(this), value, deadline, v, r, s);
     }
 }
