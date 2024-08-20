@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/UsdPlusRedeemer.sol";
+import {Permit} from "../src/SelfPermit.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SigUtils} from "./utils/SigUtils.sol";
 import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
@@ -213,9 +214,6 @@ contract UsdPlusRedeemerTest is Test {
         bytes32 digest = sigUtils.getTypedDataHash(sigPermit);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
 
-        bytes memory signature = abi.encodePacked(r, s, v);
-        bytes memory wrongSignature = abi.encodePacked(r, s, v + 1);
-
         Permit memory permit = Permit({
             owner: sigPermit.owner,
             spender: sigPermit.spender,
@@ -225,13 +223,17 @@ contract UsdPlusRedeemerTest is Test {
         });
 
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(redeemer.selfPermit, (address(usdplus), permit, wrongSignature));
+        calls[0] = abi.encodeCall(
+            redeemer.selfPermit, (address(usdplus), permit.owner, permit.value, permit.deadline, v + 1, r, s)
+        );
         calls[1] = abi.encodeCall(redeemer.requestRedeem, (paymentToken, amount, USER, USER));
 
         vm.expectRevert();
         redeemer.multicall(calls);
 
-        calls[0] = abi.encodeCall(redeemer.selfPermit, (address(usdplus), permit, signature));
+        calls[0] = abi.encodeCall(
+            redeemer.selfPermit, (address(usdplus), permit.owner, permit.value, permit.deadline, v, r, s)
+        );
         vm.prank(ADMIN);
         bytes[] memory results = redeemer.multicall(calls);
         uint256 ticket = abi.decode(results[1], (uint256));

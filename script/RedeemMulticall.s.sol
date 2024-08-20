@@ -5,6 +5,7 @@ import "forge-std/Script.sol";
 import {ERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import "../src/UsdPlusRedeemer.sol";
+import {Permit} from "../src/SelfPermit.sol";
 
 contract RedeemMulticall is Script {
     // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
@@ -48,7 +49,6 @@ contract RedeemMulticall is Script {
         bytes32 digest = getPermitTypedDataHash(usdplus.DOMAIN_SEPARATOR(), permit);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
-        bytes memory signature = abi.encodePacked(v, r, s);
 
         vm.stopBroadcast();
 
@@ -57,7 +57,9 @@ contract RedeemMulticall is Script {
 
         // Build multicall
         bytes[] memory calls = new bytes[](2);
-        calls[0] = abi.encodeCall(redeemer.selfPermit, (address(usdplus), permit, signature));
+        calls[0] = abi.encodeCall(
+            redeemer.selfPermit, (address(usdplus), permit.owner, permit.value, permit.deadline, v, r, s)
+        );
         calls[1] = abi.encodeCall(redeemer.requestRedeem, (usdc, amount, user, user));
 
         redeemer.multicall(calls);
