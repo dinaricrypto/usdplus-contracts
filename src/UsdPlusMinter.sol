@@ -176,7 +176,21 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
     }
 
+    /// @notice Split a signature into `v`, `r`, `s` components
+    /// @param sig The signature
+    /// @param v secp256k1 signature from the holder along with `r` and `s`
+    /// @param r signature from the holder along with `v` and `s`
+    /// @param s signature from the holder along with `r` and `v`
+    function splitSignature(bytes memory sig) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
+        assembly {
+            r := mload(add(sig, 0x20))
+            s := mload(add(sig, 0x40))
+            v := byte(0, mload(add(sig, 0x60)))
+        }
+    }
+
     /// @inheritdoc IUsdPlusMinter
+    // TODO: deprecate
     function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
         external
         onlyRole(PRIVATE_MINTER_ROLE)
