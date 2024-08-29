@@ -43,9 +43,6 @@ __pycache__/
 # dist
 dist/
 
-# d2
-docs/*.png
-
 # latex
 *.aux
 *.toc
