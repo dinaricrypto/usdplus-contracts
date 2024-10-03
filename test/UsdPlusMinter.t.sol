@@ -112,6 +112,9 @@ contract UsdPlusMinterTest is Test {
     function test_previewDeposit(uint256 amount) public {
         vm.assume(amount < type(uint256).max / 2);
 
+        // usdplus
+        assertEq(minter.previewDeposit(IERC20(address(usdplus)), amount), amount);
+
         // payment token oracle not set
         vm.expectRevert(IUsdPlusMinter.PaymentTokenNotAccepted.selector);
         minter.previewDeposit(paymentToken, amount);
@@ -153,6 +156,17 @@ contract UsdPlusMinterTest is Test {
         vm.prank(USER);
         uint256 issued = minter.deposit(paymentToken, amount, USER);
         assertEq(issued, issueEstimate);
+
+        // deposit usdplus
+        vm.prank(USER);
+        usdplus.approve(address(minter), issued);
+
+        vm.expectEmit(true, true, true, true);
+        emit Issued(USER, IERC20(address(usdplus)), issued, issued);
+        vm.prank(USER);
+        uint256 issuedplus = minter.deposit(IERC20(address(usdplus)), issued, USER);
+        assertEq(issuedplus, issued);
+        assertEq(usdplus.balanceOf(USER), issuedplus);
     }
 
     function test_mintZeroAddressReverts(uint256 amount) public {

@@ -15,6 +15,7 @@ import {UsdPlus} from "./UsdPlus.sol";
 import {SelfPermit, Permit} from "./SelfPermit.sol";
 
 /// @notice USD+ minter
+/// @dev If the payment token is USD+, the amount is forwarded to the receiver.
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
 contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable, SelfPermit {
     /// ------------------ Types ------------------
@@ -124,6 +125,9 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
     /// @inheritdoc IUsdPlusMinter
     function previewDeposit(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
+        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
+        if (address(paymentToken) == $._usdplus) return paymentTokenAmount;
+
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
         return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Floor);
     }
@@ -152,12 +156,19 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         emit Issued(receiver, paymentToken, paymentTokenAmount, usdPlusAmount);
 
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        paymentToken.safeTransferFrom(spender, $._paymentRecipient, paymentTokenAmount);
-        UsdPlus($._usdplus).mint(receiver, usdPlusAmount);
+        if (address(paymentToken) == $._usdplus) {
+            paymentToken.safeTransferFrom(spender, receiver, paymentTokenAmount);
+        } else {
+            paymentToken.safeTransferFrom(spender, $._paymentRecipient, paymentTokenAmount);
+            UsdPlus($._usdplus).mint(receiver, usdPlusAmount);
+        }
     }
 
     /// @inheritdoc IUsdPlusMinter
     function previewMint(IERC20 paymentToken, uint256 usdPlusAmount) public view returns (uint256) {
+        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
+        if (address(paymentToken) == $._usdplus) return usdPlusAmount;
+
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
         return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Ceil);
     }
