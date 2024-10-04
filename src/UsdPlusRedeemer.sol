@@ -221,7 +221,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
     }
 
     /// @notice Fulfills request to burn USD+ without sending payment token
-    /// @dev This is a special case for USD+ bridging and redemption
+    /// @dev This is a special case for USD+ bridging and 0 payment redemption
     function burnRequest(uint256 ticket) external onlyRole(FULFILLER_ROLE) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         Request memory request = $._requests[ticket];
