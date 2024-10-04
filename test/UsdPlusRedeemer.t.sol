@@ -29,6 +29,7 @@ contract UsdPlusRedeemerTest is Test {
         uint256 paymentTokenAmount,
         uint256 usdplusAmount
     );
+    event RequestBurned(uint256 indexed ticket, address indexed receiver, uint256 usdplusAmount);
 
     TransferRestrictor transferRestrictor;
     UsdPlus usdplus;
@@ -325,5 +326,44 @@ contract UsdPlusRedeemerTest is Test {
         emit RequestCancelled(ticket, USER);
         vm.prank(FULFILLER);
         redeemer.cancel(ticket);
+    }
+
+    function test_burnRequest(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        vm.startPrank(USER);
+        usdplus.approve(address(redeemer), amount);
+        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
+        vm.stopPrank();
+
+        // not fulfiller
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), redeemer.FULFILLER_ROLE()
+            )
+        );
+        redeemer.burnRequest(ticket);
+
+        vm.prank(USER);
+        usdplus.approve(address(redeemer), amount);
+
+        // redeemer not burner
+        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
+        vm.prank(FULFILLER);
+        redeemer.burnRequest(ticket);
+
+        vm.startPrank(ADMIN);
+        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
+        vm.stopPrank();
+
+        vm.expectEmit(true, true, true, true);
+        emit RequestBurned(ticket, USER, amount);
+        vm.prank(FULFILLER);
+        redeemer.burnRequest(ticket);
+        assertEq(paymentToken.balanceOf(USER), 0);
+        assertEq(usdplus.balanceOf(address(redeemer)), 0);
     }
 }

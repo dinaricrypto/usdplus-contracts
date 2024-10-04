@@ -29,6 +29,7 @@ interface IUsdPlusRedeemer {
         uint256 paymentTokenAmount,
         uint256 usdplusAmount
     );
+    event RequestBurned(uint256 indexed ticket, address indexed receiver, uint256 usdplusAmount);
 
     error PaymentTokenNotAccepted();
     error InvalidTicket();
