@@ -165,7 +165,7 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
 
     // ------------------ Rebasing ------------------
 
-    /// @dev rounds towards starting balance
+    /// @dev rounds towards intial value
     function rebaseAdd(uint128 value) external onlyRole(OPERATOR_ROLE) {
         uint256 _supply = totalSupply();
         uint128 _balancePerShare = uint128(FixedPointMathLib.fullMulDiv(balancePerShare(), _supply + value, _supply));
@@ -181,7 +181,7 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
         emit BalancePerShareSet(_balancePerShare);
     }
 
-    /// @dev rounds towards starting balance
+    /// @dev rounds towards intial value
     function rebaseSub(uint128 value) external onlyRole(OPERATOR_ROLE) {
         uint256 _supply = totalSupply();
         uint128 _balancePerShare = uint128(FixedPointMathLib.fullMulDivUp(balancePerShare(), _supply - value, _supply));
