@@ -251,7 +251,7 @@ contract UsdPlusTest is Test {
         assertLe(usdplus.totalSupply(), initialSupply);
         assertLe(initialSupply - usdplus.totalSupply(), rebaseAmount);
         assertLe(usdplus.balanceOf(USER), userBalance);
-        assertLe(userBalance - usdplus.balanceOf(USER), rebaseAmount / 2);
+        assertLe(userBalance - usdplus.balanceOf(USER), rebaseAmount / 2 + 1);
     }
 
     /// ------------------ ERC7281 ------------------

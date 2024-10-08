@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 import {ERC20Rebasing} from "sbt-contracts/src/ERC20Rebasing.sol";
 import {ERC7281Min, IERC7281Min} from "./ERC7281/ERC7281Min.sol";
 import {ITransferRestrictor} from "./ITransferRestrictor.sol";
@@ -164,9 +165,10 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
 
     // ------------------ Rebasing ------------------
 
+    /// @dev rounds towards starting balance
     function rebaseAdd(uint128 value) external onlyRole(OPERATOR_ROLE) {
         uint256 _supply = totalSupply();
-        uint128 _balancePerShare = uint128(uint256(balancePerShare()) * (_supply + value) / _supply);
+        uint128 _balancePerShare = uint128(FixedPointMathLib.fullMulDiv(balancePerShare(), _supply + value, _supply));
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._balancePerShare = _balancePerShare;
         emit BalancePerShareSet(_balancePerShare);
@@ -179,9 +181,10 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
         emit BalancePerShareSet(_balancePerShare);
     }
 
+    /// @dev rounds towards starting balance
     function rebaseSub(uint128 value) external onlyRole(OPERATOR_ROLE) {
         uint256 _supply = totalSupply();
-        uint128 _balancePerShare = uint128(uint256(balancePerShare()) * (_supply - value) / _supply);
+        uint128 _balancePerShare = uint128(FixedPointMathLib.fullMulDivUp(balancePerShare(), _supply - value, _supply));
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._balancePerShare = _balancePerShare;
         emit BalancePerShareSet(_balancePerShare);
