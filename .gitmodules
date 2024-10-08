@@ -19,6 +19,3 @@
 [submodule "lib/kinto-contracts-helpers"]
 	path = lib/kinto-contracts-helpers
 	url = https://github.com/dinaricrypto/kinto-contracts-helpers
-[submodule "lib/prb-math"]
-	path = lib/prb-math
-	url = https://github.com/PaulRBerg/prb-math
