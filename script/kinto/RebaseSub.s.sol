@@ -8,7 +8,7 @@ import {ISponsorPaymaster} from "kinto-contracts-helpers/interfaces/ISponsorPaym
 
 import "kinto-contracts-helpers/EntryPointHelper.sol";
 
-contract RebaseAdd is Script, EntryPointHelper {
+contract RebaseSub is Script, EntryPointHelper {
     function run() external {
         // load env variables
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY_STAGE");
@@ -21,14 +21,14 @@ contract RebaseAdd is Script, EntryPointHelper {
         console.log("deployer: %s", deployer);
         console.log("owner: %s", owner);
 
-        uint128 rebaseAddAmount = 21511630558;
+        uint128 rebaseSubAmount = 21511630558;
 
         // send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
         _handleOps(
             _entryPoint,
-            abi.encodeCall(UsdPlus.rebaseAdd, (rebaseAddAmount)),
+            abi.encodeCall(UsdPlus.rebaseSub, (rebaseSubAmount)),
             owner,
             address(usdplus),
             address(_sponsorPaymaster),
