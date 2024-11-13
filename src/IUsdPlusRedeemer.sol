@@ -30,6 +30,7 @@ interface IUsdPlusRedeemer {
         uint256 usdplusAmount
     );
     event RequestBurned(uint256 indexed ticket, address indexed receiver, uint256 usdplusAmount);
+    event FundsRescued(address indexed to, uint256 amount);
 
     error PaymentTokenNotAccepted();
     error InvalidTicket();
@@ -90,6 +91,11 @@ interface IUsdPlusRedeemer {
     function requestRedeem(IERC20 paymentToken, uint256 usdplusAmount, address receiver, address owner)
         external
         returns (uint256 ticket);
+
+    /// @notice Allows rescue of USD+ tokens that are stuck in the contract
+    /// @param to The address to send the rescued USD+ tokens to
+    /// @param amount The amount of USD+ to rescue
+    function rescueFunds(address to, uint256 amount) external;
 
     /// @notice fulfill a request to burn USD+ for payment
     /// @param ticket request ticket number

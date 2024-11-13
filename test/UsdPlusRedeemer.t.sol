@@ -366,4 +366,31 @@ contract UsdPlusRedeemerTest is Test {
         assertEq(paymentToken.balanceOf(USER), 0);
         assertEq(usdplus.balanceOf(address(redeemer)), 0);
     }
+
+    function test_rescueFunds(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+
+        uint256 balanceBefore = usdplus.balanceOf(USER);
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        vm.prank(USER);
+        usdplus.transfer(address(redeemer), amount);
+
+        assertEq(usdplus.balanceOf(USER), balanceBefore - amount);
+
+        // not admin
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), redeemer.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        redeemer.rescueFunds(USER, amount);
+
+        vm.prank(ADMIN);
+        redeemer.rescueFunds(USER, amount);
+
+        assertEq(usdplus.balanceOf(USER), balanceBefore);
+    }
 }
