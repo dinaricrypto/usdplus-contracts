@@ -142,8 +142,8 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
     /// @inheritdoc IUsdPlusRedeemer
     function rescueFunds(address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        IERC20($._usdplus).safeTransfer(to, amount);
         emit FundsRescued(to, amount);
+        IERC20($._usdplus).safeTransfer(to, amount);
     }
 
     function _request(
