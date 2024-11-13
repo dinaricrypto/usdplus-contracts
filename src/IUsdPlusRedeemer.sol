@@ -93,6 +93,7 @@ interface IUsdPlusRedeemer {
         returns (uint256 ticket);
 
     /// @notice Allows rescue of USD+ tokens that are stuck in the contract
+    /// @dev CAUTION: Only rescue truly stuck funds. Ensure enough USD+ remains for pending redemptions
     /// @param to The address to send the rescued USD+ tokens to
     /// @param amount The amount of USD+ to rescue
     function rescueFunds(address to, uint256 amount) external;
