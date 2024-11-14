@@ -226,4 +226,17 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
         // return USD+ to requester
         UsdPlus($._usdplus).mint(request.owner, request.usdplusAmount);
     }
+
+    /// @notice Fulfills request to burn USD+ without sending payment token
+    /// @dev This is a special case for USD+ bridging and 0 payment redemption
+    function burnRequest(uint256 ticket) external onlyRole(FULFILLER_ROLE) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        Request memory request = $._requests[ticket];
+
+        if (request.receiver == address(0)) revert InvalidTicket();
+
+        delete $._requests[ticket];
+
+        emit RequestBurned(ticket, request.receiver, request.usdplusAmount);
+    }
 }
