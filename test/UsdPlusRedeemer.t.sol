@@ -137,8 +137,11 @@ contract UsdPlusRedeemerTest is Test {
     function test_requestWithdraw(uint256 amount) public {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
-        vm.prank(ADMIN);
+        vm.startPrank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        // usdplus are burnt during request now
+        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
+        vm.stopPrank();
 
         uint256 usdplusAmount = redeemer.previewWithdraw(paymentToken, amount);
 
@@ -178,6 +181,8 @@ contract UsdPlusRedeemerTest is Test {
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
+        uint256 balanceBefore = usdplus.balanceOf(USER);
+
         vm.prank(USER);
         usdplus.approve(address(redeemer), amount);
 
@@ -190,10 +195,22 @@ contract UsdPlusRedeemerTest is Test {
             return;
         }
 
+        // revert with limit exceed 
+        vm.prank(USER);
+        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
+        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
+
+        // set limit
+        vm.prank(ADMIN);
+        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
+
         vm.expectEmit(true, true, true, true);
         emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
         vm.prank(USER);
-        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
+        ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
+
+        assertEq(usdplus.balanceOf(address(redeemer)), 0);
+        assertEq(balanceBefore - amount, usdplus.balanceOf(USER));
 
         IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
         assertEq(request.paymentTokenAmount, redemptionEstimate);
@@ -202,8 +219,11 @@ contract UsdPlusRedeemerTest is Test {
     function test_permitRequestRedeem(uint256 amount) public {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
-        vm.prank(ADMIN);
+        vm.startPrank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
+        vm.stopPrank();
+
 
         SigUtils.Permit memory sigPermit = SigUtils.Permit({
             owner: USER,
@@ -260,7 +280,17 @@ contract UsdPlusRedeemerTest is Test {
 
         vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
+        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
         uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
+        vm.stopPrank();
+
+
+        vm.prank(ADMIN);
+        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
+
+        vm.startPrank(USER);
+        usdplus.approve(address(redeemer), amount);
+        ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
         vm.stopPrank();
 
         // not fulfiller
@@ -274,14 +304,14 @@ contract UsdPlusRedeemerTest is Test {
         vm.prank(USER);
         usdplus.approve(address(redeemer), amount);
 
-        // redeemer not burner
-        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
-        vm.prank(FULFILLER);
-        redeemer.fulfill(ticket);
+        // // redeemer not burner
+        // vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
+        // vm.prank(FULFILLER);
+        // redeemer.fulfill(ticket);
 
-        vm.startPrank(ADMIN);
-        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
-        vm.stopPrank();
+        // vm.startPrank(ADMIN);
+        // usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
+        // vm.stopPrank();
 
         vm.startPrank(FULFILLER);
         paymentToken.approve(address(redeemer), redemptionEstimate);
@@ -309,10 +339,19 @@ contract UsdPlusRedeemerTest is Test {
         uint256 redemptionEstimate = redeemer.previewRedeem(paymentToken, amount);
         vm.assume(redemptionEstimate > 0);
 
+        uint256 balanceBefore = usdplus.balanceOf(USER);
+
+        vm.prank(ADMIN);
+        usdplus.setIssuerLimits(address(redeemer), type(uint256).max, type(uint256).max);
+
         vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
         uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
         vm.stopPrank();
+
+        assertEq(balanceBefore - amount, usdplus.balanceOf(USER));
+        assertEq(usdplus.balanceOf(address(redeemer)), 0);
+
 
         // not fulfiller
         vm.expectRevert(
@@ -326,45 +365,8 @@ contract UsdPlusRedeemerTest is Test {
         emit RequestCancelled(ticket, USER);
         vm.prank(FULFILLER);
         redeemer.cancel(ticket);
-    }
 
-    function test_burnRequest(uint256 amount) public {
-        vm.assume(amount > 0 && amount < type(uint256).max / 2);
-
-        vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
-
-        vm.startPrank(USER);
-        usdplus.approve(address(redeemer), amount);
-        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
-        vm.stopPrank();
-
-        // not fulfiller
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), redeemer.FULFILLER_ROLE()
-            )
-        );
-        redeemer.burnRequest(ticket);
-
-        vm.prank(USER);
-        usdplus.approve(address(redeemer), amount);
-
-        // redeemer not burner
-        vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
-        vm.prank(FULFILLER);
-        redeemer.burnRequest(ticket);
-
-        vm.startPrank(ADMIN);
-        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
-        vm.stopPrank();
-
-        vm.expectEmit(true, true, true, true);
-        emit RequestBurned(ticket, USER, amount);
-        vm.prank(FULFILLER);
-        redeemer.burnRequest(ticket);
-        assertEq(paymentToken.balanceOf(USER), 0);
-        assertEq(usdplus.balanceOf(address(redeemer)), 0);
+        assertEq(usdplus.balanceOf(USER), balanceBefore);
     }
 
     function test_rescueFunds(uint256 amount) public {
