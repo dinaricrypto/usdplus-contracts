@@ -173,6 +173,8 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
             // slither-disable-next-line arbitrary-send-erc20
             IERC20($._usdplus).safeTransferFrom(owner, address(this), usdplusAmount);
         }
+
+        UsdPlus($._usdplus).burn(address(this), usdplusAmount);
     }
 
     /// @inheritdoc IUsdPlusRedeemer
@@ -207,8 +209,6 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
         emit RequestFulfilled(
             ticket, request.receiver, request.paymentToken, request.paymentTokenAmount, request.usdplusAmount
         );
-
-        UsdPlus($._usdplus).burn(request.usdplusAmount);
         request.paymentToken.safeTransferFrom(msg.sender, request.receiver, request.paymentTokenAmount);
     }
 
@@ -224,7 +224,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
         emit RequestCancelled(ticket, request.receiver);
 
         // return USD+ to requester
-        IERC20($._usdplus).safeTransfer(request.owner, request.usdplusAmount);
+        UsdPlus($._usdplus).mint(request.owner, request.usdplusAmount);
     }
 
     /// @notice Fulfills request to burn USD+ without sending payment token
@@ -238,7 +238,5 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
         delete $._requests[ticket];
 
         emit RequestBurned(ticket, request.receiver, request.usdplusAmount);
-
-        UsdPlus($._usdplus).burn(request.usdplusAmount);
     }
 }
