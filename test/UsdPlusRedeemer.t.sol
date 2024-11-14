@@ -195,7 +195,7 @@ contract UsdPlusRedeemerTest is Test {
             return;
         }
 
-        // revert with limit exceed 
+        // revert with limit exceed
         vm.prank(USER);
         vm.expectRevert(IERC7281Min.ERC7281_LimitExceeded.selector);
         uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
@@ -223,7 +223,6 @@ contract UsdPlusRedeemerTest is Test {
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
         usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
         vm.stopPrank();
-
 
         SigUtils.Permit memory sigPermit = SigUtils.Permit({
             owner: USER,
@@ -284,7 +283,6 @@ contract UsdPlusRedeemerTest is Test {
         uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER);
         vm.stopPrank();
 
-
         vm.prank(ADMIN);
         usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
 
@@ -342,7 +340,6 @@ contract UsdPlusRedeemerTest is Test {
 
         assertEq(balanceBefore - amount, usdplus.balanceOf(USER));
         assertEq(usdplus.balanceOf(address(redeemer)), 0);
-
 
         // not fulfiller
         vm.expectRevert(
