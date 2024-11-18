@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
@@ -15,7 +16,13 @@ import {SelfPermit} from "./SelfPermit.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
-contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable, SelfPermit {
+contract UsdPlusRedeemer is
+    IUsdPlusRedeemer,
+    UUPSUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable,
+    SelfPermit,
+    PausableUpgradeable
+{
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
@@ -51,6 +58,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
 
     function initialize(address usdPlus, address initialOwner) public initializer {
         __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
+        __Pausable_init();
 
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         $._usdplus = usdPlus;
@@ -104,6 +112,16 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
         emit PaymentTokenOracleSet(payment, oracle);
     }
 
+    /// @notice pause contract
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    /// @notice unpause contract
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
+
     // ----------------- Requests -----------------
 
     /// @inheritdoc IUsdPlusRedeemer
@@ -128,6 +146,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
     /// @inheritdoc IUsdPlusRedeemer
     function requestWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, address owner)
         public
+        whenNotPaused
         returns (uint256 ticket)
     {
         if (receiver == address(0)) revert ZeroAddress();
@@ -159,6 +178,10 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
             ticket = $._nextTicket++;
         }
 
+        if (msg.sender != owner) {
+            revert UnauthorizedRedeemer();
+        }
+
         $._requests[ticket] = Request({
             owner: owner == address(this) ? msg.sender : owner,
             receiver: receiver,
@@ -186,6 +209,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
     /// @inheritdoc IUsdPlusRedeemer
     function requestRedeem(IERC20 paymentToken, uint256 usdplusAmount, address receiver, address owner)
         public
+        whenNotPaused
         returns (uint256 ticket)
     {
         if (receiver == address(0)) revert ZeroAddress();
