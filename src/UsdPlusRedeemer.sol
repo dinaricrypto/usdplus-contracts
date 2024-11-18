@@ -172,14 +172,14 @@ contract UsdPlusRedeemer is
         address receiver,
         address owner
     ) internal returns (uint256 ticket) {
+        if (msg.sender != owner) {
+            revert UnauthorizedRedeemer();
+        }
+
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
 
         unchecked {
             ticket = $._nextTicket++;
-        }
-
-        if (msg.sender != owner) {
-            revert UnauthorizedRedeemer();
         }
 
         $._requests[ticket] = Request({
