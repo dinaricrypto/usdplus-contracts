@@ -2,9 +2,9 @@
 pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
-import {UsdPlus} from "../src/UsdPlus.sol";
-import {UsdPlusRedeemer} from "../src/UsdPlusRedeemer.sol";
-import {UsdPlusMinter} from "../src/UsdPlusMinter.sol";
+import {UsdPlus} from "../../src/UsdPlus.sol";
+import {UsdPlusRedeemer} from "../../src/UsdPlusRedeemer.sol";
+import {UsdPlusMinter} from "../../src/UsdPlusMinter.sol";
 
 contract Upgrade_010_011 is Script {
     struct DeployConfig {
