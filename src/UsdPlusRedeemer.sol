@@ -183,7 +183,7 @@ contract UsdPlusRedeemer is
         }
 
         $._requests[ticket] = Request({
-            owner: owner == address(this) ? msg.sender : owner,
+            owner: owner,
             receiver: receiver,
             paymentToken: paymentToken,
             paymentTokenAmount: paymentTokenAmount,
