@@ -176,6 +176,33 @@ contract UsdPlusRedeemerTest is Test {
         redeemer.requestRedeem(paymentToken, 0, USER, USER);
     }
 
+    function test_pause_unpause() public {
+        // non-admin cannot pause
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), redeemer.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        redeemer.pause();
+
+        // admin can pause
+        vm.prank(ADMIN);
+        redeemer.pause();
+        assertEq(redeemer.paused(), true);
+
+        // non-admin cannot unpause
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), redeemer.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        redeemer.unpause();
+
+        vm.prank(ADMIN);
+        redeemer.unpause();
+        assertEq(redeemer.paused(), false);
+    }
+
     function test_requestRedeem(uint256 amount) public {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
