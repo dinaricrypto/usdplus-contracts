@@ -28,3 +28,9 @@ $ forge fmt
 ```shell
 $ forge snapshot
 ```
+
+## Internal Audit
+
+### 2024-11-18
+
+- Audit performed by @ykim, @jaketimothy, @joshualyguessennd
