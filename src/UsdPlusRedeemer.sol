@@ -159,6 +159,10 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, UUPSUpgradeable, AccessControlDefa
             ticket = $._nextTicket++;
         }
 
+        if (owner != address(this) && msg.sender != owner) {
+            revert UnauthorizedRedeemer();
+        }
+
         $._requests[ticket] = Request({
             owner: owner == address(this) ? msg.sender : owner,
             receiver: receiver,

@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import {UsdPlus} from "../src/UsdPlus.sol";
 import {TransferRestrictor} from "../src/TransferRestrictor.sol";
 import "../src/UsdPlusRedeemer.sol";
+import {IUsdPlusRedeemer} from "../src/IUsdPlusRedeemer.sol";
 import {Permit} from "../src/SelfPermit.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {SigUtils} from "./utils/SigUtils.sol";
@@ -204,6 +205,13 @@ contract UsdPlusRedeemerTest is Test {
         vm.prank(ADMIN);
         usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
 
+        // Test unauthorized redeemer scenario
+        address ATTACKER = address(0xdead);
+        vm.prank(ATTACKER);
+        vm.expectRevert(IUsdPlusRedeemer.UnauthorizedRedeemer.selector);
+        redeemer.requestRedeem(paymentToken, amount, USER, USER);
+
+        // Test successful case
         vm.expectEmit(true, true, true, true);
         emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
         vm.prank(USER);
@@ -214,6 +222,23 @@ contract UsdPlusRedeemerTest is Test {
 
         IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
         assertEq(request.paymentTokenAmount, redemptionEstimate);
+    }
+
+    // Add a separate test for unauthorized redemption
+    function test_requestRedeem_UnauthorizedRedeemer() public {
+        uint256 amount = 1000e6; // 1000 USDC
+        address ATTACKER = address(0xdead);
+
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        vm.prank(USER);
+        usdplus.approve(address(redeemer), amount);
+
+        // Try to redeem on behalf of USER without authorization
+        vm.prank(ATTACKER);
+        vm.expectRevert(IUsdPlusRedeemer.UnauthorizedRedeemer.selector);
+        redeemer.requestRedeem(paymentToken, amount, USER, USER);
     }
 
     function test_permitRequestRedeem(uint256 amount) public {
@@ -248,18 +273,28 @@ contract UsdPlusRedeemerTest is Test {
         );
         calls[1] = abi.encodeCall(redeemer.requestRedeem, (paymentToken, amount, USER, USER));
 
+        // Test invalid signature reverts
+        vm.prank(USER);
         vm.expectRevert();
         redeemer.multicall(calls);
 
+        // Test unauthorized caller reverts
         calls[0] = abi.encodeCall(
             redeemer.selfPermit, (address(usdplus), permit.owner, permit.value, permit.deadline, v, r, s)
         );
         vm.prank(ADMIN);
+        vm.expectRevert(IUsdPlusRedeemer.UnauthorizedRedeemer.selector);
+        redeemer.multicall(calls);
+
+        // Test successful case with proper owner
+        vm.prank(USER);
         bytes[] memory results = redeemer.multicall(calls);
         uint256 ticket = abi.decode(results[1], (uint256));
 
         IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
-        // assertEq(request.paymentTokenAmount, permit.value);
+        assertEq(request.owner, USER);
+        uint256 expectedPaymentAmount = redeemer.previewRedeem(paymentToken, amount);
+        assertEq(request.paymentTokenAmount, expectedPaymentAmount);
     }
 
     function test_fulfillInvalidTicketReverts(uint256 ticket) public {

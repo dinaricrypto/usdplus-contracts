@@ -34,6 +34,7 @@ interface IUsdPlusRedeemer {
 
     error PaymentTokenNotAccepted();
     error InvalidTicket();
+    error UnauthorizedRedeemer();
 
     /// @notice USD+
     function usdplus() external view returns (address);
