@@ -1,0 +1,36 @@
+name: deploy
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+    deploy-sepolia:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v3
+              with:
+                submodules: recursive
+
+            - name: Install Foundry
+              uses: foundry-rs/foundry-toolchain@v1
+              with:
+                version: nightly
+
+            - name: Build
+              run: forge build
+            
+            # - name: Configure AWS credentials
+            #   uses: aws-actions/configure-aws-credentials@v1
+            #   with:
+            #     aws-access-key-id: ${{ secrets.DEPLOY_AGENT_ACCESS_KEY_ID }}
+            #     aws-secret-access-key: ${{ secrets.DEPLOY_AGENT_SECRET_ACCESS_KEY }}
+            #     aws-region: us-west-2
+            #     role-to-assume: arn:aws:iam::875886734390:role/npm-repository-publisher-20230503234619423000000002
+            #     role-duration-seconds: 3600
+            
+            - name: Deploy
+              run: forge script script/${{ github.event.release.tag_name }}.s.sol:Upgrade #--rpc-url $RPC_URL -vvv --broadcast --slow --verify
