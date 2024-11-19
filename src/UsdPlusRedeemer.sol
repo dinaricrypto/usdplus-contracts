@@ -16,6 +16,7 @@ import {SelfPermit} from "./SelfPermit.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
+// TODO: remove owner from redeem request calls
 contract UsdPlusRedeemer is
     IUsdPlusRedeemer,
     UUPSUpgradeable,
@@ -172,18 +173,18 @@ contract UsdPlusRedeemer is
         address receiver,
         address owner
     ) internal returns (uint256 ticket) {
+        if (msg.sender != owner) {
+            revert UnauthorizedRedeemer();
+        }
+
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
 
         unchecked {
             ticket = $._nextTicket++;
         }
 
-        if (msg.sender != owner) {
-            revert UnauthorizedRedeemer();
-        }
-
         $._requests[ticket] = Request({
-            owner: owner,
+            owner: msg.sender,
             receiver: receiver,
             paymentToken: paymentToken,
             paymentTokenAmount: paymentTokenAmount,
@@ -192,10 +193,7 @@ contract UsdPlusRedeemer is
 
         emit RequestCreated(ticket, receiver, paymentToken, paymentTokenAmount, usdplusAmount);
 
-        if (owner != address(this)) {
-            // slither-disable-next-line arbitrary-send-erc20
-            IERC20($._usdplus).safeTransferFrom(owner, address(this), usdplusAmount);
-        }
+        IERC20($._usdplus).safeTransferFrom(msg.sender, address(this), usdplusAmount);
 
         UsdPlus($._usdplus).burn(address(this), usdplusAmount);
     }
