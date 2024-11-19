@@ -139,7 +139,6 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     {
         if (receiver == address(0)) revert ZeroAddress();
         if (paymentTokenAmount == 0) revert ZeroAmount();
-        // Additional check to prevent deposit from happening to itself
 
         usdPlusAmount = previewDeposit(paymentToken, paymentTokenAmount);
         if (usdPlusAmount == 0) revert ZeroAmount();
@@ -181,7 +180,6 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     {
         if (receiver == address(0)) revert ZeroAddress();
         if (usdPlusAmount == 0) revert ZeroAmount();
-        // Additional check to prevent deposit from happening to itself
 
         paymentTokenAmount = previewMint(paymentToken, usdPlusAmount);
         if (paymentTokenAmount == 0) revert ZeroAmount();
