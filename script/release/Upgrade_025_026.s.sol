@@ -2,9 +2,9 @@
 pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
-import {UsdPlus} from "../src/UsdPlus.sol";
+import {UsdPlus} from "../../src/UsdPlus.sol";
 
-contract Upgrade_011_012 is Script {
+contract Upgrade_025_026 is Script {
     struct DeployConfig {
         address deployer;
         UsdPlus usdPlus;
@@ -21,7 +21,6 @@ contract Upgrade_011_012 is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // upgrade UsdPlus
         UsdPlus usdPlusImpl = new UsdPlus();
         cfg.usdPlus.upgradeToAndCall(address(usdPlusImpl), "");
 
