@@ -14,30 +14,27 @@ contract BurnWithFromMintRebasingTokenPool is BurnWithFromMintTokenPool {
         address[] memory allowlist,
         address rmnProxy,
         address router
-    ) BurnWithFromMintTokenPool(
-        token,
-        localTokenDecimals,
-        allowlist,
-        rmnProxy,
-        router
-    ) {}
+    ) BurnWithFromMintTokenPool(token, localTokenDecimals, allowlist, rmnProxy, router) {}
 
-    function releaseOrMint(
-        Pool.ReleaseOrMintInV1 calldata releaseOrMintIn
-    ) external virtual override returns (Pool.ReleaseOrMintOutV1 memory) {
+    function releaseOrMint(Pool.ReleaseOrMintInV1 calldata releaseOrMintIn)
+        external
+        virtual
+        override
+        returns (Pool.ReleaseOrMintOutV1 memory)
+    {
         _validateReleaseOrMint(releaseOrMintIn);
         uint256 balancePre = IBurnMintERC20(address(i_token)).balanceOf(releaseOrMintIn.receiver);
-        
+
         // Mint to the receiver
         IBurnMintERC20(address(i_token)).mint(releaseOrMintIn.receiver, releaseOrMintIn.amount);
-        
+
         uint256 balancePost = IBurnMintERC20(address(i_token)).balanceOf(releaseOrMintIn.receiver);
-        
+
         // Mint should not reduce the number of tokens in the receiver
         if (balancePost < balancePre) {
             revert NegativeMintAmount(balancePre - balancePost);
         }
-        
+
         emit Minted(msg.sender, releaseOrMintIn.receiver, balancePost - balancePre);
         return Pool.ReleaseOrMintOutV1({destinationAmount: balancePost - balancePre});
     }
