@@ -15,7 +15,7 @@ contract CCIPRouterMock is IRouterClient {
         return true;
     }
 
-    function getSupportedTokens(uint64) external pure override returns (address[] memory) {
+    function getSupportedTokens(uint64) external pure returns (address[] memory) {
         return new address[](0);
     }
 
