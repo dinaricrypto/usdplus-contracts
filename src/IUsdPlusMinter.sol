@@ -46,15 +46,6 @@ interface IUsdPlusMinter {
         external
         returns (uint256 usdPlusAmount);
 
-    /// @notice mint USD+ for payment with permit
-    /// @param paymentToken payment token
-    /// @param permit permit
-    /// @param signature permit signature
-    /// @return usdPlusAmount amount of usd+ minted
-    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
-        external
-        returns (uint256 usdPlusAmount);
-
     /// @notice calculate the payment token amount to spend to mint USD+
     /// @param paymentToken payment token
     /// @param usdPlusAmount amount of USD+ to mint
