@@ -92,13 +92,6 @@ contract ConfigAll is Script, EntryPointHelper {
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator2, owner, deployerPrivateKey);
         console.log("OPERATOR_ROLE granted");
 
-        // Grant PRIVATE_MINTER_ROLE to operators
-        // permissions to call
-        // - privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
-        _grantRole(address(cfg.minter), cfg.minter.PRIVATE_MINTER_ROLE(), cfg.operator, owner, deployerPrivateKey);
-        _grantRole(address(cfg.minter), cfg.minter.PRIVATE_MINTER_ROLE(), cfg.operator2, owner, deployerPrivateKey);
-        console.log("PRIVATE_MINTER_ROLE granted");
-
         // Grant FULFILLER_ROLE to operators
         // permissions to call
         // - fulfill(uint256 ticket)

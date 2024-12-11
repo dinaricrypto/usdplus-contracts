@@ -24,9 +24,6 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     error ZeroAddress();
     error ZeroAmount();
 
-    // Define the role identifier for the private minter role
-    bytes32 public constant PRIVATE_MINTER_ROLE = keccak256("PRIVATE_MINTER_ROLE");
-
     /// ------------------ Storage ------------------
 
     struct UsdPlusMinterStorage {
@@ -185,18 +182,5 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
         _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
-    }
-
-    /// @notice Split a signature into `v`, `r`, `s` components
-    /// @param sig The signature
-    /// @param v secp256k1 signature from the holder along with `r` and `s`
-    /// @param r signature from the holder along with `v` and `s`
-    /// @param s signature from the holder along with `r` and `v`
-    function splitSignature(bytes memory sig) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
-        assembly {
-            r := mload(add(sig, 0x20))
-            s := mload(add(sig, 0x40))
-            v := byte(0, mload(add(sig, 0x60)))
-        }
     }
 }
