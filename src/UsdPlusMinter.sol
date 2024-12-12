@@ -9,6 +9,7 @@ import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/Safe
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
@@ -17,7 +18,13 @@ import {SelfPermit, Permit} from "./SelfPermit.sol";
 /// @notice USD+ minter
 /// @dev If the payment token is USD+, the amount is forwarded to the receiver.
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
-contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable, SelfPermit {
+contract UsdPlusMinter is
+    IUsdPlusMinter,
+    UUPSUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable,
+    PausableUpgradeable,
+    SelfPermit
+{
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
@@ -105,6 +112,14 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         emit PaymentTokenOracleSet(paymentToken, oracle);
     }
 
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
+
     // ------------------ Mint ------------------
 
     /// @inheritdoc IUsdPlusMinter
@@ -132,6 +147,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     /// @inheritdoc IUsdPlusMinter
     function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver)
         public
+        whenNotPaused
         returns (uint256 usdPlusAmount)
     {
         if (receiver == address(0)) revert ZeroAddress();
@@ -173,6 +189,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     /// @inheritdoc IUsdPlusMinter
     function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver)
         public
+        whenNotPaused
         returns (uint256 paymentTokenAmount)
     {
         if (receiver == address(0)) revert ZeroAddress();
