@@ -128,19 +128,15 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
 
-        uint8 paymentDecimals;
+        uint8 paymentDecimals = 18;
         try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
             paymentDecimals = decimals;
-        } catch {
-            paymentDecimals = 6;
-        }
+        } catch {}
 
-        uint8 usdPlusDecimals;
+        uint8 usdPlusDecimals = 6;
         try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
             usdPlusDecimals = decimals;
-        } catch {
-            usdPlusDecimals = 6;
-        }
+        } catch {}
 
         return Math.mulDiv(
             paymentTokenAmount,
@@ -189,19 +185,15 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
 
-        uint8 paymentDecimals;
+        uint8 paymentDecimals = 18;
         try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
             paymentDecimals = decimals;
-        } catch {
-            paymentDecimals = 6;
-        }
+        } catch {}
 
-        uint8 usdPlusDecimals;
+        uint8 usdPlusDecimals = 6;
         try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
             usdPlusDecimals = decimals;
-        } catch {
-            usdPlusDecimals = 6;
-        }
+        } catch {}
 
         return Math.mulDiv(
             usdPlusAmount, 10 ** (oracleDecimals + paymentDecimals), price * 10 ** usdPlusDecimals, Math.Rounding.Ceil
