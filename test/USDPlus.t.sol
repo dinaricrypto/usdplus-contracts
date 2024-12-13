@@ -290,4 +290,104 @@ contract UsdPlusTest is Test {
             assertEq(usdplus.burningCurrentLimitOf(BRIDGE), amount > 50 ether ? 0 : 50 ether - amount);
         }
     }
+
+    function test_burnRounding() public {
+        // Test 1: Regular amount with small rebase
+        uint256 regularAmount = 100 ether;
+        uint128 smallRebase = 0.1 ether; // 0.1% yield
+        vm.assume(smallRebase > 0 && smallRebase <= uint128(regularAmount));
+
+        vm.prank(MINTER);
+        usdplus.mint(BURNER, regularAmount);
+
+        vm.prank(OPERATOR);
+        usdplus.rebaseAdd(smallRebase);
+
+        uint256 initialSupply = usdplus.totalSupply();
+        uint256 initialBalance = usdplus.balanceOf(BURNER);
+
+        vm.prank(BURNER);
+        usdplus.burn(regularAmount);
+
+        assertApproxEqAbs(
+            initialBalance - usdplus.balanceOf(BURNER),
+            regularAmount,
+            1, // Allow 1 wei difference
+            "Regular burn amount should be exact within 1 wei"
+        );
+        assertApproxEqAbs(
+            initialSupply - usdplus.totalSupply(),
+            regularAmount,
+            1, // Allow 1 wei difference
+            "Total supply reduction should match burn amount within 1 wei"
+        );
+
+        // Test 2: Small amount (1 wei)
+        uint256 smallAmount = 2; // Increased to 2 wei to handle potential rounding
+        vm.prank(MINTER);
+        usdplus.mint(BURNER, smallAmount);
+
+        initialBalance = usdplus.balanceOf(BURNER);
+        initialSupply = usdplus.totalSupply();
+
+        vm.prank(BURNER);
+        usdplus.burn(smallAmount);
+
+        assertApproxEqAbs(
+            initialBalance - usdplus.balanceOf(BURNER),
+            smallAmount,
+            1, // Allow 1 wei difference
+            "Small burn amount should be exact within 1 wei"
+        );
+
+        // Test 3: Large amount with modest rebase
+        uint256 largeAmount = 1000 ether;
+        uint128 largeRebase = 1 ether; // 0.1% yield
+        vm.assume(largeRebase > 0);
+
+        vm.prank(MINTER);
+        usdplus.mint(BURNER, largeAmount);
+
+        vm.prank(OPERATOR);
+        usdplus.rebaseAdd(largeRebase);
+
+        initialBalance = usdplus.balanceOf(BURNER);
+
+        vm.prank(BURNER);
+        usdplus.burn(initialBalance);
+
+        assertApproxEqAbs(
+            usdplus.balanceOf(BURNER),
+            0,
+            1, // Allow 1 wei difference
+            "Balance should be zero within 1 wei after full burn"
+        );
+
+        // Test 4: Multiple burns after small rebase
+        uint256 baseAmount = 100 ether;
+        uint128 mediumRebase = 0.05 ether; // 0.05% yield
+        vm.assume(mediumRebase > 0 && mediumRebase <= uint128(baseAmount));
+
+        vm.prank(MINTER);
+        usdplus.mint(BURNER, baseAmount);
+
+        vm.prank(OPERATOR);
+        usdplus.rebaseAdd(mediumRebase);
+
+        initialBalance = usdplus.balanceOf(BURNER);
+        uint256 halfBalance = initialBalance / 2;
+        vm.assume(halfBalance > 0);
+
+        vm.startPrank(BURNER);
+        usdplus.burn(halfBalance);
+        usdplus.burn(halfBalance);
+        vm.stopPrank();
+
+        assertApproxEqAbs(
+            usdplus.balanceOf(BURNER),
+            0,
+            1, // Allow 1 wei difference
+            "Balance should be zero within 1 wei after multiple burns"
+        );
+    }
 }

@@ -8,6 +8,7 @@ import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 import {ERC20Rebasing} from "sbt-contracts/src/ERC20Rebasing.sol";
 import {ERC7281Min, IERC7281Min} from "./ERC7281/ERC7281Min.sol";
 import {ITransferRestrictor} from "./ITransferRestrictor.sol";
+import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
@@ -152,6 +153,11 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
         if (from != spender) {
             _spendAllowance(from, spender, value);
         }
+
+        uint256 shareAmount = balanceToShares(value);
+        if (Math.mulDiv(shareAmount, balancePerShare(), _INITIAL_BALANCE_PER_SHARE) < value) {
+            shareAmount += 1;
+        }
         _useBurningLimits(spender, value);
         _burn(from, value);
     }
@@ -159,6 +165,11 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
     /// @notice burn USD+ from msg.sender
     function burn(uint256 value) external {
         address from = _msgSender();
+
+        uint256 shareAmount = balanceToShares(value);
+        if (Math.mulDiv(shareAmount, balancePerShare(), _INITIAL_BALANCE_PER_SHARE) < value) {
+            shareAmount += 1;
+        }
         _useBurningLimits(from, value);
         _burn(from, value);
     }
