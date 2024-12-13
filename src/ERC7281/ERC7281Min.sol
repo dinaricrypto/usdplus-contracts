@@ -16,6 +16,8 @@ abstract contract ERC7281Min is IERC7281Min {
         uint256 burnMaxLimit;
         uint256 mintCurrentLimit;
         uint256 burnCurrentLimit;
+        bool mintWasUnlimited;
+        bool burnWasUnlimited;
     }
 
     /**
@@ -130,17 +132,25 @@ abstract contract ERC7281Min is IERC7281Min {
             delete issuerLimits.mintRatePerSecond;
             issuerLimits.mintMaxLimit = type(uint256).max;
             delete issuerLimits.mintCurrentLimit;
+            issuerLimits.mintWasUnlimited = true;
             return;
         }
 
         uint256 oldMaxLimit = issuerLimits.mintMaxLimit;
-        uint256 currentLimit = _getCurrentLimit(
-            issuerLimits.mintLimitTimestamp,
-            issuerLimits.mintRatePerSecond,
-            issuerLimits.mintMaxLimit,
-            issuerLimits.mintCurrentLimit
-        );
-        issuerLimits.mintCurrentLimit = _calculateNewCurrentLimit(newMaxLimit, oldMaxLimit, currentLimit);
+
+        // If coming from an unlimited state or first time setting, treat as new limit
+        if (issuerLimits.mintWasUnlimited || oldMaxLimit == 0) {
+            issuerLimits.mintCurrentLimit = newMaxLimit;
+            issuerLimits.mintWasUnlimited = false;
+        } else {
+            uint256 currentLimit = _getCurrentLimit(
+                issuerLimits.mintLimitTimestamp,
+                issuerLimits.mintRatePerSecond,
+                oldMaxLimit,
+                issuerLimits.mintCurrentLimit
+            );
+            issuerLimits.mintCurrentLimit = _calculateNewCurrentLimit(newMaxLimit, oldMaxLimit, currentLimit);
+        }
 
         issuerLimits.mintMaxLimit = newMaxLimit;
         issuerLimits.mintRatePerSecond = newMaxLimit / _DURATION;
@@ -162,17 +172,25 @@ abstract contract ERC7281Min is IERC7281Min {
             delete issuerLimits.burnRatePerSecond;
             issuerLimits.burnMaxLimit = type(uint256).max;
             delete issuerLimits.burnCurrentLimit;
+            issuerLimits.burnWasUnlimited = true;
             return;
         }
 
         uint256 oldMaxLimit = issuerLimits.burnMaxLimit;
-        uint256 currentLimit = _getCurrentLimit(
-            issuerLimits.burnLimitTimestamp,
-            issuerLimits.burnRatePerSecond,
-            issuerLimits.burnMaxLimit,
-            issuerLimits.burnCurrentLimit
-        );
-        issuerLimits.burnCurrentLimit = _calculateNewCurrentLimit(newMaxLimit, oldMaxLimit, currentLimit);
+
+        // If coming from an unlimited state or first time setting, treat as new limit
+        if (issuerLimits.burnWasUnlimited || oldMaxLimit == 0) {
+            issuerLimits.burnCurrentLimit = newMaxLimit;
+            issuerLimits.burnWasUnlimited = false;
+        } else {
+            uint256 currentLimit = _getCurrentLimit(
+                issuerLimits.burnLimitTimestamp,
+                issuerLimits.burnRatePerSecond,
+                oldMaxLimit,
+                issuerLimits.burnCurrentLimit
+            );
+            issuerLimits.burnCurrentLimit = _calculateNewCurrentLimit(newMaxLimit, oldMaxLimit, currentLimit);
+        }
 
         issuerLimits.burnMaxLimit = newMaxLimit;
         issuerLimits.burnRatePerSecond = newMaxLimit / _DURATION;
