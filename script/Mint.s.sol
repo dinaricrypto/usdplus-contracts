@@ -33,7 +33,7 @@ contract Mint is Script {
 
         // mint usd+
         cfg.usdc.approve(address(cfg.minter), amount);
-        cfg.minter.deposit(cfg.usdc, amount, user);
+        cfg.minter.deposit(cfg.usdc, amount, user, amount);
         uint256 usdplusBalance = cfg.usdPlus.balanceOf(user);
         console.log("user %s USD+", usdplusBalance);
 

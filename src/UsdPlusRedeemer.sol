@@ -29,6 +29,7 @@ contract UsdPlusRedeemer is
 
     error ZeroAddress();
     error ZeroAmount();
+    error SlippageViolation();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
 
@@ -145,16 +146,19 @@ contract UsdPlusRedeemer is
     }
 
     /// @inheritdoc IUsdPlusRedeemer
-    function requestWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, address owner)
-        public
-        whenNotPaused
-        returns (uint256 ticket)
-    {
+    function requestWithdraw(
+        IERC20 paymentToken,
+        uint256 paymentTokenAmount,
+        address receiver,
+        address owner,
+        uint256 maxUsdPlusAmount
+    ) public whenNotPaused returns (uint256 ticket) {
         if (receiver == address(0)) revert ZeroAddress();
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
         uint256 usdplusAmount = previewWithdraw(paymentToken, paymentTokenAmount);
         if (usdplusAmount == 0) revert ZeroAmount();
+        if (usdplusAmount > maxUsdPlusAmount) revert SlippageViolation();
 
         return _request(paymentToken, paymentTokenAmount, usdplusAmount, receiver, owner);
     }
@@ -205,16 +209,19 @@ contract UsdPlusRedeemer is
     }
 
     /// @inheritdoc IUsdPlusRedeemer
-    function requestRedeem(IERC20 paymentToken, uint256 usdplusAmount, address receiver, address owner)
-        public
-        whenNotPaused
-        returns (uint256 ticket)
-    {
+    function requestRedeem(
+        IERC20 paymentToken,
+        uint256 usdplusAmount,
+        address receiver,
+        address owner,
+        uint256 minPaymentTokenAmount
+    ) public whenNotPaused returns (uint256 ticket) {
         if (receiver == address(0)) revert ZeroAddress();
         if (usdplusAmount == 0) revert ZeroAmount();
 
         uint256 paymentTokenAmount = previewRedeem(paymentToken, usdplusAmount);
         if (paymentTokenAmount == 0) revert ZeroAmount();
+        if (paymentTokenAmount < minPaymentTokenAmount) revert SlippageViolation();
 
         return _request(paymentToken, paymentTokenAmount, usdplusAmount, receiver, owner);
     }
