@@ -41,8 +41,9 @@ interface IUsdPlusMinter {
     /// @param paymentToken payment token
     /// @param paymentTokenAmount amount of payment token to spend
     /// @param receiver recipient
+    /// @param minUsdPlusAmount minimum amount of USD+ to mint
     /// @return usdPlusAmount amount of USD+ minted
-    function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver)
+    function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, uint256 minUsdPlusAmount)
         external
         returns (uint256 usdPlusAmount);
 
@@ -58,8 +59,9 @@ interface IUsdPlusMinter {
     /// @param paymentToken payment token
     /// @param usdPlusAmount amount of USD+ to mint
     /// @param receiver recipient
+    /// @param maxPaymentTokenAmount maximum amount of payment token to spend
     /// @return paymentTokenAmount amount of payment token spent
-    function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver)
+    function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver, uint256 maxPaymentTokenAmount)
         external
         returns (uint256 paymentTokenAmount);
 }

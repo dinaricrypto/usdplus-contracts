@@ -23,6 +23,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
     error ZeroAddress();
     error ZeroAmount();
+    error SlippageViolation();
 
     /// ------------------ Storage ------------------
 
@@ -130,7 +131,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     }
 
     /// @inheritdoc IUsdPlusMinter
-    function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver)
+    function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, uint256 minUsdPlusAmount)
         public
         returns (uint256 usdPlusAmount)
     {
@@ -139,6 +140,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
         usdPlusAmount = previewDeposit(paymentToken, paymentTokenAmount);
         if (usdPlusAmount == 0) revert ZeroAmount();
+        if (usdPlusAmount < minUsdPlusAmount) revert SlippageViolation();
 
         _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
     }
@@ -171,7 +173,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     }
 
     /// @inheritdoc IUsdPlusMinter
-    function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver)
+    function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver, uint256 maxPaymentTokenAmount)
         public
         returns (uint256 paymentTokenAmount)
     {
@@ -180,6 +182,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
         paymentTokenAmount = previewMint(paymentToken, usdPlusAmount);
         if (paymentTokenAmount == 0) revert ZeroAmount();
+        if (paymentTokenAmount > maxPaymentTokenAmount) revert SlippageViolation();
 
         _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
     }
