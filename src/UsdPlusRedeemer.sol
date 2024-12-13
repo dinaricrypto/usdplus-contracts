@@ -6,6 +6,7 @@ import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -141,7 +142,28 @@ contract UsdPlusRedeemer is
     /// @inheritdoc IUsdPlusRedeemer
     function previewWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Ceil);
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+
+        uint8 paymentDecimals;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {
+            paymentDecimals = 6;
+        }
+
+        uint8 usdPlusDecimals;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {
+            usdPlusDecimals = 6;
+        }
+
+        return Math.mulDiv(
+            paymentTokenAmount,
+            price * 10 ** usdPlusDecimals,
+            10 ** (oracleDecimals + paymentDecimals),
+            Math.Rounding.Ceil
+        );
     }
 
     /// @inheritdoc IUsdPlusRedeemer
@@ -201,7 +223,25 @@ contract UsdPlusRedeemer is
     /// @inheritdoc IUsdPlusRedeemer
     function previewRedeem(IERC20 paymentToken, uint256 usdplusAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(usdplusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Floor);
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+
+        uint8 paymentDecimals;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {
+            paymentDecimals = 6;
+        }
+
+        uint8 usdPlusDecimals;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {
+            usdPlusDecimals = 6;
+        }
+
+        return Math.mulDiv(
+            usdplusAmount, 10 ** (oracleDecimals + paymentDecimals), price * 10 ** usdPlusDecimals, Math.Rounding.Floor
+        );
     }
 
     /// @inheritdoc IUsdPlusRedeemer
