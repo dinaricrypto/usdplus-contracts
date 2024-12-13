@@ -68,11 +68,16 @@ interface IUsdPlusRedeemer {
     /// @param paymentTokenAmount amount of payment token
     /// @param receiver recipient
     /// @param owner USD+ owner
+    /// @param maxUsdplusAmount maximum amount of USD+ to burn
     /// @return ticket request ticket number
     /// @dev exchange rate fixed at time of request creation
-    function requestWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, address owner)
-        external
-        returns (uint256 ticket);
+    function requestWithdraw(
+        IERC20 paymentToken,
+        uint256 paymentTokenAmount,
+        address receiver,
+        address owner,
+        uint256 maxUsdplusAmount
+    ) external returns (uint256 ticket);
 
     /// @notice calculate payment token amount received for burning USD+
     /// @param paymentToken payment token
@@ -87,11 +92,16 @@ interface IUsdPlusRedeemer {
     /// @param usdplusAmount amount of USD+ to burn
     /// @param receiver recipient
     /// @param owner USD+ owner
+    /// @param minPaymentTokenAmount minimum amount of payment token to receive
     /// @return ticket request ticket number
     /// @dev exchange rate fixed at time of request creation
-    function requestRedeem(IERC20 paymentToken, uint256 usdplusAmount, address receiver, address owner)
-        external
-        returns (uint256 ticket);
+    function requestRedeem(
+        IERC20 paymentToken,
+        uint256 usdplusAmount,
+        address receiver,
+        address owner,
+        uint256 minPaymentTokenAmount
+    ) external returns (uint256 ticket);
 
     /// @notice Allows rescue of USD+ tokens that are stuck in the contract
     /// @dev CAUTION: Only rescue truly stuck funds. Ensure enough USD+ remains for pending redemptions

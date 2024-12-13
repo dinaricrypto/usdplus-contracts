@@ -73,7 +73,7 @@ contract MintEarnRedeemBundled is Script {
 
         // unstake usd+ and redeem for usdc
         // cfg.usdPlus.approve(address(cfg.redeemer), usdplusBalanceAfter);
-        uint256 ticket = cfg.redeemer.requestRedeem(cfg.usdc, usdplusBalance, user, user);
+        uint256 ticket = cfg.redeemer.requestRedeem(cfg.usdc, usdplusBalance, user, user, usdplusBalance);
 
         vm.stopBroadcast();
 

@@ -82,7 +82,7 @@ contract MintEarnRedeem is Script {
 
         // redeem for usdc
         cfg.usdPlus.approve(address(cfg.redeemer), usdplusBalanceAfter);
-        uint256 ticket = cfg.redeemer.requestRedeem(cfg.usdc, usdplusBalanceAfter, user, user);
+        uint256 ticket = cfg.redeemer.requestRedeem(cfg.usdc, usdplusBalanceAfter, user, user, usdplusBalanceAfter);
 
         vm.stopBroadcast();
 
