@@ -109,6 +109,33 @@ contract UsdPlusMinterTest is Test {
         assertEq(address(minter.paymentTokenOracle(token)), oracle);
     }
 
+    function test_pause_unpause() public {
+        // non-admin cannot pause
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), minter.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        minter.pause();
+
+        // admin can pause
+        vm.prank(ADMIN);
+        minter.pause();
+        assertEq(minter.paused(), true);
+
+        // non-admin cannot unpause
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), minter.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        minter.unpause();
+
+        vm.prank(ADMIN);
+        minter.unpause();
+        assertEq(minter.paused(), false);
+    }
+
     function test_previewDeposit(uint256 amount) public {
         vm.assume(amount < type(uint256).max / 2);
 
