@@ -25,6 +25,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     error ZeroAmount();
     error SlippageViolation();
     error InvalidPrice();
+    error StalePrice();
     error SequencerDown();
     error SequencerGracePeriodNotOver();
 
@@ -36,7 +37,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         // receiver of payment tokens
         address _paymentRecipient;
         // is this payment token accepted?
-        mapping(IERC20 => AggregatorV3Interface) _paymentTokenOracle;
+        mapping(IERC20 => PaymentTokenOracleInfo) _paymentTokenOracle;
         // is the L2 sequencer up?
         address _l2SequencerOracle;
         // grace period for the L2 sequencer startup
@@ -87,7 +88,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     }
 
     /// @inheritdoc IUsdPlusMinter
-    function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface) {
+    function paymentTokenOracle(IERC20 paymentToken) external view returns (PaymentTokenOracleInfo memory) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._paymentTokenOracle[paymentToken];
     }
@@ -105,14 +106,15 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
     /// @notice set payment token oracle
     /// @param paymentToken payment token
-    /// @param oracle oracle
-    function setPaymentTokenOracle(IERC20 paymentToken, AggregatorV3Interface oracle)
+    /// @param oracle oracle address
+    /// @param heartbeat heartbeat in seconds
+    function setPaymentTokenOracle(IERC20 paymentToken, AggregatorV3Interface oracle, uint256 heartbeat)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        $._paymentTokenOracle[paymentToken] = oracle;
-        emit PaymentTokenOracleSet(paymentToken, oracle);
+        $._paymentTokenOracle[paymentToken] = PaymentTokenOracleInfo(oracle, heartbeat);
+        emit PaymentTokenOracleSet(paymentToken, oracle, heartbeat);
     }
 
     /// @notice set L2 sequencer oracle
@@ -136,8 +138,8 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     /// @inheritdoc IUsdPlusMinter
     function getOraclePrice(IERC20 paymentToken) public view returns (uint256, uint8) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        AggregatorV3Interface oracle = $._paymentTokenOracle[paymentToken];
-        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
+        PaymentTokenOracleInfo memory oracle = $._paymentTokenOracle[paymentToken];
+        if (address(oracle.oracle) == address(0)) revert PaymentTokenNotAccepted();
 
         // Make sure the L2 sequencer is up.
         address l2SequencerOracle = $._l2SequencerOracle;
@@ -159,9 +161,10 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         }
 
         // slither-disable-next-line unused-return
-        (, int256 price,,,) = oracle.latestRoundData();
+        (, int256 price,, uint256 updatedAt,) = oracle.oracle.latestRoundData();
         if (price == 0) revert InvalidPrice();
-        uint8 oracleDecimals = oracle.decimals();
+        if (oracle.heartbeat > 0 && block.timestamp - updatedAt > oracle.heartbeat) revert StalePrice();
+        uint8 oracleDecimals = oracle.oracle.decimals();
 
         return (uint256(price), oracleDecimals);
     }

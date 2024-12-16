@@ -31,6 +31,7 @@ contract UsdPlusRedeemer is
     error ZeroAmount();
     error SlippageViolation();
     error InvalidPrice();
+    error StalePrice();
     error SequencerDown();
     error SequencerGracePeriodNotOver();
 
@@ -42,7 +43,7 @@ contract UsdPlusRedeemer is
         // USD+
         address _usdplus;
         // is this payment token accepted?
-        mapping(IERC20 => AggregatorV3Interface) _paymentTokenOracle;
+        mapping(IERC20 => PaymentTokenOracleInfo) _paymentTokenOracle;
         // request ticket => request
         mapping(uint256 => Request) _requests;
         // next request ticket number
@@ -92,7 +93,7 @@ contract UsdPlusRedeemer is
     }
 
     /// @inheritdoc IUsdPlusRedeemer
-    function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface) {
+    function paymentTokenOracle(IERC20 paymentToken) external view returns (PaymentTokenOracleInfo memory) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         return $._paymentTokenOracle[paymentToken];
     }
@@ -113,14 +114,15 @@ contract UsdPlusRedeemer is
 
     /// @notice set payment token oracle
     /// @param payment payment token
-    /// @param oracle oracle
-    function setPaymentTokenOracle(IERC20 payment, AggregatorV3Interface oracle)
+    /// @param oracle oracle address
+    /// @param heartbeat heartbeat in seconds
+    function setPaymentTokenOracle(IERC20 payment, AggregatorV3Interface oracle, uint256 heartbeat)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        $._paymentTokenOracle[payment] = oracle;
-        emit PaymentTokenOracleSet(payment, oracle);
+        $._paymentTokenOracle[payment] = PaymentTokenOracleInfo(oracle, heartbeat);
+        emit PaymentTokenOracleSet(payment, oracle, heartbeat);
     }
 
     /// @notice set L2 sequencer oracle
@@ -154,8 +156,8 @@ contract UsdPlusRedeemer is
     /// @inheritdoc IUsdPlusRedeemer
     function getOraclePrice(IERC20 paymentToken) public view returns (uint256, uint8) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        AggregatorV3Interface oracle = $._paymentTokenOracle[paymentToken];
-        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
+        PaymentTokenOracleInfo memory oracle = $._paymentTokenOracle[paymentToken];
+        if (address(oracle.oracle) == address(0)) revert PaymentTokenNotAccepted();
 
         // Make sure the L2 sequencer is up.
         address l2SequencerOracle = $._l2SequencerOracle;
@@ -177,9 +179,10 @@ contract UsdPlusRedeemer is
         }
 
         // slither-disable-next-line unused-return
-        (, int256 price,,,) = oracle.latestRoundData();
+        (, int256 price,, uint256 updatedAt,) = oracle.oracle.latestRoundData();
         if (price == 0) revert InvalidPrice();
-        uint8 oracleDecimals = oracle.decimals();
+        if (oracle.heartbeat > 0 && block.timestamp - updatedAt > oracle.heartbeat) revert StalePrice();
+        uint8 oracleDecimals = oracle.oracle.decimals();
 
         return (uint256(price), oracleDecimals);
     }

@@ -16,7 +16,7 @@ import {MockToken} from "./utils/mocks/MockToken.sol";
 
 contract UsdPlusMinterTest is Test {
     event PaymentRecipientSet(address indexed paymentRecipient);
-    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
+    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle, uint256 heartbeat);
     event Issued(address indexed to, IERC20 indexed paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount);
 
     TransferRestrictor transferRestrictor;
@@ -92,21 +92,23 @@ contract UsdPlusMinterTest is Test {
         assertEq(minter.paymentRecipient(), recipient);
     }
 
-    function test_setPaymentTokenOracle(IERC20 token, address oracle) public {
+    function test_setPaymentTokenOracle(IERC20 token, address oracle, uint256 heartbeat) public {
         // non-admin cannot set payment token oracle
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), minter.DEFAULT_ADMIN_ROLE()
             )
         );
-        minter.setPaymentTokenOracle(token, AggregatorV3Interface(oracle));
+        minter.setPaymentTokenOracle(token, AggregatorV3Interface(oracle), heartbeat);
 
         // admin can set payment token oracle
         vm.expectEmit(true, true, true, true);
-        emit PaymentTokenOracleSet(token, AggregatorV3Interface(oracle));
+        emit PaymentTokenOracleSet(token, AggregatorV3Interface(oracle), heartbeat);
         vm.prank(ADMIN);
-        minter.setPaymentTokenOracle(token, AggregatorV3Interface(oracle));
-        assertEq(address(minter.paymentTokenOracle(token)), oracle);
+        minter.setPaymentTokenOracle(token, AggregatorV3Interface(oracle), heartbeat);
+        IUsdPlusMinter.PaymentTokenOracleInfo memory info = minter.paymentTokenOracle(token);
+        assertEq(address(info.oracle), oracle);
+        assertEq(info.heartbeat, heartbeat);
     }
 
     function test_previewDeposit(uint256 amount) public {
@@ -120,7 +122,7 @@ contract UsdPlusMinterTest is Test {
         minter.previewDeposit(paymentToken, amount);
 
         vm.prank(ADMIN);
-        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         minter.previewDeposit(paymentToken, amount);
     }
@@ -146,7 +148,7 @@ contract UsdPlusMinterTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 issueEstimate = minter.previewDeposit(paymentToken, amount);
         vm.assume(issueEstimate > 0);
@@ -162,7 +164,7 @@ contract UsdPlusMinterTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 issueEstimate = minter.previewDeposit(paymentToken, amount);
         vm.assume(issueEstimate > 0);
@@ -209,7 +211,7 @@ contract UsdPlusMinterTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 paymentEstimate = minter.previewMint(paymentToken, amount);
         vm.assume(paymentEstimate > 0);
@@ -225,7 +227,7 @@ contract UsdPlusMinterTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 paymentEstimate = minter.previewMint(paymentToken, amount);
         vm.assume(paymentEstimate > 0);

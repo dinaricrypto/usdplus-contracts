@@ -14,7 +14,7 @@ import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
 import {MockToken} from "./utils/mocks/MockToken.sol";
 
 contract UsdPlusRedeemerTest is Test {
-    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
+    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle, uint256 heartbeat);
     event RequestCreated(
         uint256 indexed ticket,
         address indexed to,
@@ -83,21 +83,23 @@ contract UsdPlusRedeemerTest is Test {
         assertEq(redeemer.nextTicket(), 0);
     }
 
-    function test_setPaymentTokenOracle(IERC20 token, address oracle) public {
+    function test_setPaymentTokenOracle(IERC20 token, address oracle, uint256 heartbeat) public {
         // non-admin cannot set payment token oracle
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), redeemer.DEFAULT_ADMIN_ROLE()
             )
         );
-        redeemer.setPaymentTokenOracle(token, AggregatorV3Interface(oracle));
+        redeemer.setPaymentTokenOracle(token, AggregatorV3Interface(oracle), heartbeat);
 
         // admin can set payment token oracle
         vm.expectEmit(true, true, true, true);
-        emit PaymentTokenOracleSet(token, AggregatorV3Interface(oracle));
+        emit PaymentTokenOracleSet(token, AggregatorV3Interface(oracle), heartbeat);
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(token, AggregatorV3Interface(oracle));
-        assertEq(address(redeemer.paymentTokenOracle(token)), oracle);
+        redeemer.setPaymentTokenOracle(token, AggregatorV3Interface(oracle), heartbeat);
+        IUsdPlusRedeemer.PaymentTokenOracleInfo memory oracleInfo = redeemer.paymentTokenOracle(token);
+        assertEq(address(oracleInfo.oracle), oracle);
+        assertEq(oracleInfo.heartbeat, heartbeat);
     }
 
     function test_previewRedeem(uint256 amount) public {
@@ -108,7 +110,7 @@ contract UsdPlusRedeemerTest is Test {
         redeemer.previewRedeem(paymentToken, amount);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         redeemer.previewRedeem(paymentToken, amount);
     }
@@ -121,7 +123,7 @@ contract UsdPlusRedeemerTest is Test {
         redeemer.previewWithdraw(paymentToken, amount);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         redeemer.previewWithdraw(paymentToken, amount);
     }
@@ -140,7 +142,7 @@ contract UsdPlusRedeemerTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 usdplusAmount = redeemer.previewWithdraw(paymentToken, amount);
 
@@ -155,7 +157,7 @@ contract UsdPlusRedeemerTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 usdplusAmount = redeemer.previewWithdraw(paymentToken, amount);
 
@@ -220,7 +222,7 @@ contract UsdPlusRedeemerTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 redemptionEstimate = redeemer.previewRedeem(paymentToken, amount);
         vm.assume(redemptionEstimate > 0);
@@ -237,7 +239,7 @@ contract UsdPlusRedeemerTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 balanceBefore = usdplus.balanceOf(USER);
 
@@ -278,7 +280,7 @@ contract UsdPlusRedeemerTest is Test {
         address ATTACKER = address(0xdead);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         vm.prank(USER);
         usdplus.approve(address(redeemer), amount);
@@ -293,7 +295,7 @@ contract UsdPlusRedeemerTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         SigUtils.Permit memory sigPermit = SigUtils.Permit({
             owner: USER,
@@ -353,7 +355,7 @@ contract UsdPlusRedeemerTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 redemptionEstimate = redeemer.previewRedeem(paymentToken, amount);
         vm.assume(redemptionEstimate > 0);
@@ -395,7 +397,7 @@ contract UsdPlusRedeemerTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         uint256 redemptionEstimate = redeemer.previewRedeem(paymentToken, amount);
         vm.assume(redemptionEstimate > 0);
@@ -430,7 +432,7 @@ contract UsdPlusRedeemerTest is Test {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
@@ -459,7 +461,7 @@ contract UsdPlusRedeemerTest is Test {
         uint256 balanceBefore = usdplus.balanceOf(USER);
 
         vm.prank(ADMIN);
-        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+        redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
 
         vm.prank(USER);
         usdplus.transfer(address(redeemer), amount);

@@ -6,8 +6,13 @@ import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/Agg
 import {Permit} from "./SelfPermit.sol";
 
 interface IUsdPlusMinter {
+    struct PaymentTokenOracleInfo {
+        AggregatorV3Interface oracle;
+        uint256 heartbeat;
+    }
+
     event PaymentRecipientSet(address indexed paymentRecipient);
-    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
+    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle, uint256 heartbeat);
     event L2SequencerOracleSet(address indexed l2SequencerOracle);
     event SequencerGracePeriodSet(uint256 sequencerGracePeriod);
     event Issued(
@@ -25,7 +30,7 @@ interface IUsdPlusMinter {
     /// @notice Oracle for payment token
     /// @param paymentToken payment token
     /// @dev address(0) if payment token not accepted
-    function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface oracle);
+    function paymentTokenOracle(IERC20 paymentToken) external view returns (PaymentTokenOracleInfo memory oracle);
 
     /// @notice get oracle price for payment token
     /// @param paymentToken payment token

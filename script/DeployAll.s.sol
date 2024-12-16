@@ -79,7 +79,7 @@ contract DeployAll is Script {
             )
         );
         usdplus.setIssuerLimits(address(minter), type(uint256).max, 0);
-        minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
+        minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle, 0);
 
         UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer{salt: salt}();
 
@@ -92,7 +92,7 @@ contract DeployAll is Script {
         );
         usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.treasury);
-        redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
+        redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle, 0);
 
         vm.stopBroadcast();
     }

@@ -22,8 +22,8 @@ contract SetOracle is Script {
         // Send txs as deployer
         vm.startBroadcast(deployerPrivateKey);
 
-        minter.setPaymentTokenOracle(usdc, oracle);
-        redeemer.setPaymentTokenOracle(usdc, oracle);
+        minter.setPaymentTokenOracle(usdc, oracle, 0);
+        redeemer.setPaymentTokenOracle(usdc, oracle, 0);
 
         vm.stopBroadcast();
     }
