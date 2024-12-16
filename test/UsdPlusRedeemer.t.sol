@@ -12,6 +12,7 @@ import {SigUtils} from "./utils/SigUtils.sol";
 import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
 import {MockToken} from "./utils/mocks/MockToken.sol";
+import {UnityOracle} from "../src/mocks/UnityOracle.sol";
 
 contract UsdPlusRedeemerTest is Test {
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
@@ -124,6 +125,71 @@ contract UsdPlusRedeemerTest is Test {
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
 
         redeemer.previewWithdraw(paymentToken, amount);
+    }
+
+    function test_previewRedeem() public {
+        // Setup UnityOracle and tokens
+        UnityOracle unityOracle = new UnityOracle();
+
+        // Test USDC (6 decimals)
+        MockToken usdc = new MockToken("USDC", "USDC");
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(IERC20(address(usdc)), unityOracle);
+
+        // USDC test cases
+        uint256 previewAmount = redeemer.previewRedeem(IERC20(address(usdc)), 1_000000); // 1 USD+
+        assertEq(previewAmount, 1_000000, "1 USD+ should preview to 1 USDC");
+
+        previewAmount = redeemer.previewRedeem(IERC20(address(usdc)), 1000_000000); // 1000 USD+
+        assertEq(previewAmount, 1000_000000, "1000 USD+ should preview to 1000 USDC");
+
+        // Test ETH (18 decimals)
+        MockToken eth = new MockToken("ETH", "ETH");
+        eth.setDecimals(18);
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(IERC20(address(eth)), unityOracle);
+
+        // ETH test cases
+        previewAmount = redeemer.previewRedeem(IERC20(address(eth)), 1_000000); // 1 USD+
+        assertEq(previewAmount, 1 ether, "1 USD+ should preview to 1 ETH");
+
+        previewAmount = redeemer.previewRedeem(IERC20(address(eth)), 500000); // 0.5 USD+
+        assertEq(previewAmount, 0.5 ether, "0.5 USD+ should preview to 0.5 ETH");
+
+        previewAmount = redeemer.previewRedeem(IERC20(address(eth)), 1000_000000); // 1000 USD+
+        assertEq(previewAmount, 1000 ether, "1000 USD+ should preview to 1000 ETH");
+    }
+
+    function test_previewWithdraw() public {
+        UnityOracle unityOracle = new UnityOracle();
+
+        // Test USDC (6 decimals)
+        MockToken usdc = new MockToken("USDC", "USDC");
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(IERC20(address(usdc)), unityOracle);
+
+        // USDC test cases
+        uint256 previewAmount = redeemer.previewWithdraw(IERC20(address(usdc)), 1_000000);
+        assertEq(previewAmount, 1_000000, "1 USDC should preview to 1 USD+");
+
+        previewAmount = redeemer.previewWithdraw(IERC20(address(usdc)), 1000_000000);
+        assertEq(previewAmount, 1000_000000, "1000 USDC should preview to 1000 USD+");
+
+        // Test ETH (18 decimals)
+        MockToken eth = new MockToken("ETH", "ETH");
+        eth.setDecimals(18);
+        vm.prank(ADMIN);
+        redeemer.setPaymentTokenOracle(IERC20(address(eth)), unityOracle);
+
+        // ETH test cases
+        previewAmount = redeemer.previewWithdraw(IERC20(address(eth)), 1 ether);
+        assertEq(previewAmount, 1_000000, "1 ETH should preview to 1 USD+");
+
+        previewAmount = redeemer.previewWithdraw(IERC20(address(eth)), 0.5 ether);
+        assertEq(previewAmount, 500000, "0.5 ETH should preview to 0.5 USD+");
+
+        previewAmount = redeemer.previewWithdraw(IERC20(address(eth)), 1000 ether);
+        assertEq(previewAmount, 1000_000000, "1000 ETH should preview to 1000 USD+");
     }
 
     function test_requestWithdrawToZeroAddressReverts(uint256 amount) public {

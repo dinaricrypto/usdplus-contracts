@@ -9,6 +9,7 @@ import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/Safe
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
@@ -127,7 +128,23 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         if (address(paymentToken) == $._usdplus) return paymentTokenAmount;
 
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Floor);
+
+        uint8 paymentDecimals = 18;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {}
+
+        uint8 usdPlusDecimals = 6;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {}
+
+        return Math.mulDiv(
+            paymentTokenAmount,
+            price * 10 ** usdPlusDecimals,
+            10 ** (oracleDecimals + paymentDecimals),
+            Math.Rounding.Floor
+        );
     }
 
     /// @inheritdoc IUsdPlusMinter
@@ -169,7 +186,20 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         if (address(paymentToken) == $._usdplus) return usdPlusAmount;
 
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Ceil);
+
+        uint8 paymentDecimals = 18;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {}
+
+        uint8 usdPlusDecimals = 6;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {}
+
+        return Math.mulDiv(
+            usdPlusAmount, 10 ** (oracleDecimals + paymentDecimals), price * 10 ** usdPlusDecimals, Math.Rounding.Ceil
+        );
     }
 
     /// @inheritdoc IUsdPlusMinter
