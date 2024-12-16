@@ -30,6 +30,7 @@ contract UsdPlusRedeemer is
     error ZeroAddress();
     error ZeroAmount();
     error SlippageViolation();
+    error InvalidPrice();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
 
@@ -134,6 +135,7 @@ contract UsdPlusRedeemer is
 
         // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();
+        if (price == 0) revert InvalidPrice();
         uint8 oracleDecimals = oracle.decimals();
 
         return (uint256(price), oracleDecimals);

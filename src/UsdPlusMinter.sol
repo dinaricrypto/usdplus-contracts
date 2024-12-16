@@ -24,6 +24,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     error ZeroAddress();
     error ZeroAmount();
     error SlippageViolation();
+    error InvalidPrice();
 
     /// ------------------ Storage ------------------
 
@@ -116,6 +117,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
 
         // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();
+        if (price == 0) revert InvalidPrice();
         uint8 oracleDecimals = oracle.decimals();
 
         return (uint256(price), oracleDecimals);
