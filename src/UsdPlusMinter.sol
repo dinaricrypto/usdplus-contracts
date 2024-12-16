@@ -8,11 +8,10 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
-import {SelfPermit, Permit} from "./SelfPermit.sol";
+import {SelfPermit} from "./SelfPermit.sol";
 
 /// @notice USD+ minter
 /// @dev If the payment token is USD+, the amount is forwarded to the receiver.
@@ -144,6 +143,7 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         // Make sure the L2 sequencer is up.
         address l2SequencerOracle = $._l2SequencerOracle;
         if (l2SequencerOracle != address(0)) {
+            // slither-disable-next-line unused-return
             (, int256 isDown, uint256 startedAt,,) = AggregatorV3Interface($._l2SequencerOracle).latestRoundData();
 
             // isDown == 0: Sequencer is up

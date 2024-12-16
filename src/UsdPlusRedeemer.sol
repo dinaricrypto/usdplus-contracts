@@ -162,6 +162,7 @@ contract UsdPlusRedeemer is
         // Make sure the L2 sequencer is up.
         address l2SequencerOracle = $._l2SequencerOracle;
         if (l2SequencerOracle != address(0)) {
+            // slither-disable-next-line unused-return
             (, int256 isDown, uint256 startedAt,,) = AggregatorV3Interface($._l2SequencerOracle).latestRoundData();
 
             // isDown == 0: Sequencer is up
