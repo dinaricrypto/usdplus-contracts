@@ -174,13 +174,6 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
         emit BalancePerShareSet(_balancePerShare);
     }
 
-    function rebaseMul(uint128 factor) external onlyRole(OPERATOR_ROLE) {
-        uint128 _balancePerShare = balancePerShare() * factor;
-        UsdPlusStorage storage $ = _getUsdPlusStorage();
-        $._balancePerShare = _balancePerShare;
-        emit BalancePerShareSet(_balancePerShare);
-    }
-
     /// @dev rounds towards intial value
     function rebaseSub(uint128 value) external onlyRole(OPERATOR_ROLE) {
         uint256 _supply = totalSupply();

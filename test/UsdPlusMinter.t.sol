@@ -110,6 +110,33 @@ contract UsdPlusMinterTest is Test {
         assertEq(address(minter.paymentTokenOracle(token)), oracle);
     }
 
+    function test_pause_unpause() public {
+        // non-admin cannot pause
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), minter.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        minter.pause();
+
+        // admin can pause
+        vm.prank(ADMIN);
+        minter.pause();
+        assertEq(minter.paused(), true);
+
+        // non-admin cannot unpause
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), minter.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        minter.unpause();
+
+        vm.prank(ADMIN);
+        minter.unpause();
+        assertEq(minter.paused(), false);
+    }
+
     function test_deposit() public {
         UnityOracle unityOracle = new UnityOracle();
 
@@ -128,7 +155,7 @@ contract UsdPlusMinterTest is Test {
 
         vm.startPrank(USER);
         usdc.approve(address(minter), 1000_000000);
-        uint256 mintedAmount = minter.deposit(IERC20(address(usdc)), 1000_000000, USER);
+        uint256 mintedAmount = minter.deposit(IERC20(address(usdc)), 1000_000000, USER, previewAmount);
         vm.stopPrank();
         assertEq(mintedAmount, 1000_000000, "Should mint 1000 USD+");
 
@@ -151,7 +178,7 @@ contract UsdPlusMinterTest is Test {
 
         vm.startPrank(USER);
         eth.approve(address(minter), 1000 ether);
-        mintedAmount = minter.deposit(IERC20(address(eth)), 1000 ether, USER);
+        mintedAmount = minter.deposit(IERC20(address(eth)), 1000 ether, USER, previewAmount);
         vm.stopPrank();
         assertEq(mintedAmount, 1000_000000, "Should mint 1000 USD+");
     }
