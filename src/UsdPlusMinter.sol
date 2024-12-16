@@ -25,6 +25,8 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
     error ZeroAmount();
     error SlippageViolation();
     error InvalidPrice();
+    error SequencerDown();
+    error SequencerGracePeriodNotOver();
 
     /// ------------------ Storage ------------------
 
@@ -35,6 +37,10 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         address _paymentRecipient;
         // is this payment token accepted?
         mapping(IERC20 => AggregatorV3Interface) _paymentTokenOracle;
+        // is the L2 sequencer up?
+        address _l2SequencerOracle;
+        // grace period for the L2 sequencer startup
+        uint256 _sequencerGracePeriod;
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.UsdPlusMinter")) - 1)) & ~bytes32(uint256(0xff))
@@ -55,6 +61,8 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         $._usdplus = usdPlus;
         $._paymentRecipient = initialPaymentRecipient;
+        $._l2SequencerOracle = address(0);
+        $._sequencerGracePeriod = 3600;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -107,6 +115,22 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         emit PaymentTokenOracleSet(paymentToken, oracle);
     }
 
+    /// @notice set L2 sequencer oracle
+    /// @param l2SequencerOracle Chainlink L2 sequencer oracle
+    function setL2SequencerOracle(address l2SequencerOracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
+        $._l2SequencerOracle = l2SequencerOracle;
+        emit L2SequencerOracleSet(l2SequencerOracle);
+    }
+
+    /// @notice set grace period for the L2 sequencer startup
+    /// @param sequencerGracePeriod grace period in seconds
+    function setSequencerGracePeriod(uint256 sequencerGracePeriod) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
+        $._sequencerGracePeriod = sequencerGracePeriod;
+        emit SequencerGracePeriodSet(sequencerGracePeriod);
+    }
+
     // ------------------ Mint ------------------
 
     /// @inheritdoc IUsdPlusMinter
@@ -114,6 +138,25 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         AggregatorV3Interface oracle = $._paymentTokenOracle[paymentToken];
         if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
+
+        // Make sure the L2 sequencer is up.
+        address l2SequencerOracle = $._l2SequencerOracle;
+        if (l2SequencerOracle != address(0)) {
+            (, int256 isDown, uint256 startedAt,,) = AggregatorV3Interface($._l2SequencerOracle).latestRoundData();
+
+            // isDown == 0: Sequencer is up
+            // isDown == 1: Sequencer is down
+            if (isDown == 1) {
+                revert SequencerDown();
+            }
+
+            // Make sure the grace period has passed after the
+            // sequencer is back up.
+            uint256 timeSinceUp = block.timestamp - startedAt;
+            if (timeSinceUp <= $._sequencerGracePeriod) {
+                revert SequencerGracePeriodNotOver();
+            }
+        }
 
         // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();

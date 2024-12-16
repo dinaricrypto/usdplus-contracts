@@ -14,6 +14,8 @@ interface IUsdPlusRedeemer {
     }
 
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
+    event L2SequencerOracleSet(address indexed l2SequencerOracle);
+    event SequencerGracePeriodSet(uint256 sequencerGracePeriod);
     event RequestCreated(
         uint256 indexed ticket,
         address indexed receiver,

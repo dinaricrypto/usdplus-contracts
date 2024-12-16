@@ -31,6 +31,8 @@ contract UsdPlusRedeemer is
     error ZeroAmount();
     error SlippageViolation();
     error InvalidPrice();
+    error SequencerDown();
+    error SequencerGracePeriodNotOver();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
 
@@ -45,6 +47,10 @@ contract UsdPlusRedeemer is
         mapping(uint256 => Request) _requests;
         // next request ticket number
         uint256 _nextTicket;
+        // L2 sequencer oracle
+        address _l2SequencerOracle;
+        // grace period for the L2 sequencer startup
+        uint256 _sequencerGracePeriod;
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.UsdPlusRedeemer")) - 1)) & ~bytes32(uint256(0xff))
@@ -66,6 +72,8 @@ contract UsdPlusRedeemer is
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         $._usdplus = usdPlus;
         $._nextTicket = 0;
+        $._l2SequencerOracle = address(0);
+        $._sequencerGracePeriod = 3600;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -115,6 +123,22 @@ contract UsdPlusRedeemer is
         emit PaymentTokenOracleSet(payment, oracle);
     }
 
+    /// @notice set L2 sequencer oracle
+    /// @param l2SequencerOracle Chainlink L2 sequencer oracle
+    function setL2SequencerOracle(address l2SequencerOracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        $._l2SequencerOracle = l2SequencerOracle;
+        emit L2SequencerOracleSet(l2SequencerOracle);
+    }
+
+    /// @notice set grace period for the L2 sequencer startup
+    /// @param sequencerGracePeriod grace period in seconds
+    function setSequencerGracePeriod(uint256 sequencerGracePeriod) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        $._sequencerGracePeriod = sequencerGracePeriod;
+        emit SequencerGracePeriodSet(sequencerGracePeriod);
+    }
+
     /// @notice pause contract
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
@@ -132,6 +156,25 @@ contract UsdPlusRedeemer is
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         AggregatorV3Interface oracle = $._paymentTokenOracle[paymentToken];
         if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
+
+        // Make sure the L2 sequencer is up.
+        address l2SequencerOracle = $._l2SequencerOracle;
+        if (l2SequencerOracle != address(0)) {
+            (, int256 isDown, uint256 startedAt,,) = AggregatorV3Interface($._l2SequencerOracle).latestRoundData();
+
+            // isDown == 0: Sequencer is up
+            // isDown == 1: Sequencer is down
+            if (isDown == 1) {
+                revert SequencerDown();
+            }
+
+            // Make sure the grace period has passed after the
+            // sequencer is back up.
+            uint256 timeSinceUp = block.timestamp - startedAt;
+            if (timeSinceUp <= $._sequencerGracePeriod) {
+                revert SequencerGracePeriodNotOver();
+            }
+        }
 
         // slither-disable-next-line unused-return
         (, int256 price,,,) = oracle.latestRoundData();

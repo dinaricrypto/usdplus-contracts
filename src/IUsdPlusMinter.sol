@@ -8,6 +8,8 @@ import {Permit} from "./SelfPermit.sol";
 interface IUsdPlusMinter {
     event PaymentRecipientSet(address indexed paymentRecipient);
     event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
+    event L2SequencerOracleSet(address indexed l2SequencerOracle);
+    event SequencerGracePeriodSet(uint256 sequencerGracePeriod);
     event Issued(
         address indexed receiver, IERC20 indexed paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount
     );
