@@ -6,6 +6,7 @@ import {AccessControlDefaultAdminRulesUpgradeable} from
     "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -29,6 +30,7 @@ contract UsdPlusRedeemer is
 
     error ZeroAddress();
     error ZeroAmount();
+    error SlippageViolation();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
 
@@ -141,20 +143,40 @@ contract UsdPlusRedeemer is
     /// @inheritdoc IUsdPlusRedeemer
     function previewWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Ceil);
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+
+        uint8 paymentDecimals = 18;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {}
+
+        uint8 usdPlusDecimals = 6;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {}
+
+        return Math.mulDiv(
+            paymentTokenAmount,
+            price * 10 ** usdPlusDecimals,
+            10 ** (oracleDecimals + paymentDecimals),
+            Math.Rounding.Ceil
+        );
     }
 
     /// @inheritdoc IUsdPlusRedeemer
-    function requestWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, address owner)
-        public
-        whenNotPaused
-        returns (uint256 ticket)
-    {
+    function requestWithdraw(
+        IERC20 paymentToken,
+        uint256 paymentTokenAmount,
+        address receiver,
+        address owner,
+        uint256 maxUsdPlusAmount
+    ) public whenNotPaused returns (uint256 ticket) {
         if (receiver == address(0)) revert ZeroAddress();
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
         uint256 usdplusAmount = previewWithdraw(paymentToken, paymentTokenAmount);
         if (usdplusAmount == 0) revert ZeroAmount();
+        if (usdplusAmount > maxUsdPlusAmount) revert SlippageViolation();
 
         return _request(paymentToken, paymentTokenAmount, usdplusAmount, receiver, owner);
     }
@@ -201,20 +223,37 @@ contract UsdPlusRedeemer is
     /// @inheritdoc IUsdPlusRedeemer
     function previewRedeem(IERC20 paymentToken, uint256 usdplusAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(usdplusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Floor);
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+
+        uint8 paymentDecimals = 18;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {}
+
+        uint8 usdPlusDecimals = 6;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {}
+
+        return Math.mulDiv(
+            usdplusAmount, 10 ** (oracleDecimals + paymentDecimals), price * 10 ** usdPlusDecimals, Math.Rounding.Floor
+        );
     }
 
     /// @inheritdoc IUsdPlusRedeemer
-    function requestRedeem(IERC20 paymentToken, uint256 usdplusAmount, address receiver, address owner)
-        public
-        whenNotPaused
-        returns (uint256 ticket)
-    {
+    function requestRedeem(
+        IERC20 paymentToken,
+        uint256 usdplusAmount,
+        address receiver,
+        address owner,
+        uint256 minPaymentTokenAmount
+    ) public whenNotPaused returns (uint256 ticket) {
         if (receiver == address(0)) revert ZeroAddress();
         if (usdplusAmount == 0) revert ZeroAmount();
 
         uint256 paymentTokenAmount = previewRedeem(paymentToken, usdplusAmount);
         if (paymentTokenAmount == 0) revert ZeroAmount();
+        if (paymentTokenAmount < minPaymentTokenAmount) revert SlippageViolation();
 
         return _request(paymentToken, paymentTokenAmount, usdplusAmount, receiver, owner);
     }

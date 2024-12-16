@@ -47,17 +47,17 @@ abstract contract ERC7281Min is IERC7281Min {
         emit IssuerLimitsSet(issuer, mintingLimit, burningLimit);
     }
 
-    function mintingMaxLimitOf(address issuer) external view returns (uint256) {
+    function mintingMaxLimitOf(address issuer) external view override returns (uint256) {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
         return $._issuerLimits[issuer].mintMaxLimit;
     }
 
-    function burningMaxLimitOf(address issuer) external view returns (uint256) {
+    function burningMaxLimitOf(address issuer) external view override returns (uint256) {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
         return $._issuerLimits[issuer].burnMaxLimit;
     }
 
-    function mintingCurrentLimitOf(address issuer) external view returns (uint256) {
+    function mintingCurrentLimitOf(address issuer) external view override returns (uint256) {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
         LimitParameters storage issuerLimits = $._issuerLimits[issuer];
         uint256 maxLimit = issuerLimits.mintMaxLimit;
@@ -67,7 +67,7 @@ abstract contract ERC7281Min is IERC7281Min {
         );
     }
 
-    function burningCurrentLimitOf(address issuer) external view returns (uint256) {
+    function burningCurrentLimitOf(address issuer) external view override returns (uint256) {
         ERC7281MinStorage storage $ = _getERC7281MinStorage();
         LimitParameters storage issuerLimits = $._issuerLimits[issuer];
         uint256 maxLimit = issuerLimits.burnMaxLimit;
