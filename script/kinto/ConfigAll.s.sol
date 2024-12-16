@@ -87,7 +87,6 @@ contract ConfigAll is Script, EntryPointHelper {
         // Grant OPERATOR_ROLE to operators
         // permissions to call
         // - rebaseAdd(uint128 value)
-        // - rebaseMul(uint128 factor)
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator, owner, deployerPrivateKey);
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator2, owner, deployerPrivateKey);
         console.log("OPERATOR_ROLE granted");

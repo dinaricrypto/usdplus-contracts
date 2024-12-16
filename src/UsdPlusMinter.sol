@@ -8,6 +8,8 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
@@ -16,7 +18,13 @@ import {SelfPermit} from "./SelfPermit.sol";
 /// @notice USD+ minter
 /// @dev If the payment token is USD+, the amount is forwarded to the receiver.
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
-contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable, SelfPermit {
+contract UsdPlusMinter is
+    IUsdPlusMinter,
+    UUPSUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable,
+    PausableUpgradeable,
+    SelfPermit
+{
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
@@ -132,6 +140,14 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         emit SequencerGracePeriodSet(sequencerGracePeriod);
     }
 
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
+    }
+
     // ------------------ Mint ------------------
 
     /// @inheritdoc IUsdPlusMinter
@@ -175,12 +191,29 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         if (address(paymentToken) == $._usdplus) return paymentTokenAmount;
 
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Floor);
+
+        uint8 paymentDecimals = 18;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {}
+
+        uint8 usdPlusDecimals = 6;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {}
+
+        return Math.mulDiv(
+            paymentTokenAmount,
+            price * 10 ** usdPlusDecimals,
+            10 ** (oracleDecimals + paymentDecimals),
+            Math.Rounding.Floor
+        );
     }
 
     /// @inheritdoc IUsdPlusMinter
     function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, uint256 minUsdPlusAmount)
         public
+        whenNotPaused
         returns (uint256 usdPlusAmount)
     {
         if (receiver == address(0)) revert ZeroAddress();
@@ -217,12 +250,26 @@ contract UsdPlusMinter is IUsdPlusMinter, UUPSUpgradeable, AccessControlDefaultA
         if (address(paymentToken) == $._usdplus) return usdPlusAmount;
 
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(usdPlusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Ceil);
+
+        uint8 paymentDecimals = 18;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {}
+
+        uint8 usdPlusDecimals = 6;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {}
+
+        return Math.mulDiv(
+            usdPlusAmount, 10 ** (oracleDecimals + paymentDecimals), price * 10 ** usdPlusDecimals, Math.Rounding.Ceil
+        );
     }
 
     /// @inheritdoc IUsdPlusMinter
     function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver, uint256 maxPaymentTokenAmount)
         public
+        whenNotPaused
         returns (uint256 paymentTokenAmount)
     {
         if (receiver == address(0)) revert ZeroAddress();

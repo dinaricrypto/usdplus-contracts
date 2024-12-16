@@ -13,6 +13,7 @@ import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC19
 import {SigUtils} from "./utils/SigUtils.sol";
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {MockToken} from "./utils/mocks/MockToken.sol";
+import {UnityOracle} from "../src/mocks/UnityOracle.sol";
 
 contract UsdPlusMinterTest is Test {
     event PaymentRecipientSet(address indexed paymentRecipient);
@@ -109,6 +110,111 @@ contract UsdPlusMinterTest is Test {
         IUsdPlusMinter.PaymentTokenOracleInfo memory info = minter.paymentTokenOracle(token);
         assertEq(address(info.oracle), oracle);
         assertEq(info.heartbeat, heartbeat);
+    }
+
+    function test_pause_unpause() public {
+        // non-admin cannot pause
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), minter.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        minter.pause();
+
+        // admin can pause
+        vm.prank(ADMIN);
+        minter.pause();
+        assertEq(minter.paused(), true);
+
+        // non-admin cannot unpause
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), minter.DEFAULT_ADMIN_ROLE()
+            )
+        );
+        minter.unpause();
+
+        vm.prank(ADMIN);
+        minter.unpause();
+        assertEq(minter.paused(), false);
+    }
+
+    function test_deposit() public {
+        UnityOracle unityOracle = new UnityOracle();
+
+        // Test USDC (6 decimals)
+        MockToken usdc = new MockToken("USDC", "USDC");
+        usdc.mint(USER, 1000_000000);
+        vm.prank(ADMIN);
+        minter.setPaymentTokenOracle(IERC20(address(usdc)), unityOracle, 0);
+
+        // USDC test cases
+        uint256 previewAmount = minter.previewDeposit(IERC20(address(usdc)), 1_000000);
+        assertEq(previewAmount, 1_000000, "1 USDC should preview to 1 USD+");
+
+        previewAmount = minter.previewDeposit(IERC20(address(usdc)), 1000_000000);
+        assertEq(previewAmount, 1000_000000, "1000 USDC should preview to 1000 USD+");
+
+        vm.startPrank(USER);
+        usdc.approve(address(minter), 1000_000000);
+        uint256 mintedAmount = minter.deposit(IERC20(address(usdc)), 1000_000000, USER, previewAmount);
+        vm.stopPrank();
+        assertEq(mintedAmount, 1000_000000, "Should mint 1000 USD+");
+
+        // Test ETH (18 decimals)
+        MockToken eth = new MockToken("ETH", "ETH");
+        eth.setDecimals(18);
+        eth.mint(USER, 1000 * 1e18);
+        vm.prank(ADMIN);
+        minter.setPaymentTokenOracle(IERC20(address(eth)), unityOracle, 0);
+
+        // ETH test cases
+        previewAmount = minter.previewDeposit(IERC20(address(eth)), 1 ether);
+        assertEq(previewAmount, 1_000000, "1 ETH should preview to 1 USD+");
+
+        previewAmount = minter.previewDeposit(IERC20(address(eth)), 0.5 ether);
+        assertEq(previewAmount, 500000, "0.5 ETH should preview to 0.5 USD+");
+
+        previewAmount = minter.previewDeposit(IERC20(address(eth)), 1000 ether);
+        assertEq(previewAmount, 1000_000000, "1000 ETH should preview to 1000 USD+");
+
+        vm.startPrank(USER);
+        eth.approve(address(minter), 1000 ether);
+        mintedAmount = minter.deposit(IERC20(address(eth)), 1000 ether, USER, previewAmount);
+        vm.stopPrank();
+        assertEq(mintedAmount, 1000_000000, "Should mint 1000 USD+");
+    }
+
+    function test_previewMint() public {
+        UnityOracle unityOracle = new UnityOracle();
+
+        // Test USDC (6 decimals)
+        MockToken usdc = new MockToken("USDC", "USDC");
+        vm.prank(ADMIN);
+        minter.setPaymentTokenOracle(IERC20(address(usdc)), unityOracle, 0);
+
+        // USDC test cases
+        uint256 paymentAmount = minter.previewMint(IERC20(address(usdc)), 1_000000);
+        assertEq(paymentAmount, 1_000000, "Should need 1 USDC for 1 USD+");
+
+        paymentAmount = minter.previewMint(IERC20(address(usdc)), 1000_000000);
+        assertEq(paymentAmount, 1000_000000, "Should need 1000 USDC for 1000 USD+");
+
+        // Test ETH (18 decimals)
+        MockToken eth = new MockToken("ETH", "ETH");
+        eth.setDecimals(18);
+        vm.prank(ADMIN);
+        minter.setPaymentTokenOracle(IERC20(address(eth)), unityOracle, 0);
+
+        // ETH test cases
+        paymentAmount = minter.previewMint(IERC20(address(eth)), 1_000000);
+        assertEq(paymentAmount, 1 ether, "Should need 1 ETH for 1 USD+");
+
+        paymentAmount = minter.previewMint(IERC20(address(eth)), 500000);
+        assertEq(paymentAmount, 0.5 ether, "Should need 0.5 ETH for 0.5 USD+");
+
+        paymentAmount = minter.previewMint(IERC20(address(eth)), 1000_000000);
+        assertEq(paymentAmount, 1000 ether, "Should need 1000 ETH for 1000 USD+");
     }
 
     function test_previewDeposit(uint256 amount) public {
