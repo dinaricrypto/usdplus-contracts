@@ -31,6 +31,10 @@ contract UsdPlusRedeemer is
     error ZeroAddress();
     error ZeroAmount();
     error SlippageViolation();
+    error InvalidPrice();
+    error StalePrice();
+    error SequencerDown();
+    error SequencerGracePeriodNotOver();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
 
@@ -40,11 +44,15 @@ contract UsdPlusRedeemer is
         // USD+
         address _usdplus;
         // is this payment token accepted?
-        mapping(IERC20 => AggregatorV3Interface) _paymentTokenOracle;
+        mapping(IERC20 => PaymentTokenOracleInfo) _paymentTokenOracle;
         // request ticket => request
         mapping(uint256 => Request) _requests;
         // next request ticket number
         uint256 _nextTicket;
+        // L2 sequencer oracle
+        address _l2SequencerOracle;
+        // grace period for the L2 sequencer startup
+        uint256 _sequencerGracePeriod;
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.UsdPlusRedeemer")) - 1)) & ~bytes32(uint256(0xff))
@@ -66,6 +74,8 @@ contract UsdPlusRedeemer is
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         $._usdplus = usdPlus;
         $._nextTicket = 0;
+        $._l2SequencerOracle = address(0);
+        $._sequencerGracePeriod = 3600;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -84,7 +94,7 @@ contract UsdPlusRedeemer is
     }
 
     /// @inheritdoc IUsdPlusRedeemer
-    function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface) {
+    function paymentTokenOracle(IERC20 paymentToken) external view returns (PaymentTokenOracleInfo memory) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         return $._paymentTokenOracle[paymentToken];
     }
@@ -105,14 +115,31 @@ contract UsdPlusRedeemer is
 
     /// @notice set payment token oracle
     /// @param payment payment token
-    /// @param oracle oracle
-    function setPaymentTokenOracle(IERC20 payment, AggregatorV3Interface oracle)
+    /// @param oracle oracle address
+    /// @param heartbeat heartbeat in seconds
+    function setPaymentTokenOracle(IERC20 payment, AggregatorV3Interface oracle, uint256 heartbeat)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        $._paymentTokenOracle[payment] = oracle;
-        emit PaymentTokenOracleSet(payment, oracle);
+        $._paymentTokenOracle[payment] = PaymentTokenOracleInfo(oracle, heartbeat);
+        emit PaymentTokenOracleSet(payment, oracle, heartbeat);
+    }
+
+    /// @notice set L2 sequencer oracle
+    /// @param l2SequencerOracle Chainlink L2 sequencer oracle
+    function setL2SequencerOracle(address l2SequencerOracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        $._l2SequencerOracle = l2SequencerOracle;
+        emit L2SequencerOracleSet(l2SequencerOracle);
+    }
+
+    /// @notice set grace period for the L2 sequencer startup
+    /// @param sequencerGracePeriod grace period in seconds
+    function setSequencerGracePeriod(uint256 sequencerGracePeriod) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        $._sequencerGracePeriod = sequencerGracePeriod;
+        emit SequencerGracePeriodSet(sequencerGracePeriod);
     }
 
     /// @notice pause contract
@@ -130,12 +157,34 @@ contract UsdPlusRedeemer is
     /// @inheritdoc IUsdPlusRedeemer
     function getOraclePrice(IERC20 paymentToken) public view returns (uint256, uint8) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        AggregatorV3Interface oracle = $._paymentTokenOracle[paymentToken];
-        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
+        PaymentTokenOracleInfo memory oracle = $._paymentTokenOracle[paymentToken];
+        if (address(oracle.oracle) == address(0)) revert PaymentTokenNotAccepted();
+
+        // Make sure the L2 sequencer is up.
+        address l2SequencerOracle = $._l2SequencerOracle;
+        if (l2SequencerOracle != address(0)) {
+            // slither-disable-next-line unused-return
+            (, int256 isDown, uint256 startedAt,,) = AggregatorV3Interface($._l2SequencerOracle).latestRoundData();
+
+            // isDown == 0: Sequencer is up
+            // isDown == 1: Sequencer is down
+            if (isDown == 1) {
+                revert SequencerDown();
+            }
+
+            // Make sure the grace period has passed after the
+            // sequencer is back up.
+            uint256 timeSinceUp = block.timestamp - startedAt;
+            if (timeSinceUp <= $._sequencerGracePeriod) {
+                revert SequencerGracePeriodNotOver();
+            }
+        }
 
         // slither-disable-next-line unused-return
-        (, int256 price,,,) = oracle.latestRoundData();
-        uint8 oracleDecimals = oracle.decimals();
+        (, int256 price,, uint256 updatedAt,) = oracle.oracle.latestRoundData();
+        if (price == 0) revert InvalidPrice();
+        if (oracle.heartbeat > 0 && block.timestamp - updatedAt > oracle.heartbeat) revert StalePrice();
+        uint8 oracleDecimals = oracle.oracle.decimals();
 
         return (uint256(price), oracleDecimals);
     }

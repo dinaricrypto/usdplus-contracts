@@ -114,7 +114,7 @@ contract ConfigAll is Script, EntryPointHelper {
     function _setOracles(Config memory cfg, address owner, uint256 deployerPrivateKey) internal {
         _handleOps(
             _entryPoint,
-            abi.encodeWithSelector(UsdPlusMinter.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle),
+            abi.encodeWithSelector(UsdPlusMinter.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle, 0),
             owner,
             address(cfg.minter),
             _sponsorPaymaster,
@@ -122,7 +122,7 @@ contract ConfigAll is Script, EntryPointHelper {
         );
         _handleOps(
             _entryPoint,
-            abi.encodeWithSelector(UsdPlusRedeemer.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle),
+            abi.encodeWithSelector(UsdPlusRedeemer.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle, 0),
             owner,
             address(cfg.redeemer),
             _sponsorPaymaster,

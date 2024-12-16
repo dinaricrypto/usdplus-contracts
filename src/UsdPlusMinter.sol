@@ -8,13 +8,12 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
-import {SelfPermit, Permit} from "./SelfPermit.sol";
+import {SelfPermit} from "./SelfPermit.sol";
 
 /// @notice USD+ minter
 /// @dev If the payment token is USD+, the amount is forwarded to the receiver.
@@ -32,6 +31,10 @@ contract UsdPlusMinter is
     error ZeroAddress();
     error ZeroAmount();
     error SlippageViolation();
+    error InvalidPrice();
+    error StalePrice();
+    error SequencerDown();
+    error SequencerGracePeriodNotOver();
 
     /// ------------------ Storage ------------------
 
@@ -41,7 +44,11 @@ contract UsdPlusMinter is
         // receiver of payment tokens
         address _paymentRecipient;
         // is this payment token accepted?
-        mapping(IERC20 => AggregatorV3Interface) _paymentTokenOracle;
+        mapping(IERC20 => PaymentTokenOracleInfo) _paymentTokenOracle;
+        // is the L2 sequencer up?
+        address _l2SequencerOracle;
+        // grace period for the L2 sequencer startup
+        uint256 _sequencerGracePeriod;
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.UsdPlusMinter")) - 1)) & ~bytes32(uint256(0xff))
@@ -62,6 +69,8 @@ contract UsdPlusMinter is
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         $._usdplus = usdPlus;
         $._paymentRecipient = initialPaymentRecipient;
+        $._l2SequencerOracle = address(0);
+        $._sequencerGracePeriod = 3600;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -86,7 +95,7 @@ contract UsdPlusMinter is
     }
 
     /// @inheritdoc IUsdPlusMinter
-    function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface) {
+    function paymentTokenOracle(IERC20 paymentToken) external view returns (PaymentTokenOracleInfo memory) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._paymentTokenOracle[paymentToken];
     }
@@ -104,14 +113,31 @@ contract UsdPlusMinter is
 
     /// @notice set payment token oracle
     /// @param paymentToken payment token
-    /// @param oracle oracle
-    function setPaymentTokenOracle(IERC20 paymentToken, AggregatorV3Interface oracle)
+    /// @param oracle oracle address
+    /// @param heartbeat heartbeat in seconds
+    function setPaymentTokenOracle(IERC20 paymentToken, AggregatorV3Interface oracle, uint256 heartbeat)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        $._paymentTokenOracle[paymentToken] = oracle;
-        emit PaymentTokenOracleSet(paymentToken, oracle);
+        $._paymentTokenOracle[paymentToken] = PaymentTokenOracleInfo(oracle, heartbeat);
+        emit PaymentTokenOracleSet(paymentToken, oracle, heartbeat);
+    }
+
+    /// @notice set L2 sequencer oracle
+    /// @param l2SequencerOracle Chainlink L2 sequencer oracle
+    function setL2SequencerOracle(address l2SequencerOracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
+        $._l2SequencerOracle = l2SequencerOracle;
+        emit L2SequencerOracleSet(l2SequencerOracle);
+    }
+
+    /// @notice set grace period for the L2 sequencer startup
+    /// @param sequencerGracePeriod grace period in seconds
+    function setSequencerGracePeriod(uint256 sequencerGracePeriod) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
+        $._sequencerGracePeriod = sequencerGracePeriod;
+        emit SequencerGracePeriodSet(sequencerGracePeriod);
     }
 
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -127,12 +153,34 @@ contract UsdPlusMinter is
     /// @inheritdoc IUsdPlusMinter
     function getOraclePrice(IERC20 paymentToken) public view returns (uint256, uint8) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
-        AggregatorV3Interface oracle = $._paymentTokenOracle[paymentToken];
-        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
+        PaymentTokenOracleInfo memory oracle = $._paymentTokenOracle[paymentToken];
+        if (address(oracle.oracle) == address(0)) revert PaymentTokenNotAccepted();
+
+        // Make sure the L2 sequencer is up.
+        address l2SequencerOracle = $._l2SequencerOracle;
+        if (l2SequencerOracle != address(0)) {
+            // slither-disable-next-line unused-return
+            (, int256 isDown, uint256 startedAt,,) = AggregatorV3Interface($._l2SequencerOracle).latestRoundData();
+
+            // isDown == 0: Sequencer is up
+            // isDown == 1: Sequencer is down
+            if (isDown == 1) {
+                revert SequencerDown();
+            }
+
+            // Make sure the grace period has passed after the
+            // sequencer is back up.
+            uint256 timeSinceUp = block.timestamp - startedAt;
+            if (timeSinceUp <= $._sequencerGracePeriod) {
+                revert SequencerGracePeriodNotOver();
+            }
+        }
 
         // slither-disable-next-line unused-return
-        (, int256 price,,,) = oracle.latestRoundData();
-        uint8 oracleDecimals = oracle.decimals();
+        (, int256 price,, uint256 updatedAt,) = oracle.oracle.latestRoundData();
+        if (price == 0) revert InvalidPrice();
+        if (oracle.heartbeat > 0 && block.timestamp - updatedAt > oracle.heartbeat) revert StalePrice();
+        uint8 oracleDecimals = oracle.oracle.decimals();
 
         return (uint256(price), oracleDecimals);
     }
