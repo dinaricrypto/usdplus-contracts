@@ -16,8 +16,6 @@ abstract contract ERC7281Min is IERC7281Min {
         uint256 burnMaxLimit;
         uint256 mintCurrentLimit;
         uint256 burnCurrentLimit;
-        bool mintWasUnlimited;
-        bool burnWasUnlimited;
     }
 
     /**
@@ -132,16 +130,14 @@ abstract contract ERC7281Min is IERC7281Min {
             delete issuerLimits.mintRatePerSecond;
             issuerLimits.mintMaxLimit = type(uint256).max;
             delete issuerLimits.mintCurrentLimit;
-            issuerLimits.mintWasUnlimited = true;
             return;
         }
 
         uint256 oldMaxLimit = issuerLimits.mintMaxLimit;
 
         // If coming from an unlimited state or first time setting, treat as new limit
-        if (issuerLimits.mintWasUnlimited || oldMaxLimit == 0) {
+        if (oldMaxLimit == type(uint256).max || oldMaxLimit == 0) {
             issuerLimits.mintCurrentLimit = newMaxLimit;
-            issuerLimits.mintWasUnlimited = false;
         } else {
             uint256 currentLimit = _getCurrentLimit(
                 issuerLimits.mintLimitTimestamp,
@@ -172,16 +168,14 @@ abstract contract ERC7281Min is IERC7281Min {
             delete issuerLimits.burnRatePerSecond;
             issuerLimits.burnMaxLimit = type(uint256).max;
             delete issuerLimits.burnCurrentLimit;
-            issuerLimits.burnWasUnlimited = true;
             return;
         }
 
         uint256 oldMaxLimit = issuerLimits.burnMaxLimit;
 
         // If coming from an unlimited state or first time setting, treat as new limit
-        if (issuerLimits.burnWasUnlimited || oldMaxLimit == 0) {
+        if (oldMaxLimit == type(uint256).max || oldMaxLimit == 0) {
             issuerLimits.burnCurrentLimit = newMaxLimit;
-            issuerLimits.burnWasUnlimited = false;
         } else {
             uint256 currentLimit = _getCurrentLimit(
                 issuerLimits.burnLimitTimestamp,
