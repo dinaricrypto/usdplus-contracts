@@ -7,7 +7,6 @@ import {TransferRestrictor, ITransferRestrictor} from "../src/TransferRestrictor
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
-import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 
 contract UsdPlusTest is Test {
     event TreasurySet(address indexed treasury);
