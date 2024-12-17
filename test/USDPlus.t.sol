@@ -232,7 +232,7 @@ contract UsdPlusTest is Test {
         vm.assume(initialAmount > 1);
         vm.assume(rebaseAmount > 0);
         // TODO: add this check within method and revert
-        vm.assume(rebaseAmount < initialAmount);
+        vm.assume(rebaseAmount <= initialAmount);
 
         // mint USD+
         address user2 = address(0x123b);
@@ -243,6 +243,12 @@ contract UsdPlusTest is Test {
         vm.stopPrank();
         uint256 userBalance = usdplus.balanceOf(USER);
         uint256 initialSupply = usdplus.totalSupply();
+
+        if (initialAmount == rebaseAmount) {
+            vm.expectRevert(UsdPlus.BalancePerShareZero.selector);
+            vm.prank(OPERATOR);
+            usdplus.rebaseSub(rebaseAmount);
+        }
 
         // reverse yield
         vm.prank(OPERATOR);
