@@ -7,6 +7,7 @@ import {TransferRestrictor, ITransferRestrictor} from "../src/TransferRestrictor
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
+import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 
 contract UsdPlusTest is Test {
     event TreasurySet(address indexed treasury);
@@ -232,7 +233,7 @@ contract UsdPlusTest is Test {
         vm.assume(initialAmount > 1);
         vm.assume(rebaseAmount > 0);
         // TODO: add this check within method and revert
-        vm.assume(rebaseAmount <= initialAmount);
+        vm.assume(rebaseAmount <= initialAmount - 2);
 
         // mint USD+
         address user2 = address(0x123b);
@@ -244,12 +245,6 @@ contract UsdPlusTest is Test {
         uint256 userBalance = usdplus.balanceOf(USER);
         uint256 initialSupply = usdplus.totalSupply();
 
-        if (initialAmount == rebaseAmount) {
-            vm.expectRevert(UsdPlus.BalancePerShareZero.selector);
-            vm.prank(OPERATOR);
-            usdplus.rebaseSub(rebaseAmount);
-        }
-
         // reverse yield
         vm.prank(OPERATOR);
         usdplus.rebaseSub(rebaseAmount);
@@ -258,6 +253,18 @@ contract UsdPlusTest is Test {
         assertLe(initialSupply - usdplus.totalSupply(), rebaseAmount);
         assertLe(usdplus.balanceOf(USER), userBalance);
         assertLe(userBalance - usdplus.balanceOf(USER), rebaseAmount / 2 + 1);
+    }
+
+    function test_rebaseSubHitsZero(uint128 initialAmount) public {
+        vm.assume(initialAmount > 0);
+        uint128 rebaseAmount = initialAmount;
+
+        vm.prank(MINTER);
+        usdplus.mint(USER, initialAmount);
+
+        vm.expectRevert(UsdPlus.BalancePerShareZero.selector);
+        vm.prank(OPERATOR);
+        usdplus.rebaseSub(rebaseAmount);
     }
 
     /// ------------------ ERC7281 ------------------
