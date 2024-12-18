@@ -1,7 +1,7 @@
 {
     "name": "UsdPlusRedeemer",
     "version": "1",
-    "deployment": {
+    "deployments": {
         "production": {
             "1": "",
             "11155111": "",
