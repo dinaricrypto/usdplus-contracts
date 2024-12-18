@@ -21,6 +21,9 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
     /// @dev Emitted during rebase
     event BalancePerShareSet(uint256 balancePerShare);
 
+    /// ------------------ Errors ------------------
+    error BalancePerShareZero();
+
     /// ------------------ Storage ------------------
 
     struct UsdPlusStorage {
@@ -178,6 +181,7 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
     function rebaseSub(uint128 value) external onlyRole(OPERATOR_ROLE) {
         uint256 _supply = totalSupply();
         uint128 _balancePerShare = uint128(FixedPointMathLib.fullMulDivUp(balancePerShare(), _supply - value, _supply));
+        if (_balancePerShare == 0) revert BalancePerShareZero();
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._balancePerShare = _balancePerShare;
         emit BalancePerShareSet(_balancePerShare);
