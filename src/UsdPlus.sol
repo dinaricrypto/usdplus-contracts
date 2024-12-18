@@ -153,20 +153,16 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
             _spendAllowance(from, spender, value);
         }
 
-        uint256 shareAmount = FixedPointMathLib.fullMulDivUp(value, _INITIAL_BALANCE_PER_SHARE, balancePerShare());
-
         _useBurningLimits(spender, value);
-        _burn(from, shareAmount);
+        _burn(from, value);
     }
 
     /// @notice burn USD+ from msg.sender
     function burn(uint256 value) external {
         address from = _msgSender();
 
-        uint256 shareAmount = FixedPointMathLib.fullMulDivUp(value, _INITIAL_BALANCE_PER_SHARE, balancePerShare());
-
         _useBurningLimits(from, value);
-        _burn(from, shareAmount);
+        _burn(from, value);
     }
 
     // ------------------ Rebasing ------------------

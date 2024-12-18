@@ -7,7 +7,6 @@ import {TransferRestrictor, ITransferRestrictor} from "../src/TransferRestrictor
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {IERC7281Min} from "../src/ERC7281/IERC7281Min.sol";
-import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 
 contract UsdPlusTest is Test {
     event TreasurySet(address indexed treasury);
@@ -290,44 +289,5 @@ contract UsdPlusTest is Test {
             assertEq(usdplus.mintingCurrentLimitOf(BRIDGE), 200 ether - amount);
             assertEq(usdplus.burningCurrentLimitOf(BRIDGE), amount > 50 ether ? 0 : 50 ether - amount);
         }
-    }
-
-    function test_burnRounding(uint256 amount) public {
-        vm.assume(amount > 0);
-        uint256 mintAmount = 100 ether;
-
-        // Get initial balance per share value
-        uint256 _INITIAL_BALANCE_PER_SHARE = usdplus.balancePerShare();
-
-        vm.prank(MINTER);
-        usdplus.mint(BURNER, mintAmount);
-
-        uint256 initialShares = usdplus.sharesOf(BURNER);
-        uint256 initialBalance = usdplus.balanceOf(BURNER);
-        uint256 initialBalancePerShare = usdplus.balancePerShare();
-
-        vm.prank(OPERATOR);
-        usdplus.rebaseAdd(0.1 ether);
-
-        uint256 newBalancePerShare = usdplus.balancePerShare();
-        uint256 postRebaseBalance = usdplus.balanceOf(BURNER);
-
-        // Calculate expected shares using the same formula as the burn function
-        uint256 expectedSharesToBurn = FixedPointMathLib.fullMulDiv(
-            mintAmount,
-            _INITIAL_BALANCE_PER_SHARE, // Using actual initial balance per share
-            newBalancePerShare
-        );
-
-        vm.prank(BURNER);
-        usdplus.burn(mintAmount);
-
-        uint256 actualSharesBurned = initialShares - usdplus.sharesOf(BURNER);
-        console.log("Expected Shares to Burn:", expectedSharesToBurn);
-        console.log("Actual Shares Burned:", actualSharesBurned);
-        console.log("Balance after burn:", usdplus.balanceOf(BURNER));
-
-        // Check remaining balance is 0.1 ether (the rebase amount)
-        assertApproxEqAbs(usdplus.balanceOf(BURNER), 0.1 ether, 1);
     }
 }
