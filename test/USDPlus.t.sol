@@ -232,7 +232,7 @@ contract UsdPlusTest is Test {
         vm.assume(initialAmount > 1);
         vm.assume(rebaseAmount > 0);
         // TODO: add this check within method and revert
-        vm.assume(rebaseAmount < initialAmount);
+        vm.assume(rebaseAmount <= initialAmount - 2);
 
         // mint USD+
         address user2 = address(0x123b);
@@ -252,6 +252,18 @@ contract UsdPlusTest is Test {
         assertLe(initialSupply - usdplus.totalSupply(), rebaseAmount);
         assertLe(usdplus.balanceOf(USER), userBalance);
         assertLe(userBalance - usdplus.balanceOf(USER), rebaseAmount / 2 + 1);
+    }
+
+    function test_rebaseSubHitsZero(uint128 initialAmount) public {
+        vm.assume(initialAmount > 0);
+        uint128 rebaseAmount = initialAmount;
+
+        vm.prank(MINTER);
+        usdplus.mint(USER, initialAmount);
+
+        vm.expectRevert(UsdPlus.BalancePerShareZero.selector);
+        vm.prank(OPERATOR);
+        usdplus.rebaseSub(rebaseAmount);
     }
 
     /// ------------------ ERC7281 ------------------

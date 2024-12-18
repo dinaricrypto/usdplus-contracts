@@ -87,17 +87,9 @@ contract ConfigAll is Script, EntryPointHelper {
         // Grant OPERATOR_ROLE to operators
         // permissions to call
         // - rebaseAdd(uint128 value)
-        // - rebaseMul(uint128 factor)
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator, owner, deployerPrivateKey);
         _grantRole(address(cfg.usdplus), cfg.usdplus.OPERATOR_ROLE(), cfg.operator2, owner, deployerPrivateKey);
         console.log("OPERATOR_ROLE granted");
-
-        // Grant PRIVATE_MINTER_ROLE to operators
-        // permissions to call
-        // - privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
-        _grantRole(address(cfg.minter), cfg.minter.PRIVATE_MINTER_ROLE(), cfg.operator, owner, deployerPrivateKey);
-        _grantRole(address(cfg.minter), cfg.minter.PRIVATE_MINTER_ROLE(), cfg.operator2, owner, deployerPrivateKey);
-        console.log("PRIVATE_MINTER_ROLE granted");
 
         // Grant FULFILLER_ROLE to operators
         // permissions to call
@@ -122,7 +114,7 @@ contract ConfigAll is Script, EntryPointHelper {
     function _setOracles(Config memory cfg, address owner, uint256 deployerPrivateKey) internal {
         _handleOps(
             _entryPoint,
-            abi.encodeWithSelector(UsdPlusMinter.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle),
+            abi.encodeWithSelector(UsdPlusMinter.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle, 0),
             owner,
             address(cfg.minter),
             _sponsorPaymaster,
@@ -130,7 +122,7 @@ contract ConfigAll is Script, EntryPointHelper {
         );
         _handleOps(
             _entryPoint,
-            abi.encodeWithSelector(UsdPlusRedeemer.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle),
+            abi.encodeWithSelector(UsdPlusRedeemer.setPaymentTokenOracle.selector, cfg.usdc, cfg.usdcOracle, 0),
             owner,
             address(cfg.redeemer),
             _sponsorPaymaster,
