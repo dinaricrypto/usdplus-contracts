@@ -152,7 +152,6 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
         if (from != spender) {
             _spendAllowance(from, spender, value);
         }
-
         _useBurningLimits(spender, value);
         _burn(from, value);
     }
@@ -160,7 +159,6 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
     /// @notice burn USD+ from msg.sender
     function burn(uint256 value) external {
         address from = _msgSender();
-
         _useBurningLimits(from, value);
         _burn(from, value);
     }
