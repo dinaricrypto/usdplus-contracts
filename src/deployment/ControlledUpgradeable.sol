@@ -11,5 +11,5 @@ abstract contract ControlledUpgradeable is UUPSUpgradeable, AccessControlDefault
 
     function _authorizeUpgrade(address) internal override onlyRole(UPGRADER_ROLE) {}
 
-    function version() external pure returns (string memory) {}
+    function version() external pure virtual returns (string memory) {}
 }
