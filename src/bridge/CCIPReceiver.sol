@@ -61,7 +61,7 @@ abstract contract CCIPReceiver is IAny2EVMMessageReceiver, ControlledUpgradeable
     //     return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(AccessControlDefaultAdminRulesUpgradeable).interfaceId;
     // }
 
-    function supportsInterface(interfaceId) public pure virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
         return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(AccessControlDefaultAdminRulesUpgradeable).interfaceId;
     }
 
