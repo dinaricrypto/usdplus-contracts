@@ -5,20 +5,23 @@ import {
     UUPSUpgradeable,
     Initializable
 } from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IRouterClient} from "ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
-import {Client} from "ccip/src/v0.8/ccip/libraries/Client.sol";
+import {IRouterClient} from "ccip/contracts/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {Client} from "ccip/contracts/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "./CCIPReceiver.sol";
 
 /// @notice USD+ mint/burn bridge using CCIP
 /// Send and receive USD+ from other chains using CCIP
 /// Mint/burn happens on a separate CCIP token pool contract
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/bridge/CCIPWaypoint.sol)
-contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable, PausableUpgradeable, CCIPReceiver {
+contract CCIPWaypoint is
+    Initializable,
+    PausableUpgradeable,
+    CCIPReceiver
+{
     // TODO: Generalize to include payment tokens: USDC, etc.
     // TODO: Migrate ccip dependency to official release. Needs fix to forge install (https://github.com/foundry-rs/foundry/issues/5996)
     using Address for address;
@@ -79,19 +82,21 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     function initialize(address usdPlus, address router, address initialOwner) public initializer {
         __CCIPReceiver_init(router);
-        __Ownable_init(initialOwner);
+        __AccessControlDefaultAdminRules_init(0, initialOwner);
         __Pausable_init();
 
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         $._usdplus = usdPlus;
     }
 
+    function reinitialize(address upgrader) external reinitializer(2) {
+        _grantRole(UPGRADER_ROLE, upgrader);
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
-
-    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /// ------------------ Getters ------------------
 
@@ -117,11 +122,11 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     /// ------------------ Admin ------------------
 
-    function setRouter(address router) external onlyOwner {
+    function setRouter(address router) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setRouter(router);
     }
 
-    function setApprovedSender(uint64 sourceChainSelector, address sourceChainWaypoint) external onlyOwner {
+    function setApprovedSender(uint64 sourceChainSelector, address sourceChainWaypoint) external onlyRole(DEFAULT_ADMIN_ROLE) {
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         $._approvedSender[sourceChainSelector] = sourceChainWaypoint;
         emit ApprovedSenderSet(sourceChainSelector, sourceChainWaypoint);
@@ -129,18 +134,18 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     function setApprovedReceiver(uint64 destinationChainSelector, address destinationChainWaypoint)
         external
-        onlyOwner
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         $._approvedReceiver[destinationChainSelector] = destinationChainWaypoint;
         emit ApprovedReceiverSet(destinationChainSelector, destinationChainWaypoint);
     }
 
-    function pause() external onlyOwner {
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 
@@ -215,7 +220,7 @@ contract CCIPWaypoint is Initializable, UUPSUpgradeable, Ownable2StepUpgradeable
 
     /// ------------------ Rescue ------------------
 
-    function rescue(address to, address token, uint256 amount) external onlyOwner {
+    function rescue(address to, address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (to == address(0)) revert AddressZero();
 
         if (token == address(0)) {
