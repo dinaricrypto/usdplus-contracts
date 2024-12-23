@@ -47,8 +47,7 @@ contract DeployAll is Script {
         TransferRestrictor transferRestrictor = TransferRestrictor(
             address(
                 new ERC1967Proxy{salt: salt}(
-                    address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (cfg.owner))
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (cfg.owner))
                 )
             )
         );

@@ -15,12 +15,7 @@ import {SelfPermit} from "./SelfPermit.sol";
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
 // TODO: remove owner from redeem request calls
-contract UsdPlusRedeemer is
-    IUsdPlusRedeemer,
-    ControlledUpgradeable,
-    SelfPermit,
-    PausableUpgradeable
-{
+contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit, PausableUpgradeable {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
