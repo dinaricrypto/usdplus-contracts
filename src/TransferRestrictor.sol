@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.23;
 
-import {AccessControlDefaultAdminRules} from
-    "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
+import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 
 /// @notice Enforces transfer restrictions
 /// @author Dinari (https://github.com/dinaricrypto/sbt-contracts/blob/main/src/TransferRestrictor.sol)
 /// Maintains a single `owner` who can add or remove accounts from `isBlacklisted`
-contract TransferRestrictor is AccessControlDefaultAdminRules, ITransferRestrictor {
+contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
     /// ------------------ Types ------------------ ///
 
     /// @dev Account is restricted
@@ -31,8 +30,9 @@ contract TransferRestrictor is AccessControlDefaultAdminRules, ITransferRestrict
 
     /// ------------------ Initialization ------------------ ///
 
-    constructor(address owner) AccessControlDefaultAdminRules(0, owner) {
-        _grantRole(RESTRICTOR_ROLE, owner);
+    function initialize(address initialOwner) public initializer {
+        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
+        _grantRole(RESTRICTOR_ROLE, initialOwner);
     }
 
     /// ------------------ Setters ------------------ ///

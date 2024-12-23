@@ -48,7 +48,14 @@ contract UsdPlusRedeemerTest is Test {
     function setUp() public {
         userPrivateKey = 0x1236;
         USER = vm.addr(userPrivateKey);
-        transferRestrictor = new TransferRestrictor(ADMIN);
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor();
+        transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy(
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (ADMIN))
+                )
+            )
+        );
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(

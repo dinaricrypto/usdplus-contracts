@@ -5,7 +5,7 @@ abstract contract ControlledUpgradeable is UUPSUpgradeable, AccessControlDefault
     /// ------------------ Types ------------------ ///
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
-    function _authorizeUpgrade(address implementation) internal override onlyRole(UPGRADER_ROLE) {}
+    function _authorizeUpgrade(address) internal override onlyRole(UPGRADER_ROLE) {}
 
     function version() external pure returns (string memory) {}
 }

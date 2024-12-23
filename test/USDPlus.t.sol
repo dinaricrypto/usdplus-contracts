@@ -24,7 +24,14 @@ contract UsdPlusTest is Test {
     address public constant OPERATOR = address(0x123a);
 
     function setUp() public {
-        transferRestrictor = new TransferRestrictor(ADMIN);
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor();
+        transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy(
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (ADMIN))
+                )
+            )
+        );
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(

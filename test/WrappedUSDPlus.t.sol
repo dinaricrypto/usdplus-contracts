@@ -21,7 +21,14 @@ contract WrappedUsdPlusTest is Test {
     address public constant USER2 = address(0x1236);
 
     function setUp() public {
-        transferRestrictor = new TransferRestrictor(address(this));
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor();
+        transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy(
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (address(this)))
+                )
+            )
+        );
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(

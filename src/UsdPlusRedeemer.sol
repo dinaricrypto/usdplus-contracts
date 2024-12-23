@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.23;
 
-import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from
-    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
+import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 import {IUsdPlusRedeemer} from "./IUsdPlusRedeemer.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 import {SelfPermit} from "./SelfPermit.sol";
@@ -19,8 +17,7 @@ import {SelfPermit} from "./SelfPermit.sol";
 // TODO: remove owner from redeem request calls
 contract UsdPlusRedeemer is
     IUsdPlusRedeemer,
-    UUPSUpgradeable,
-    AccessControlDefaultAdminRulesUpgradeable,
+    ControlledUpgradeable,
     SelfPermit,
     PausableUpgradeable
 {
@@ -70,8 +67,6 @@ contract UsdPlusRedeemer is
     constructor() {
         _disableInitializers();
     }
-
-    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// ------------------ Getters ------------------
 

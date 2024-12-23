@@ -25,10 +25,17 @@ contract DeployAllCreate2 is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         /// ------------------ usd+ ------------------
-
-        TransferRestrictor transferRestrictor = new TransferRestrictor{
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor{
             salt: keccak256(abi.encode(string.concat("TransferRestrictor", environmentName, "0.2.1")))
-        }(owner);
+        }();
+        TransferRestrictor transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy{
+                    salt: keccak256(abi.encode(string.concat("TransferRestrictorProxy", environmentName, "0.2.1")))
+                }(address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (owner)))
+            )
+        );
+        console.log("transferRestrictorImpl: %s", address(transferRestrictorImpl));
         console.log("transferRestrictor: %s", address(transferRestrictor));
 
         UsdPlus usdplusImpl =

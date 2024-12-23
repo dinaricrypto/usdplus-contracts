@@ -43,7 +43,15 @@ contract DeployAll is Script {
         // cfg.usdc = new ERC20Mock("USD Coin", "USDC", 6, cfg.owner);
 
         /// ------------------ usd+ ------------------
-        TransferRestrictor transferRestrictor = new TransferRestrictor{salt: salt}(cfg.owner);
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor{salt: salt}();
+        TransferRestrictor transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy{salt: salt}(
+                    address(transferRestrictorImpl),
+                    abi.encodeCall(TransferRestrictor.initialize, (cfg.owner))
+                )
+            )
+        );
 
         UsdPlus usdplusImpl = new UsdPlus{salt: salt}();
 
