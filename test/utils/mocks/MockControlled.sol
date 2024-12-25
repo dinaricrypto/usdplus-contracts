@@ -6,8 +6,8 @@ import {ControlledUpgradeable} from "../../../src/deployment/ControlledUpgradeab
 contract MockControlled is ControlledUpgradeable {
     uint256 private _value;
 
-    function initialize(address admin) public initializer {
-        __AccessControlDefaultAdminRules_init(0, admin);
+    function initialize(address initialOwner) public initializer {
+        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -15,20 +15,7 @@ contract MockControlled is ControlledUpgradeable {
         _disableInitializers();
     }
 
-    function setValue(uint256 newValue) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _value = newValue;
-    }
-
-    function getValue() external view returns (uint256) {
-        return _value;
-    }
-
-    function reinitialize(address originalOwner, address upgrader) external reinitializer(2) {
-        _grantRole(DEFAULT_ADMIN_ROLE, originalOwner);
-        _grantRole(UPGRADER_ROLE, upgrader);
-    }
-
-    function version() external pure virtual override returns (string memory) {
-        return "2";
+    function reinitialize(address upgrader) external reinitializer(2) {
+        grantRole(UPGRADER_ROLE, upgrader);
     }
 }
