@@ -53,6 +53,10 @@ contract UsdPlus is ControlledUpgradeable, ERC20Rebasing, ERC7281Min {
         $._transferRestrictor = initialTransferRestrictor;
     }
 
+    function reinitialize(address upgrader) public reinitializer(2) {
+        grantRole(UPGRADER_ROLE, upgrader);
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();

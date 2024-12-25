@@ -56,6 +56,10 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
         $._paymentRecipient = initialPaymentRecipient;
     }
 
+    function reinitialize(address upgrader) public reinitializer(2) {
+        grantRole(UPGRADER_ROLE, upgrader);
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
