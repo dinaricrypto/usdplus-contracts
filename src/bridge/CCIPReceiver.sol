@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IAny2EVMMessageReceiver} from "ccip/contracts/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
+import {IAny2EVMMessageReceiver} from "ccip/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
 import {Client} from "ccip/src/v0.8/ccip/libraries/Client.sol";
 import {ControlledUpgradeable} from "../deployment/ControlledUpgradeable.sol";
 import {AccessControlDefaultAdminRulesUpgradeable} from
