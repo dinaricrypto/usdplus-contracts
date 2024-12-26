@@ -9,8 +9,8 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/
 import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IRouterClient} from "ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
-import {Client} from "ccip/src/v0.8/ccip/libraries/Client.sol";
+import {IRouterClient} from "ccip/contracts/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {Client} from "ccip/contracts/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "./CCIPReceiver.sol";
 
 /// @notice USD+ mint/burn bridge using CCIP

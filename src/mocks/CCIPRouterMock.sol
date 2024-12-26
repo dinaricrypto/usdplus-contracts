@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.23;
 
-import {IRouterClient} from "ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
-import {Client} from "ccip/src/v0.8/ccip/libraries/Client.sol";
-import {IAny2EVMMessageReceiver} from "ccip/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
+import {IRouterClient} from "ccip/contracts/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {Client} from "ccip/contracts/src/v0.8/ccip/libraries/Client.sol";
+import {IAny2EVMMessageReceiver} from "ccip/contracts/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
 import {IERC7281Min} from "../ERC7281/IERC7281Min.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -15,7 +15,7 @@ contract CCIPRouterMock is IRouterClient {
         return true;
     }
 
-    function getSupportedTokens(uint64) external pure override returns (address[] memory) {
+    function getSupportedTokens(uint64) external pure returns (address[] memory) {
         return new address[](0);
     }
 
