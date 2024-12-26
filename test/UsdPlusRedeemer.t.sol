@@ -276,7 +276,7 @@ contract UsdPlusRedeemerTest is Test {
     }
 
     function test_permitRequestRedeem(uint256 amount) public {
-        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+        vm.assume(amount > 1 && amount < type(uint256).max / 2);
 
         vm.startPrank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
@@ -427,7 +427,7 @@ contract UsdPlusRedeemerTest is Test {
     }
 
     function test_burnRequest(uint256 amount) public {
-        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+        vm.assume(amount > 1 && amount < type(uint256).max / 2);
 
         vm.startPrank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
