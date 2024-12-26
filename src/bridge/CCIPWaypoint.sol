@@ -9,19 +9,15 @@ import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/
 import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IRouterClient} from "ccip/contracts/src/v0.8/ccip/interfaces/IRouterClient.sol";
-import {Client} from "ccip/contracts/src/v0.8/ccip/libraries/Client.sol";
+import {IRouterClient} from "ccip/src/v0.8/ccip/interfaces/IRouterClient.sol";
+import {Client} from "ccip/src/v0.8/ccip/libraries/Client.sol";
 import {CCIPReceiver} from "./CCIPReceiver.sol";
 
 /// @notice USD+ mint/burn bridge using CCIP
 /// Send and receive USD+ from other chains using CCIP
 /// Mint/burn happens on a separate CCIP token pool contract
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/bridge/CCIPWaypoint.sol)
-contract CCIPWaypoint is
-    Initializable,
-    PausableUpgradeable,
-    CCIPReceiver
-{
+contract CCIPWaypoint is Initializable, PausableUpgradeable, CCIPReceiver {
     // TODO: Generalize to include payment tokens: USDC, etc.
     // TODO: Migrate ccip dependency to official release. Needs fix to forge install (https://github.com/foundry-rs/foundry/issues/5996)
     using Address for address;
@@ -126,7 +122,10 @@ contract CCIPWaypoint is
         _setRouter(router);
     }
 
-    function setApprovedSender(uint64 sourceChainSelector, address sourceChainWaypoint) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setApprovedSender(uint64 sourceChainSelector, address sourceChainWaypoint)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         $._approvedSender[sourceChainSelector] = sourceChainWaypoint;
         emit ApprovedSenderSet(sourceChainSelector, sourceChainWaypoint);

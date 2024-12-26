@@ -2,9 +2,10 @@
 pragma solidity ^0.8.0;
 
 import {IAny2EVMMessageReceiver} from "ccip/contracts/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
-import {Client} from "ccip/contracts/src/v0.8/ccip/libraries/Client.sol";
+import {Client} from "ccip/src/v0.8/ccip/libraries/Client.sol";
 import {ControlledUpgradeable} from "../deployment/ControlledUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 
 /// @title CCIPReceiver - Base contract for CCIP applications that can receive messages.
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/bridge/CCIPReceiver.sol)
@@ -62,7 +63,8 @@ abstract contract CCIPReceiver is IAny2EVMMessageReceiver, ControlledUpgradeable
     // }
 
     function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
-        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(AccessControlDefaultAdminRulesUpgradeable).interfaceId;
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId
+            || interfaceId == type(AccessControlDefaultAdminRulesUpgradeable).interfaceId;
     }
 
     /// @inheritdoc IAny2EVMMessageReceiver
