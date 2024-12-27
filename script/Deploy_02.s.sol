@@ -111,8 +111,8 @@ contract Deploy_02 is Script {
 
         /// ------------------ usd+ minter/redeemer ------------------
 
-        cfg.minter.setPaymentTokenOracle(cfg.usdc, AggregatorV3Interface(address(0)));
-        cfg.redeemer.setPaymentTokenOracle(cfg.usdc, AggregatorV3Interface(address(0)));
+        cfg.minter.setPaymentTokenOracle(cfg.usdc, AggregatorV3Interface(address(0)), 0);
+        cfg.redeemer.setPaymentTokenOracle(cfg.usdc, AggregatorV3Interface(address(0)), 0);
         cfg.redeemer.revokeRole(cfg.redeemer.FULFILLER_ROLE(), cfg.treasury);
         cfg.usdPlus.setIssuerLimits(address(cfg.minter), 0, 0);
         cfg.usdPlus.setIssuerLimits(address(cfg.redeemer), 0, 0);
@@ -127,7 +127,7 @@ contract Deploy_02 is Script {
             )
         );
         cfg.usdPlus.setIssuerLimits(address(minter), type(uint256).max, 0);
-        minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
+        minter.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle, 0);
 
         UsdPlusRedeemer redeemerImpl = new UsdPlusRedeemer();
         UsdPlusRedeemer redeemer = UsdPlusRedeemer(
@@ -139,7 +139,7 @@ contract Deploy_02 is Script {
         );
         cfg.usdPlus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
         redeemer.grantRole(redeemer.FULFILLER_ROLE(), cfg.treasury);
-        redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle);
+        redeemer.setPaymentTokenOracle(cfg.usdc, cfg.paymentTokenOracle, 0);
 
         vm.stopBroadcast();
     }
