@@ -223,6 +223,7 @@ contract CCIPWaypoint is Initializable, PausableUpgradeable, CCIPReceiver {
         if (to == address(0)) revert AddressZero();
 
         if (token == address(0)) {
+            // slither-disable-next-line arbitrary-send-eth
             payable(to).transfer(amount);
         } else {
             IERC20(token).safeTransfer(to, amount);
