@@ -40,7 +40,7 @@ contract ControlledUpgradeableTest is Test {
         );
     }
 
-    function test_upgrade() public {
+    function test_upgrade(uint8 value) public {
         MockControlled controlledImpl = new MockControlled();
         vm.prank(ADMIN);
         upgradeableContract.upgradeToAndCall(
@@ -65,7 +65,9 @@ contract ControlledUpgradeableTest is Test {
 
         vm.prank(UPGRADER);
         upgradeableContract.upgradeToAndCall(
-            address(controlledV2Impl), abi.encodeWithSelector(controlledV2Impl.reinitialize.selector, 1)
+            address(controlledV2Impl), abi.encodeWithSelector(controlledV2Impl.reinitialize.selector, value)
         );
+
+        assertEq(MockControlledV2(address(upgradeableContract)).getValue(), value);
     }
 }

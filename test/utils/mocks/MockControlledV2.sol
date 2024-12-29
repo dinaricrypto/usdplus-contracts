@@ -15,11 +15,11 @@ contract MockControlledV2 is ControlledUpgradeable {
         _disableInitializers();
     }
 
-    function set_value(uint256 value) public {
+    function setValue(uint256 value) public {
         _value = value;
     }
 
-    function get_value() public view returns (uint256) {
+    function getValue() public view returns (uint256) {
         return _value;
     }
 
