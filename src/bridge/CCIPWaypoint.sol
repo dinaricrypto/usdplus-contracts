@@ -85,7 +85,8 @@ contract CCIPWaypoint is Initializable, PausableUpgradeable, CCIPReceiver {
         $._usdplus = usdPlus;
     }
 
-    function reinitialize(address upgrader) external reinitializer(2) {
+    function reinitialize(address initialOwner, address upgrader) external reinitializer(2) {
+        __AccessControlDefaultAdminRules_init(0, initialOwner);
         _grantRole(UPGRADER_ROLE, upgrader);
     }
 

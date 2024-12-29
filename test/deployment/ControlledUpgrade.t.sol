@@ -6,6 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {MockControlled} from "../utils/mocks/MockControlled.sol";
 import {MockControlledV2} from "../utils/mocks/MockControlledV2.sol";
 import {MockOwnableUpgradeable} from "../utils/mocks/MockOwnable.sol";
+import {MockOwnableControlled} from "../utils/mocks/MockOwnableControlled.sol";
 import {MockUpgradeableContract} from "../utils/mocks/MockAccessControl.sol";
 import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {UsdPlus} from "../../src/UsdPlus.sol";
@@ -13,6 +14,7 @@ import {UsdPlus} from "../../src/UsdPlus.sol";
 contract ControlledUpgradeableTest is Test {
     MockControlled controlled;
     MockOwnableUpgradeable ownable;
+    MockOwnableControlled ownableControlled;
     MockUpgradeableContract upgradeableContract;
     MockControlledV2 controlledV2;
 
@@ -40,7 +42,7 @@ contract ControlledUpgradeableTest is Test {
         );
     }
 
-    function test_upgrade(uint8 value) public {
+    function test_upgrade_access_control(uint8 value) public {
         MockControlled controlledImpl = new MockControlled();
         vm.prank(ADMIN);
         upgradeableContract.upgradeToAndCall(
@@ -69,5 +71,30 @@ contract ControlledUpgradeableTest is Test {
         );
 
         assertEq(MockControlledV2(address(upgradeableContract)).getValue(), value);
+    }
+
+    function test_ugprade_ownable() public {
+        assertEq(ownable.owner(), ADMIN);
+        MockOwnableControlled ownableControlledImpl = new MockOwnableControlled();
+        vm.prank(ADMIN);
+        ownable.upgradeToAndCall(
+            address(ownableControlledImpl),
+            abi.encodeWithSelector(MockOwnableControlled.reinitialize.selector, ADMIN, UPGRADER)
+        );
+        assertEq(
+            MockOwnableControlled(address(ownable)).hasRole(ownableControlledImpl.DEFAULT_ADMIN_ROLE(), ADMIN), true
+        );
+        assertEq(MockOwnableControlled(address(ownable)).hasRole(ownableControlledImpl.UPGRADER_ROLE(), UPGRADER), true);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, ADMIN, ownableControlledImpl.UPGRADER_ROLE()
+            )
+        );
+        vm.prank(ADMIN);
+        ownable.upgradeToAndCall(
+            address(ownableControlledImpl),
+            abi.encodeWithSelector(MockOwnableControlled.reinitialize.selector, ADMIN, UPGRADER)
+        );
     }
 }
