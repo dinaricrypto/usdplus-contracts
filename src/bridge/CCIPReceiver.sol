@@ -11,7 +11,7 @@ import {AccessControlDefaultAdminRulesUpgradeable} from
 /// @title CCIPReceiver - Base contract for CCIP applications that can receive messages.
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/bridge/CCIPReceiver.sol)
 /// @author Modified from Chainlink (https://github.com/smartcontractkit/ccip/blob/ccip-develop/contracts/src/v0.8/ccip/applications/CCIPReceiver.sol)
-abstract contract CCIPReceiver is  IERC165 , IAny2EVMMessageReceiver, ControlledUpgradeable{
+abstract contract CCIPReceiver is IERC165, IAny2EVMMessageReceiver, ControlledUpgradeable {
     /// ------------------ Types ------------------
 
     event RouterSet(address indexed router);
@@ -63,8 +63,15 @@ abstract contract CCIPReceiver is  IERC165 , IAny2EVMMessageReceiver, Controlled
     //     return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
     // }
 
-    function supportsInterface(bytes4 interfaceId) public pure virtual override(IERC165, AccessControlDefaultAdminRulesUpgradeable) returns (bool) {
-        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
+    function supportsInterface(bytes4 interfaceId)
+        public
+        pure
+        virtual
+        override(IERC165, AccessControlDefaultAdminRulesUpgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId
+            || interfaceId == type(AccessControlDefaultAdminRulesUpgradeable).interfaceId;
     }
 
     /// @inheritdoc IAny2EVMMessageReceiver

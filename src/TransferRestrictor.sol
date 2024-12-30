@@ -35,9 +35,8 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
         _grantRole(RESTRICTOR_ROLE, initialOwner);
     }
 
-    function reinitialize(address initialOwner, address upgrader) external reinitializer(2) {
-        __AccessControlDefaultAdminRules_init(0, initialOwner);
-        _grantRole(UPGRADER_ROLE, upgrader);
+    function reinitialize(address initialOwner, address upgrader, string memory newVersion) external reinitializer(2) {
+        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
     }
 
     /// ------------------ Setters ------------------ ///

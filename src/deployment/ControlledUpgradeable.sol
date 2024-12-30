@@ -17,6 +17,7 @@ abstract contract ControlledUpgradeable is UUPSUpgradeable, AccessControlDefault
     function _authorizeUpgrade(address) internal override onlyRole(UPGRADER_ROLE) {}
 
     /// ------------------ Initialization ------------------ ///
+    // slither-disable-next-line naming-convention
     function __ControlledUpgradeable_init(address initialOwner, address upgrader, string memory newVersion) internal {
         __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
         _grantRole(UPGRADER_ROLE, upgrader);
