@@ -91,7 +91,7 @@ contract ControlledUpgradeableTest is Test {
     function test_ugprade_ownable() public {
         assertEq(ownable.owner(), ADMIN);
         MockOwnableControlled ownableControlledImpl = new MockOwnableControlled();
-        
+
         vm.expectRevert(ControlledUpgradeable.IncorrectVersion.selector);
         vm.prank(ADMIN);
         ownable.upgradeToAndCall(
