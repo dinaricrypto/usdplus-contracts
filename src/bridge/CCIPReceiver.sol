@@ -11,7 +11,7 @@ import {AccessControlDefaultAdminRulesUpgradeable} from
 /// @title CCIPReceiver - Base contract for CCIP applications that can receive messages.
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/bridge/CCIPReceiver.sol)
 /// @author Modified from Chainlink (https://github.com/smartcontractkit/ccip/blob/ccip-develop/contracts/src/v0.8/ccip/applications/CCIPReceiver.sol)
-abstract contract CCIPReceiver is IAny2EVMMessageReceiver, ControlledUpgradeable {
+abstract contract CCIPReceiver is  IERC165 , IAny2EVMMessageReceiver, ControlledUpgradeable{
     /// ------------------ Types ------------------
 
     event RouterSet(address indexed router);
@@ -49,23 +49,22 @@ abstract contract CCIPReceiver is IAny2EVMMessageReceiver, ControlledUpgradeable
         emit RouterSet(router);
     }
 
-    // /// @notice AccessControlDefaultAdminRulesUpgradeable supports an interfaceId
+    // /// @notice IERC165 supports an interfaceId
     // /// @param interfaceId The interfaceId to check
     // /// @return true if the interfaceId is supported
     // /// @dev Should indicate whether the contract implements IAny2EVMMessageReceiver
-    // /// e.g. return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(AccessControlDefaultAdminRulesUpgradeable).interfaceId
+    // /// e.g. return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId
     // /// This allows CCIP to check if ccipReceive is available before calling it.
     // /// If this returns false or reverts, only tokens are transferred to the receiver.
     // /// If this returns true, tokens are transferred and ccipReceive is called atomically.
     // /// Additionally, if the receiver address does not have code associated with
     // /// it at the time of execution (EXTCODESIZE returns 0), only tokens will be transferred.
-    // function supportsInterface(bytes4 interfaceId) public pure virtual override (AccessControlDefaultAdminRulesUpgradeable) returns (bool) {
-    //     return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(AccessControlDefaultAdminRulesUpgradeable).interfaceId;
+    // function supportsInterface(bytes4 interfaceId) public pure virtual override (IERC165) returns (bool) {
+    //     return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
     // }
 
-    function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
-        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId
-            || interfaceId == type(AccessControlDefaultAdminRulesUpgradeable).interfaceId;
+    function supportsInterface(bytes4 interfaceId) public pure virtual override(IERC165, AccessControlDefaultAdminRulesUpgradeable) returns (bool) {
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 
     /// @inheritdoc IAny2EVMMessageReceiver

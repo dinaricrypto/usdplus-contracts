@@ -16,8 +16,6 @@ contract MockOwnableControlled is ControlledUpgradeable {
     }
 
     function reinitialize(address initialOwner, address upgrader, string memory newVersion) external reinitializer(2) {
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
-        grantRole(UPGRADER_ROLE, upgrader);
-        _setVersion(newVersion);
+        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
     }
 }

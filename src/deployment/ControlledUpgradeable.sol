@@ -12,7 +12,18 @@ abstract contract ControlledUpgradeable is UUPSUpgradeable, AccessControlDefault
 
     error IncorrectVersion();
 
+    /// ------------------ Modifiers ------------------ ///
+
     function _authorizeUpgrade(address) internal override onlyRole(UPGRADER_ROLE) {}
+
+    /// ------------------ Initialization ------------------ ///
+    function __ControlledUpgradeable_init(address initialOwner, address upgrader, string memory newVersion) internal {
+        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
+        _grantRole(UPGRADER_ROLE, upgrader);
+        _setVersion(newVersion);
+    }
+
+    /// ------------------ Setters ------------------ ///
 
     /// @notice Set the version of the contract
     function _setVersion(string memory newVersion) internal {
@@ -28,6 +39,8 @@ abstract contract ControlledUpgradeable is UUPSUpgradeable, AccessControlDefault
         }
         _version = newVersion;
     }
+
+    /// ------------------ Getters ------------------ ///
 
     function version() external view returns (string memory) {
         return _version;
