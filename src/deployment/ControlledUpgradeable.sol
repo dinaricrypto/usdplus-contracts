@@ -8,8 +8,28 @@ import {AccessControlDefaultAdminRulesUpgradeable} from
 abstract contract ControlledUpgradeable is UUPSUpgradeable, AccessControlDefaultAdminRulesUpgradeable {
     /// ------------------ Types ------------------ ///
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    string private _version;
+
+    error IncorrectVersion();
 
     function _authorizeUpgrade(address) internal override onlyRole(UPGRADER_ROLE) {}
 
-    function version() external pure virtual returns (string memory) {}
+    /// @notice Set the version of the contract
+    function _setVersion(string memory newVersion) internal {
+        // Revert if new version is empty OR if it's the same as current version
+        if (
+            bytes(newVersion).length == 0
+                || (
+                    bytes(_version).length != 0
+                        && keccak256(abi.encodePacked(_version)) == keccak256(abi.encodePacked(newVersion))
+                )
+        ) {
+            revert IncorrectVersion();
+        }
+        _version = newVersion;
+    }
+
+    function version() external view returns (string memory) {
+        return _version;
+    }
 }

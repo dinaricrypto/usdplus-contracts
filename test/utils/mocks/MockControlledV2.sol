@@ -15,15 +15,7 @@ contract MockControlledV2 is ControlledUpgradeable {
         _disableInitializers();
     }
 
-    function setValue(uint256 value) public {
-        _value = value;
-    }
-
-    function getValue() public view returns (uint256) {
-        return _value;
-    }
-
-    function reinitialize(uint256 value) external reinitializer(3) {
-        _value = value;
+    function reinitialize(string memory newVersion) external reinitializer(3) {
+        _setVersion(newVersion);
     }
 }

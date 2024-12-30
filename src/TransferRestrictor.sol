@@ -35,6 +35,11 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
         _grantRole(RESTRICTOR_ROLE, initialOwner);
     }
 
+    function reinitialize(address initialOwner, address upgrader) external reinitializer(2) {
+        __AccessControlDefaultAdminRules_init(0, initialOwner);
+        _grantRole(UPGRADER_ROLE, upgrader);
+    }
+
     /// ------------------ Setters ------------------ ///
 
     /// @notice Restrict `account` from sending or receiving tokens

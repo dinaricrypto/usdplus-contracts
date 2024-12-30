@@ -58,8 +58,9 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         $._nextTicket = 0;
     }
 
-    function reinitialize(address upgrader) public reinitializer(2) {
+    function reinitialize(address upgrader, string memory newVersion) public reinitializer(2) {
         grantRole(UPGRADER_ROLE, upgrader);
+        _setVersion(newVersion);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor

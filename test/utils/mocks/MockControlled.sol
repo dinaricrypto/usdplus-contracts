@@ -15,7 +15,8 @@ contract MockControlled is ControlledUpgradeable {
         _disableInitializers();
     }
 
-    function reinitialize(address upgrader) external reinitializer(2) {
+    function reinitialize(address upgrader, string memory newVersion) external reinitializer(2) {
         grantRole(UPGRADER_ROLE, upgrader);
+        _setVersion(newVersion);
     }
 }
