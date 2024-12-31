@@ -6,6 +6,7 @@ import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 
 /// @notice Enforces transfer restrictions
 /// @author Dinari (https://github.com/dinaricrypto/sbt-contracts/blob/main/src/TransferRestrictor.sol)
+/// Maintains a single `owner` who can add or remove accounts from `isBlacklisted`
 contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
     /// ------------------ Types ------------------ ///
 
@@ -75,7 +76,8 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
     }
 
     /// ------------------ Getters ------------------ ///
-    function isBlacklisted(address account) external view returns (bool) {
+    /// @notice Accounts in `isBlacklisted` cannot send or receive tokens
+    function isBlacklisted(address account) public view returns (bool) {
         TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
         return $.isBlacklisted[account];
     }
