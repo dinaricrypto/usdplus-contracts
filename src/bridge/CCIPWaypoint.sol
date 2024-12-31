@@ -146,7 +146,8 @@ contract CCIPWaypoint is Initializable, ControlledUpgradeable, PausableUpgradeab
         override(IERC165, AccessControlDefaultAdminRulesUpgradeable)
         returns (bool)
     {
-        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId
+            || interfaceId == type(AccessControlDefaultAdminRulesUpgradeable).interfaceId;
     }
 
     /// ------------------ Admin ------------------
