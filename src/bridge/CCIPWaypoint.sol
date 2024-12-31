@@ -11,13 +11,16 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IRouterClient} from "ccip/contracts/src/v0.8/ccip/interfaces/IRouterClient.sol";
 import {Client} from "ccip/contracts/src/v0.8/ccip/libraries/Client.sol";
-import {CCIPReceiver} from "./CCIPReceiver.sol";
+import {CCIPReceiver, IERC165, IAny2EVMMessageReceiver} from "./CCIPReceiver.sol";
+import {
+    ControlledUpgradeable, AccessControlDefaultAdminRulesUpgradeable
+} from "../deployment/ControlledUpgradeable.sol";
 
 /// @notice USD+ mint/burn bridge using CCIP
 /// Send and receive USD+ from other chains using CCIP
 /// Mint/burn happens on a separate CCIP token pool contract
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/bridge/CCIPWaypoint.sol)
-contract CCIPWaypoint is Initializable, PausableUpgradeable, CCIPReceiver {
+contract CCIPWaypoint is Initializable, ControlledUpgradeable, PausableUpgradeable, CCIPReceiver {
     // TODO: Generalize to include payment tokens: USDC, etc.
     // TODO: Migrate ccip dependency to official release. Needs fix to forge install (https://github.com/foundry-rs/foundry/issues/5996)
     using Address for address;
@@ -76,9 +79,15 @@ contract CCIPWaypoint is Initializable, PausableUpgradeable, CCIPReceiver {
 
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdPlus, address router, address initialOwner) public initializer {
+    function initialize(
+        address usdPlus,
+        address router,
+        address initialOwner,
+        address upgrader,
+        string memory newVersion
+    ) public initializer {
         __CCIPReceiver_init(router);
-        __AccessControlDefaultAdminRules_init(0, initialOwner);
+        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
         __Pausable_init();
 
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
@@ -114,6 +123,30 @@ contract CCIPWaypoint is Initializable, PausableUpgradeable, CCIPReceiver {
         return IRouterClient(getRouter()).getFee(
             destinationChainSelector, _createCCIPMessage(destinationChainWaypoint, to, amount)
         );
+    }
+
+    // /// @notice IERC165 supports an interfaceId
+    // /// @param interfaceId The interfaceId to check
+    // /// @return true if the interfaceId is supported
+    // /// @dev Should indicate whether the contract implements IAny2EVMMessageReceiver
+    // /// e.g. return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId
+    // /// This allows CCIP to check if ccipReceive is available before calling it.
+    // /// If this returns false or reverts, only tokens are transferred to the receiver.
+    // /// If this returns true, tokens are transferred and ccipReceive is called atomically.
+    // /// Additionally, if the receiver address does not have code associated with
+    // /// it at the time of execution (EXTCODESIZE returns 0), only tokens will be transferred.
+    // function supportsInterface(bytes4 interfaceId) public pure virtual override (IERC165) returns (bool) {
+    //     return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
+    // }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        pure
+        virtual
+        override(IERC165, AccessControlDefaultAdminRulesUpgradeable)
+        returns (bool)
+    {
+        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 
     /// ------------------ Admin ------------------

@@ -16,6 +16,7 @@ contract Deploy_02 is Script {
     struct DeployConfig {
         address owner;
         address treasury;
+        address upgrader;
         IERC20 usdc;
         AggregatorV3Interface paymentTokenOracle;
         TransferRestrictor transferRestrictor;
@@ -32,6 +33,7 @@ contract Deploy_02 is Script {
         DeployConfig memory cfg = DeployConfig({
             owner: deployer,
             treasury: vm.envAddress("TREASURY"),
+            upgrader: vm.envAddress("UPGRADER"),
             usdc: IERC20(vm.envAddress("USDC")),
             paymentTokenOracle: AggregatorV3Interface(vm.envAddress("USDCORACLE")),
             transferRestrictor: TransferRestrictor(vm.envAddress("TRANSFERRESTRICTOR")),
@@ -96,7 +98,7 @@ contract Deploy_02 is Script {
             address(
                 new ERC1967Proxy(
                     address(wrappedusdplusImpl),
-                    abi.encodeCall(WrappedUsdPlus.initialize, (address(cfg.usdPlus), cfg.owner))
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(cfg.usdPlus), cfg.owner, cfg.upgrader, "1.0.0"))
                 )
             )
         );
@@ -122,7 +124,9 @@ contract Deploy_02 is Script {
             address(
                 new ERC1967Proxy(
                     address(minterImpl),
-                    abi.encodeCall(UsdPlusMinter.initialize, (address(cfg.usdPlus), cfg.treasury, cfg.owner))
+                    abi.encodeCall(
+                        UsdPlusMinter.initialize, (address(cfg.usdPlus), cfg.treasury, cfg.owner, cfg.upgrader, "1.0.0")
+                    )
                 )
             )
         );
@@ -133,7 +137,8 @@ contract Deploy_02 is Script {
         UsdPlusRedeemer redeemer = UsdPlusRedeemer(
             address(
                 new ERC1967Proxy(
-                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(cfg.usdPlus), cfg.owner))
+                    address(redeemerImpl),
+                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(cfg.usdPlus), cfg.owner, cfg.upgrader, "1.0.0"))
                 )
             )
         );

@@ -42,12 +42,14 @@ contract UsdPlus is ControlledUpgradeable, ERC20Rebasing, ERC7281Min {
 
     /// ------------------ Initialization ------------------
 
-    function initialize(address initialTreasury, ITransferRestrictor initialTransferRestrictor, address initialOwner)
-        public
-        initializer
-    {
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
-
+    function initialize(
+        address initialTreasury,
+        ITransferRestrictor initialTransferRestrictor,
+        address initialOwner,
+        address upgrader,
+        string memory newVersion
+    ) public initializer {
+        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._treasury = initialTreasury;
         $._transferRestrictor = initialTransferRestrictor;

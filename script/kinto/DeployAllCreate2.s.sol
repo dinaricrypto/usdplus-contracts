@@ -16,6 +16,7 @@ contract DeployAllCreate2 is Script {
         address deployer = vm.addr(deployerPrivateKey);
         address treasury = vm.envAddress("TREASURY");
         address owner = vm.envAddress("OWNER");
+        address upgrader = vm.envAddress("UPGRADER");
         string memory environmentName = vm.envString("ENVIRONMENT");
 
         console.log("deployer: %s", deployer);
@@ -32,7 +33,10 @@ contract DeployAllCreate2 is Script {
             address(
                 new ERC1967Proxy{
                     salt: keccak256(abi.encode(string.concat("TransferRestrictorProxy", environmentName, "0.2.1")))
-                }(address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (owner)))
+                }(
+                    address(transferRestrictorImpl),
+                    abi.encodeCall(TransferRestrictor.initialize, (owner, upgrader, "1.0.0"))
+                )
             )
         );
         console.log("transferRestrictorImpl: %s", address(transferRestrictorImpl));
@@ -43,7 +47,8 @@ contract DeployAllCreate2 is Script {
         UsdPlus usdplus = UsdPlus(
             address(
                 new ERC1967Proxy{salt: keccak256(abi.encode(string.concat("UsdPlusProxy", environmentName, "0.2.1")))}(
-                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (treasury, transferRestrictor, owner))
+                    address(usdplusImpl),
+                    abi.encodeCall(UsdPlus.initialize, (treasury, transferRestrictor, owner, upgrader, "1.0.0"))
                 )
             )
         );
@@ -56,7 +61,10 @@ contract DeployAllCreate2 is Script {
             address(
                 new ERC1967Proxy{
                     salt: keccak256(abi.encode(string.concat("WrappedUsdPlusProxy", environmentName, "0.2.1")))
-                }(address(wrappedusdplusImpl), abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), owner)))
+                }(
+                    address(wrappedusdplusImpl),
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), owner, upgrader, "1.0.0"))
+                )
             )
         );
         console.log("wrappedusdplusimpl: %s", address(wrappedusdplusImpl));
@@ -70,7 +78,10 @@ contract DeployAllCreate2 is Script {
             address(
                 new ERC1967Proxy{
                     salt: keccak256(abi.encode(string.concat("UsdPlusMinterProxy", environmentName, "0.2.1")))
-                }(address(minterImpl), abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), treasury, owner)))
+                }(
+                    address(minterImpl),
+                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), treasury, owner, upgrader, "1.0.0"))
+                )
             )
         );
         console.log("minterimpl: %s", address(minterImpl));
@@ -83,7 +94,10 @@ contract DeployAllCreate2 is Script {
             address(
                 new ERC1967Proxy{
                     salt: keccak256(abi.encode(string.concat("UsdPlusRedeemerProxy", environmentName, "0.2.1")))
-                }(address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), owner)))
+                }(
+                    address(redeemerImpl),
+                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), owner, upgrader, "1.0.0"))
+                )
             )
         );
         console.log("redeemerimpl: %s", address(redeemerImpl));

@@ -41,13 +41,15 @@ contract CCIPWaypointTest is Test {
     address public constant TREASURY = address(0x1235);
     address public constant USER = address(0x1238);
     address public constant OTHER = address(0x1239);
+    address public constant UPGRADER = address(0x1237);
 
     function setUp() public {
         TransferRestrictor transferRestrictorImpl = new TransferRestrictor();
         transferRestrictor = TransferRestrictor(
             address(
                 new ERC1967Proxy(
-                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (ADMIN))
+                    address(transferRestrictorImpl),
+                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER, "1.0.0"))
                 )
             )
         );
@@ -55,7 +57,8 @@ contract CCIPWaypointTest is Test {
         usdplus = UsdPlus(
             address(
                 new ERC1967Proxy(
-                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN))
+                    address(usdplusImpl),
+                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER, "1.0.0"))
                 )
             )
         );
@@ -65,7 +68,9 @@ contract CCIPWaypointTest is Test {
             address(
                 new ERC1967Proxy(
                     address(waypointImpl),
-                    abi.encodeCall(CCIPWaypoint.initialize, (address(usdplus), address(router), ADMIN))
+                    abi.encodeCall(
+                        CCIPWaypoint.initialize, (address(usdplus), address(router), ADMIN, UPGRADER, "1.0.0")
+                    )
                 )
             )
         );

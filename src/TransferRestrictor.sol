@@ -6,9 +6,12 @@ import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 
 /// @notice Enforces transfer restrictions
 /// @author Dinari (https://github.com/dinaricrypto/sbt-contracts/blob/main/src/TransferRestrictor.sol)
-/// Maintains a single `owner` who can add or remove accounts from `isBlacklisted`
 contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
     /// ------------------ Types ------------------ ///
+
+    struct TransferRestrictorStorage {
+        mapping(address => bool) isBlacklisted;
+    }
 
     /// @dev Account is restricted
     error AccountRestricted();
@@ -20,23 +23,25 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
 
     /// ------------------ Constants ------------------ ///
 
+    bytes32 private constant TRANSFER_RESTRICTOR_STORAGE_LOCATION =
+        0xbac1ed68b71f55caab6cd9be1e2e97a07e4f1b72103add3e5df1512b4068d902;
+
     /// @notice Role for approved distributors
     bytes32 public constant RESTRICTOR_ROLE = keccak256("RESTRICTOR_ROLE");
 
-    /// ------------------ State ------------------ ///
+    /// ------------------ Storage ------------------ ///
 
-    /// @notice Accounts in `isBlacklisted` cannot send or receive tokens
-    mapping(address => bool) public isBlacklisted;
+    function _getTransferRestrictorStorage() private pure returns (TransferRestrictorStorage storage $) {
+        assembly {
+            $.slot := TRANSFER_RESTRICTOR_STORAGE_LOCATION
+        }
+    }
 
     /// ------------------ Initialization ------------------ ///
 
-    function initialize(address initialOwner) public initializer {
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
-        _grantRole(RESTRICTOR_ROLE, initialOwner);
-    }
-
-    function reinitialize(address initialOwner, address upgrader, string memory newVersion) external reinitializer(2) {
+    function initialize(address initialOwner, address upgrader, string memory newVersion) public initializer {
         __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
+        _grantRole(RESTRICTOR_ROLE, initialOwner);
     }
 
     /// ------------------ Setters ------------------ ///
@@ -45,7 +50,8 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
     /// @dev Does not check if `account` is restricted
     /// Can only be called by `RESTRICTOR_ROLE`
     function restrict(address account) external onlyRole(RESTRICTOR_ROLE) {
-        isBlacklisted[account] = true;
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        $.isBlacklisted[account] = true;
         emit Restricted(account);
     }
 
@@ -53,7 +59,8 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
     /// @dev Does not check if `account` is restricted
     /// Can only be called by `RESTRICTOR_ROLE`
     function unrestrict(address account) external onlyRole(RESTRICTOR_ROLE) {
-        isBlacklisted[account] = false;
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        $.isBlacklisted[account] = false;
         emit Unrestricted(account);
     }
 
@@ -61,10 +68,15 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
 
     /// @inheritdoc ITransferRestrictor
     function requireNotRestricted(address from, address to) external view virtual {
-        // Check if either account is restricted
-        if (isBlacklisted[from] || isBlacklisted[to]) {
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        if ($.isBlacklisted[from] || $.isBlacklisted[to]) {
             revert AccountRestricted();
         }
-        // Otherwise, do nothing
+    }
+
+    /// ------------------ Getters ------------------ ///
+    function isBlacklisted(address account) external view returns (bool) {
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        return $.isBlacklisted[account];
     }
 }

@@ -19,16 +19,18 @@ import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, ControlledUpgradeable {
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdplus, address initialOwner) public initializer {
+    function initialize(address usdplus, address initialOwner, address upgrader, string memory newVersion)
+        public
+        initializer
+    {
         __ERC4626_init(IERC20(usdplus));
         __ERC20Permit_init("wUSD+");
         __ERC20_init("wUSD+", "wUSD+");
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
+        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
     }
 
-    function reinitialize(address initialOwner, address upgrader) external reinitializer(2) {
-        __AccessControlDefaultAdminRules_init(0, initialOwner);
-        _grantRole(UPGRADER_ROLE, upgrader);
+    function reinitialize(string memory newVersion) external reinitializer(2) {
+        _setVersion(newVersion);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor

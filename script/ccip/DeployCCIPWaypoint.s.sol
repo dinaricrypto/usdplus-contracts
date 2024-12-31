@@ -10,6 +10,7 @@ contract DeployCCIPWaypoint is Script {
         address deployer;
         address usdPlus;
         address ccipRouter;
+        address upgrader;
     }
 
     function run() external {
@@ -19,7 +20,8 @@ contract DeployCCIPWaypoint is Script {
         DeployConfig memory cfg = DeployConfig({
             deployer: vm.addr(deployerPrivateKey),
             usdPlus: vm.envAddress("USDPLUS"),
-            ccipRouter: vm.envAddress("CCIP_ROUTER")
+            ccipRouter: vm.envAddress("CCIP_ROUTER"),
+            upgrader: vm.envAddress("UPGRADER")
         });
 
         console.log("deployer: %s", cfg.deployer);
@@ -32,7 +34,9 @@ contract DeployCCIPWaypoint is Script {
             address(
                 new ERC1967Proxy(
                     address(ccipWaypointImpl),
-                    abi.encodeCall(CCIPWaypoint.initialize, (cfg.usdPlus, cfg.ccipRouter, cfg.deployer))
+                    abi.encodeCall(
+                        CCIPWaypoint.initialize, (cfg.usdPlus, cfg.ccipRouter, cfg.deployer, cfg.upgrader, "1.0.0")
+                    )
                 )
             )
         );

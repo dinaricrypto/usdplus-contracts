@@ -48,9 +48,14 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
 
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdPlus, address initialPaymentRecipient, address initialOwner) public initializer {
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
-
+    function initialize(
+        address usdPlus,
+        address initialPaymentRecipient,
+        address initialOwner,
+        address upgrader,
+        string memory newVersion
+    ) public initializer {
+        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         $._usdplus = usdPlus;
         $._paymentRecipient = initialPaymentRecipient;
