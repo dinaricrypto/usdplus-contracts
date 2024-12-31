@@ -19,15 +19,26 @@ contract WrappedUsdPlusTest is Test {
     address public constant ADMIN = address(0x1234);
     address public constant USER = address(0x1235);
     address public constant USER2 = address(0x1236);
+    address public constant UPGRADER = address(0x1237);
 
     function setUp() public {
-        transferRestrictor = new TransferRestrictor(address(this));
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor();
+        transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy(
+                    address(transferRestrictorImpl),
+                    abi.encodeCall(TransferRestrictor.initialize, (address(this), UPGRADER, "1.0.0"))
+                )
+            )
+        );
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(
                 new ERC1967Proxy(
                     address(usdplusImpl),
-                    abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, address(this)))
+                    abi.encodeCall(
+                        UsdPlus.initialize, (address(this), transferRestrictor, address(this), UPGRADER, "1.0.0")
+                    )
                 )
             )
         );
@@ -35,7 +46,8 @@ contract WrappedUsdPlusTest is Test {
         wrappedUsdplus = WrappedUsdPlus(
             address(
                 new ERC1967Proxy(
-                    address(wrappedUsdplusImpl), abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), ADMIN))
+                    address(wrappedUsdplusImpl),
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), ADMIN, UPGRADER, "1.0.0"))
                 )
             )
         );

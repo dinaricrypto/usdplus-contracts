@@ -16,6 +16,7 @@ contract DeployAll is Script {
     struct DeployConfig {
         address owner;
         address treasury;
+        address upgrader;
         IERC20 usdc;
         AggregatorV3Interface paymentTokenOracle;
     }
@@ -31,7 +32,8 @@ contract DeployAll is Script {
             owner: deployer,
             treasury: vm.envAddress("TREASURY"),
             usdc: IERC20(vm.envAddress("USDC")),
-            paymentTokenOracle: AggregatorV3Interface(vm.envAddress("USDCORACLE"))
+            paymentTokenOracle: AggregatorV3Interface(vm.envAddress("USDCORACLE")),
+            upgrader: vm.envAddress("UPGRADER")
         });
 
         console.log("deployer: %s", deployer);
@@ -43,7 +45,15 @@ contract DeployAll is Script {
         // cfg.usdc = new ERC20Mock("USD Coin", "USDC", 6, cfg.owner);
 
         /// ------------------ usd+ ------------------
-        TransferRestrictor transferRestrictor = new TransferRestrictor{salt: salt}(cfg.owner);
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor{salt: salt}();
+        TransferRestrictor transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy{salt: salt}(
+                    address(transferRestrictorImpl),
+                    abi.encodeCall(TransferRestrictor.initialize, (cfg.owner, cfg.upgrader, "1.0.0"))
+                )
+            )
+        );
 
         UsdPlus usdplusImpl = new UsdPlus{salt: salt}();
 
@@ -51,7 +61,9 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(usdplusImpl),
-                    abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner))
+                    abi.encodeCall(
+                        UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner, cfg.upgrader, "1.0.0")
+                    )
                 )
             )
         );
@@ -62,7 +74,7 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(wrappedusdplusImpl),
-                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner))
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner, cfg.upgrader, "1.0.0"))
                 )
             )
         );
@@ -74,7 +86,9 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(minterImpl),
-                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner))
+                    abi.encodeCall(
+                        UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner, cfg.upgrader, "1.0.0")
+                    )
                 )
             )
         );
@@ -86,7 +100,8 @@ contract DeployAll is Script {
         UsdPlusRedeemer redeemer = UsdPlusRedeemer(
             address(
                 new ERC1967Proxy{salt: salt}(
-                    address(redeemerImpl), abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner))
+                    address(redeemerImpl),
+                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner, cfg.upgrader, "1.0.0"))
                 )
             )
         );

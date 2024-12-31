@@ -22,14 +22,24 @@ contract UsdPlusTest is Test {
     address public constant USER = address(0x1238);
     address public constant BRIDGE = address(0x1239);
     address public constant OPERATOR = address(0x123a);
+    address public constant UPGRADER = address(0x123b);
 
     function setUp() public {
-        transferRestrictor = new TransferRestrictor(ADMIN);
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor();
+        transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy(
+                    address(transferRestrictorImpl),
+                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER, "1.0.0"))
+                )
+            )
+        );
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(
                 new ERC1967Proxy(
-                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN))
+                    address(usdplusImpl),
+                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER, "1.0.0"))
                 )
             )
         );

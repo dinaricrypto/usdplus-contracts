@@ -12,25 +12,31 @@ import {
 } from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
+import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 
 /// @notice wrapped rebasing stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/WrappedUsdPlus.sol)
-contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, Ownable2StepUpgradeable {
+contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, ControlledUpgradeable {
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdplus, address initialOwner) public initializer {
+    function initialize(address usdplus, address initialOwner, address upgrader, string memory newVersion)
+        public
+        initializer
+    {
         __ERC4626_init(IERC20(usdplus));
         __ERC20Permit_init("wUSD+");
         __ERC20_init("wUSD+", "wUSD+");
-        __Ownable_init_unchained(initialOwner);
+        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
+    }
+
+    function reinitialize(string memory newVersion) external reinitializer(2) {
+        _setVersion(newVersion);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
-
-    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /// ------------------ Getters ------------------
 
