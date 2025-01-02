@@ -1,3 +1,3 @@
 #!/bin/sh
 
-op run --env-file="./.env-ethereum" -- ./script/deployoracle-cmd.sh
+op run --env-file="./.env.plume-testnet" -- ./script/deployoracle-cmd.sh

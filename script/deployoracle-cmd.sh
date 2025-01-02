@@ -1,3 +1,3 @@
 #!/bin/sh
 
-forge create src/mocks/UnityOracle.sol:UnityOracle --rpc-url $RPC_URL --private-key $DEPLOYER_KEY --verify
+forge create src/mocks/OracleMock.sol:OracleMock --rpc-url $RPC_URL --private-key $DEPLOY_KEY --verify --verifier blockscout --broadcast
