@@ -6,6 +6,7 @@ import {console2} from "forge-std/console2.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
+import {DeployHelper} from "./DeployHelper.sol";
 
 contract DeployAndUpgradeManager is Script {
     using stdJson for string;
@@ -22,6 +23,12 @@ contract DeployAndUpgradeManager is Script {
         string version;
     }
 
+    DeployHelper public helper;
+
+    constructor() {
+        helper = new DeployHelper();
+    }
+
     function run() external {
         // Get deployment parameters
         string memory contractName = vm.envString("CONTRACT");
@@ -36,7 +43,7 @@ contract DeployAndUpgradeManager is Script {
         _validateVersionFormat(version);
 
         // Deploy implementation and proxy
-        DeploymentConfig memory config = _deploy(contractName, owner, upgrader, version);
+        DeploymentConfig memory config = _deploy(contractName);
 
         // Update deployment files
         _updateDeploymentFiles(contractName, config, environment, chainId);
@@ -47,18 +54,18 @@ contract DeployAndUpgradeManager is Script {
         console2.log("- Version:", config.version);
     }
 
-    function _deploy(string memory contractName, address owner, address upgrader, string memory version)
-        internal
-        returns (DeploymentConfig memory config)
-    {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+    function _deploy(string memory contractName) internal returns (DeploymentConfig memory config) {
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation
         address implementation = _deployImplementation(contractName);
 
-        // Prepare initialization data
-        bytes memory initData = abi.encodeWithSignature("initialize(address,address,string)", owner, upgrader, version);
+        // Get initialization parameters from helper
+        DeployHelper.InitializeParams memory params = helper.getInitializeParams();
+
+        // Get initialization data using helper
+        bytes memory initData = helper.getInitializeCalldata(params);
 
         // Deploy proxy
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, initData);
@@ -67,7 +74,7 @@ contract DeployAndUpgradeManager is Script {
 
         vm.stopBroadcast();
 
-        return DeploymentConfig({implementation: implementation, proxy: address(proxy), version: version});
+        return DeploymentConfig({implementation: implementation, proxy: address(proxy), version: params.version});
     }
 
     function _deployImplementation(string memory contractName) internal returns (address) {
@@ -88,37 +95,150 @@ contract DeployAndUpgradeManager is Script {
     ) internal {
         string memory root = vm.projectRoot();
         (uint8 majorVersion,) = _parseVersion(config.version);
+        string memory versionPath = string.concat(root, "/releases/v", vm.toString(majorVersion), "/");
+        string memory fileName = string.concat(_toLowerSnakeCase(contractName), ".json");
+        string memory jsonPath = string.concat(versionPath, fileName);
 
-        string memory versionPath = string.concat("/releases/v", vm.toString(majorVersion), "/");
-
-        // Create directory if it doesn't exist
-        if (!vm.exists(string.concat(root, versionPath))) {
-            vm.createDir(string.concat(root, versionPath), true);
+        string memory json;
+        try vm.readFile(jsonPath) returns (string memory content) {
+            json = bytes(content).length == 0 ? _getDefaultTemplate(contractName) : content;
+        } catch {
+            json = _getDefaultTemplate(contractName);
         }
 
-        string memory fileName = string.concat(_toLowerSnakeCase(contractName), ".json");
-
-        string memory jsonPath = string.concat(root, versionPath, fileName);
-
-        // Create or update JSON
-        string memory json = "{}";
+        // Update deployment path and version
         json = _updateJson(json, config, environment, chainId);
-
-        // Write files
         vm.writeFile(jsonPath, json);
-        vm.writeFile(string.concat(root, "/releases/previous-version/", fileName), json);
     }
 
     function _updateJson(string memory json, DeploymentConfig memory config, string memory environment, uint256 chainId)
         internal
         returns (string memory)
     {
-        json = vm.serializeString(json, "version", config.version);
-        json = vm.serializeAddress(json, "implementation", config.implementation);
-        json = vm.serializeAddress(
-            json, string.concat("deployments.", environment, ".", vm.toString(chainId)), config.proxy
+        if (bytes(json).length == 0) {
+            json = _getDefaultTemplate(vm.envString("CONTRACT"));
+        }
+
+        // Get current deployments structure to preserve values
+        bytes memory currentDeployments = stdJson.parseRaw(json, ".deployments");
+
+        // Create new JSON maintaining structure
+        string memory newJson = string(
+            abi.encodePacked(
+                "{",
+                '"name":"',
+                vm.envString("CONTRACT"),
+                '",',
+                '"version":"',
+                config.version,
+                '",',
+                '"deployments":{',
+                '"production":{',
+                keccak256(bytes(environment)) == keccak256(bytes("production"))
+                    ? buildNetworkSection(chainId, config.proxy)
+                    : buildNetworkSection(0, address(0)),
+                "},",
+                '"staging":{',
+                keccak256(bytes(environment)) == keccak256(bytes("staging"))
+                    ? buildNetworkSection(chainId, config.proxy)
+                    : buildNetworkSection(0, address(0)),
+                "}",
+                "},",
+                '"abi":[]',
+                "}"
+            )
         );
-        return json;
+
+        return newJson;
+    }
+
+    function buildNetworkSection(uint256 targetChainId, address proxyAddress) internal pure returns (string memory) {
+        string[10] memory chainIds =
+            ["1", "11155111", "42161", "421614", "8453", "84532", "81457", "168587773", "7887", "161221135"];
+
+        string memory section = "";
+        for (uint256 i = 0; i < chainIds.length; i++) {
+            // Convert string chainId to uint for comparison
+            string memory jsonStr = string.concat('{"chainId":', chainIds[i], "}");
+            uint256 currentChainId = vm.parseJsonUint(jsonStr, ".chainId");
+
+            section = string.concat(
+                section,
+                '"',
+                chainIds[i],
+                '":"',
+                currentChainId == targetChainId ? vm.toString(proxyAddress) : "",
+                '"',
+                i < chainIds.length - 1 ? "," : "" // Add comma if not last item
+            );
+        }
+
+        return section;
+    }
+
+    function _getDefaultTemplate(string memory contractName) internal pure returns (string memory) {
+        return string(
+            abi.encodePacked(
+                "{",
+                '"name":"',
+                contractName,
+                '",',
+                '"version":"",',
+                '"deployments":{',
+                '"production":{',
+                '"1":"","11155111":"","42161":"","421614":"",',
+                '"8453":"","84532":"","81457":"","168587773":"",',
+                '"7887":"","161221135":""',
+                "},",
+                '"staging":{',
+                '"1":"","11155111":"","42161":"","421614":"",',
+                '"8453":"","84532":"","81457":"","168587773":"",',
+                '"7887":"","161221135":""',
+                "}",
+                "},",
+                '"abi":[]',
+                "}"
+            )
+        );
+    }
+
+    function _isValidJson(string memory json) internal pure returns (bool) {
+        bytes memory jsonBytes = bytes(json);
+        if (jsonBytes.length == 0) return false;
+        if (jsonBytes[0] != "{") return false;
+        if (jsonBytes[jsonBytes.length - 1] != "}") return false;
+        return true;
+    }
+
+    function substring(bytes memory str, uint256 startIndex, uint256 endIndex) internal pure returns (bytes memory) {
+        require(endIndex > startIndex, "Invalid indices");
+        require(str.length >= endIndex, "End index out of bounds");
+
+        bytes memory result = new bytes(endIndex - startIndex);
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            result[i - startIndex] = str[i];
+        }
+        return result;
+    }
+    // Helper function to find a JSON key position
+
+    function findJsonKey(bytes memory json, string memory key) public view returns (uint256) {
+        bytes memory keyBytes = bytes(key);
+        bytes memory jsonBytes = json;
+
+        for (uint256 i = 0; i < jsonBytes.length - keyBytes.length; i++) {
+            bool found = true;
+            for (uint256 j = 0; j < keyBytes.length; j++) {
+                if (jsonBytes[i + j] != keyBytes[j]) {
+                    found = false;
+                    break;
+                }
+            }
+            if (found && jsonBytes[i - 1] == '"' && jsonBytes[i + keyBytes.length] == '"') {
+                return i;
+            }
+        }
+        revert("Key not found");
     }
 
     function _validateEnvironment(string memory environment) internal pure {
@@ -146,13 +266,11 @@ contract DeployAndUpgradeManager is Script {
         bytes memory versionBytes = bytes(version);
         uint8 firstDot = 0;
 
-        // Parse major version
         while (firstDot < versionBytes.length && versionBytes[firstDot] != ".") {
-            major = major * 10 + uint8(uint8(versionBytes[firstDot]) - 48); // 48 is ASCII for '0'
+            major = major * 10 + uint8(uint8(versionBytes[firstDot]) - 48);
             firstDot++;
         }
 
-        // Parse minor version
         uint8 secondDot = uint8(firstDot + 1);
         while (secondDot < versionBytes.length && versionBytes[secondDot] != ".") {
             minor = minor * 10 + uint8(uint8(versionBytes[secondDot]) - 48);
@@ -162,29 +280,12 @@ contract DeployAndUpgradeManager is Script {
 
     function _toLowerSnakeCase(string memory input) internal pure returns (string memory) {
         bytes memory inputBytes = bytes(input);
-        bytes memory result = new bytes(inputBytes.length * 2);
+        bytes memory result = new bytes(inputBytes.length);
 
-        uint256 j = 0;
         for (uint256 i = 0; i < inputBytes.length; i++) {
             bytes1 char = inputBytes[i];
-
-            if (char >= 0x41 && char <= 0x5A) {
-                if (i > 0) {
-                    result[j] = 0x5F;
-                    j++;
-                }
-                result[j] = bytes1(uint8(char) + 32);
-            } else {
-                result[j] = char;
-            }
-            j++;
+            result[i] = char >= 0x41 && char <= 0x5A ? bytes1(uint8(char) + 32) : char;
         }
-
-        bytes memory finalResult = new bytes(j);
-        for (uint256 i = 0; i < j; i++) {
-            finalResult[i] = result[i];
-        }
-
-        return string(finalResult);
+        return string(result);
     }
 }
