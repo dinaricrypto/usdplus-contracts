@@ -34,8 +34,6 @@ contract DeployAndUpgradeManager is Script {
         string memory contractName = vm.envString("CONTRACT");
         string memory environment = vm.envString("ENVIRONMENT");
         string memory version = vm.envString("VERSION");
-        address owner = vm.envAddress("OWNER_ADDRESS");
-        address upgrader = vm.envAddress("UPGRADER_ADDRESS");
         uint256 chainId = block.chainid;
 
         // Validate inputs
@@ -113,6 +111,7 @@ contract DeployAndUpgradeManager is Script {
 
     function _updateJson(string memory json, DeploymentConfig memory config, string memory environment, uint256 chainId)
         internal
+        view 
         returns (string memory)
     {
         if (bytes(json).length == 0) {
@@ -135,13 +134,13 @@ contract DeployAndUpgradeManager is Script {
                 '"deployments":{',
                 '"production":{',
                 keccak256(bytes(environment)) == keccak256(bytes("production"))
-                    ? buildNetworkSection(chainId, config.proxy)
-                    : buildNetworkSection(0, address(0)),
+                    ? _buildNetworkSection(chainId, config.proxy)
+                    : _buildNetworkSection(0, address(0)),
                 "},",
                 '"staging":{',
                 keccak256(bytes(environment)) == keccak256(bytes("staging"))
-                    ? buildNetworkSection(chainId, config.proxy)
-                    : buildNetworkSection(0, address(0)),
+                    ? _buildNetworkSection(chainId, config.proxy)
+                    : _buildNetworkSection(0, address(0)),
                 "}",
                 "},",
                 '"abi":[]',
@@ -152,7 +151,7 @@ contract DeployAndUpgradeManager is Script {
         return newJson;
     }
 
-    function buildNetworkSection(uint256 targetChainId, address proxyAddress) internal pure returns (string memory) {
+    function _buildNetworkSection(uint256 targetChainId, address proxyAddress) internal pure returns (string memory) {
         string[10] memory chainIds =
             ["1", "11155111", "42161", "421614", "8453", "84532", "81457", "168587773", "7887", "161221135"];
 
@@ -200,45 +199,6 @@ contract DeployAndUpgradeManager is Script {
                 "}"
             )
         );
-    }
-
-    function _isValidJson(string memory json) internal pure returns (bool) {
-        bytes memory jsonBytes = bytes(json);
-        if (jsonBytes.length == 0) return false;
-        if (jsonBytes[0] != "{") return false;
-        if (jsonBytes[jsonBytes.length - 1] != "}") return false;
-        return true;
-    }
-
-    function substring(bytes memory str, uint256 startIndex, uint256 endIndex) internal pure returns (bytes memory) {
-        require(endIndex > startIndex, "Invalid indices");
-        require(str.length >= endIndex, "End index out of bounds");
-
-        bytes memory result = new bytes(endIndex - startIndex);
-        for (uint256 i = startIndex; i < endIndex; i++) {
-            result[i - startIndex] = str[i];
-        }
-        return result;
-    }
-    // Helper function to find a JSON key position
-
-    function findJsonKey(bytes memory json, string memory key) public view returns (uint256) {
-        bytes memory keyBytes = bytes(key);
-        bytes memory jsonBytes = json;
-
-        for (uint256 i = 0; i < jsonBytes.length - keyBytes.length; i++) {
-            bool found = true;
-            for (uint256 j = 0; j < keyBytes.length; j++) {
-                if (jsonBytes[i + j] != keyBytes[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found && jsonBytes[i - 1] == '"' && jsonBytes[i + keyBytes.length] == '"') {
-                return i;
-            }
-        }
-        revert("Key not found");
     }
 
     function _validateEnvironment(string memory environment) internal pure {

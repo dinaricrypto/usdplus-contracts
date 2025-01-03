@@ -22,7 +22,7 @@ contract DeployHelper is Script {
         string version;
     }
 
-    function getInitializeParams() public returns (InitializeParams memory) {
+    function getInitializeParams() public view returns (InitializeParams memory) {
         InitializeParams memory params;
 
         // Get required environment variables
@@ -60,7 +60,7 @@ contract DeployHelper is Script {
         );
     }
 
-    function getContractAbi(string memory contractName) public returns (string memory) {
+    function getContractAbi(string memory contractName) public view returns (string memory) {
         string memory root = vm.projectRoot();
         string memory jsonPath = string.concat(root, "/out/", contractName, ".sol/", contractName, ".json");
         string memory json = vm.readFile(jsonPath);
@@ -68,7 +68,7 @@ contract DeployHelper is Script {
         return json;
     }
 
-    function _getEnvAddress(string memory name) internal returns (address) {
+    function _getEnvAddress(string memory name) internal view returns (address) {
         try vm.envAddress(name) returns (address value) {
             return value;
         } catch {
