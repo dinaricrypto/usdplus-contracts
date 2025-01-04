@@ -97,32 +97,77 @@ contract DeployAndUpgradeManager is Script {
         string memory fileName = string.concat(_toLowerSnakeCase(contractName), ".json");
         string memory jsonPath = string.concat(versionPath, fileName);
 
+        // Create directory if it doesn't exist
+        vm.createDir(versionPath, true);
+
         string memory json;
         try vm.readFile(jsonPath) returns (string memory content) {
-            json = bytes(content).length == 0 ? _getDefaultTemplate(contractName) : content;
+            console2.log("Reading existing file:");
+            console2.log(content);
+
+            if (bytes(content).length == 0) {
+                console2.log("Empty file, using default template");
+                json = _getDefaultTemplate(contractName);
+            } else {
+                // Validate JSON structure
+                if (bytes(content)[0] == "{" && bytes(content)[bytes(content).length - 1] == "}") {
+                    json = content;
+                } else {
+                    console2.log("Invalid JSON structure, using default template");
+                    json = _getDefaultTemplate(contractName);
+                }
+            }
         } catch {
+            console2.log("File not found, using default template");
             json = _getDefaultTemplate(contractName);
         }
 
         // Update deployment path and version
         json = _updateJson(json, config, environment, chainId);
+
+        console2.log("Writing updated JSON:");
+        console2.log(json);
+
         vm.writeFile(jsonPath, json);
     }
 
     function _updateJson(string memory json, DeploymentConfig memory config, string memory environment, uint256 chainId)
         internal
-        view 
+        view
         returns (string memory)
     {
         if (bytes(json).length == 0) {
             json = _getDefaultTemplate(vm.envString("CONTRACT"));
         }
 
-        // Get current deployments structure to preserve values
-        bytes memory currentDeployments = stdJson.parseRaw(json, ".deployments");
+        string memory productionSection;
+        string memory stagingSection;
 
-        // Create new JSON maintaining structure
-        string memory newJson = string(
+        // Extract current sections
+        bytes memory currentProduction = stdJson.parseRaw(json, ".deployments.production");
+        bytes memory currentStaging = stdJson.parseRaw(json, ".deployments.staging");
+
+        // Extra validation to ensure we have valid JSON sections
+        bool productionValid = bytes(string(currentProduction))[0] == '"';
+        bool stagingValid = bytes(string(currentStaging))[0] == '"';
+
+        if (keccak256(bytes(environment)) == keccak256(bytes("production"))) {
+            // If production section is corrupted, start with empty
+            productionSection = _buildNetworkSection(
+                chainId, config.proxy, productionValid ? string(currentProduction) : _getEmptyNetworkSection()
+            );
+            // Keep staging as is if valid, otherwise empty
+            stagingSection = stagingValid ? string(currentStaging) : _getEmptyNetworkSection();
+        } else {
+            // Keep production as is if valid, otherwise empty
+            productionSection = productionValid ? string(currentProduction) : _getEmptyNetworkSection();
+            // If staging section is corrupted, start with empty
+            stagingSection = _buildNetworkSection(
+                chainId, config.proxy, stagingValid ? string(currentStaging) : _getEmptyNetworkSection()
+            );
+        }
+
+        return string(
             abi.encodePacked(
                 "{",
                 '"name":"',
@@ -133,69 +178,154 @@ contract DeployAndUpgradeManager is Script {
                 '",',
                 '"deployments":{',
                 '"production":{',
-                keccak256(bytes(environment)) == keccak256(bytes("production"))
-                    ? _buildNetworkSection(chainId, config.proxy)
-                    : _buildNetworkSection(0, address(0)),
+                productionSection,
                 "},",
                 '"staging":{',
-                keccak256(bytes(environment)) == keccak256(bytes("staging"))
-                    ? _buildNetworkSection(chainId, config.proxy)
-                    : _buildNetworkSection(0, address(0)),
+                stagingSection,
                 "}",
                 "},",
                 '"abi":[]',
                 "}"
             )
         );
-
-        return newJson;
     }
 
-    function _buildNetworkSection(uint256 targetChainId, address proxyAddress) internal pure returns (string memory) {
-        string[10] memory chainIds =
-            ["1", "11155111", "42161", "421614", "8453", "84532", "81457", "168587773", "7887", "161221135"];
+    function _buildNetworkSection(uint256 targetChainId, address proxyAddress, string memory currentSection)
+        internal
+        view
+        returns (string memory)
+    {
+        string[10] memory chainIds = [
+            "1", "11155111", "42161", "421614", "8453", 
+            "84532", "81457", "168587773", "7887", "161221135"
+        ];
+
+        console2.log("\nBuilding network section:");
+        console2.log("Target chainId:", targetChainId);
+        console2.log("Proxy address:", proxyAddress);
+        console2.log("Current section length:", bytes(currentSection).length);
+        console2.log("Current section content:", currentSection);
+
+        // Store existing addresses
+        string[10] memory existingAddresses;
+        
+        // Try to find any braces and remove them
+        bytes memory sectionBytes = bytes(currentSection);
+        if (sectionBytes.length > 2 && sectionBytes[0] == "{" && sectionBytes[sectionBytes.length - 1] == "}") {
+            bytes memory innerContent = new bytes(sectionBytes.length - 2);
+            for (uint256 i = 1; i < sectionBytes.length - 1; i++) {
+                innerContent[i - 1] = sectionBytes[i];
+            }
+            currentSection = string(innerContent);
+            console2.log("Cleaned section:", currentSection);
+        }
+
+        // First, parse and store all existing addresses
+        for (uint256 i = 0; i < chainIds.length; i++) {
+            bytes memory pattern = bytes(string.concat('"', chainIds[i], '":"'));
+            sectionBytes = bytes(currentSection);
+
+            uint256 start = _indexOf(sectionBytes, pattern);
+            if (start != type(uint256).max) {
+                start += pattern.length;
+                uint256 end = start;
+                while (end < sectionBytes.length && sectionBytes[end] != '"') {
+                    end++;
+                }
+
+                if (end > start) {
+                    bytes memory addrBytes = new bytes(end - start);
+                    for (uint256 j = 0; j < end - start; j++) {
+                        addrBytes[j] = sectionBytes[start + j];
+                    }
+                    existingAddresses[i] = string(addrBytes);
+                    console2.log("Found existing address for chain", chainIds[i], ":", string(addrBytes));
+                }
+            }
+        }
 
         string memory section = "";
         for (uint256 i = 0; i < chainIds.length; i++) {
-            // Convert string chainId to uint for comparison
-            string memory jsonStr = string.concat('{"chainId":', chainIds[i], "}");
-            uint256 currentChainId = vm.parseJsonUint(jsonStr, ".chainId");
+            uint256 currentChainId;
+            bytes memory chainIdBytes = bytes(chainIds[i]);
+            for (uint256 j = 0; j < chainIdBytes.length; j++) {
+                currentChainId = currentChainId * 10 + (uint8(chainIdBytes[j]) - 48);
+            }
 
-            section = string.concat(
-                section,
-                '"',
-                chainIds[i],
-                '":"',
-                currentChainId == targetChainId ? vm.toString(proxyAddress) : "",
-                '"',
-                i < chainIds.length - 1 ? "," : "" // Add comma if not last item
-            );
+            string memory addr;
+            if (currentChainId == targetChainId) {
+                addr = vm.toString(proxyAddress);
+                console2.log("Setting target address for chain", chainIds[i], ":", addr);
+            } else {
+                addr = bytes(existingAddresses[i]).length > 0 ? existingAddresses[i] : "";
+                if (bytes(addr).length > 0) {
+                    console2.log("Using existing address for chain", chainIds[i], ":", addr);
+                }
+            }
+
+            section = string.concat(section, '"', chainIds[i], '":"', addr, '"', i < chainIds.length - 1 ? "," : "");
         }
 
+        console2.log("Final section:", section);
         return section;
+    }
+
+    function _indexOf(bytes memory haystack, bytes memory needle) internal pure returns (uint256) {
+        if (needle.length == 0 || needle.length > haystack.length) {
+            return type(uint256).max;
+        }
+
+        for (uint256 i = 0; i < haystack.length - needle.length + 1; i++) {
+            bool found = true;
+            for (uint256 j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) {
+                    found = false;
+                    break;
+                }
+            }
+            if (found) {
+                return i;
+            }
+        }
+        return type(uint256).max;
+    }
+
+    function _getEmptyNetworkSection() internal pure returns (string memory) {
+        return string(
+            abi.encodePacked(
+                '"1":"",',
+                '"11155111":"",',
+                '"42161":"",',
+                '"421614":"",',
+                '"8453":"",',
+                '"84532":"",',
+                '"81457":"",',
+                '"168587773":"",',
+                '"7887":"",',
+                '"161221135":""'
+            )
+        );
     }
 
     function _getDefaultTemplate(string memory contractName) internal pure returns (string memory) {
         return string(
             abi.encodePacked(
-                "{",
-                '"name":"',
+                "{\n",
+                '  "name": "',
                 contractName,
-                '",',
-                '"version":"",',
-                '"deployments":{',
-                '"production":{',
-                '"1":"","11155111":"","42161":"","421614":"",',
-                '"8453":"","84532":"","81457":"","168587773":"",',
-                '"7887":"","161221135":""',
-                "},",
-                '"staging":{',
-                '"1":"","11155111":"","42161":"","421614":"",',
-                '"8453":"","84532":"","81457":"","168587773":"",',
-                '"7887":"","161221135":""',
-                "}",
-                "},",
-                '"abi":[]',
+                '",\n',
+                '  "version": "",\n',
+                '  "deployments": {\n',
+                '      "production": {\n',
+                "          ",
+                _getEmptyNetworkSection(),
+                "\n      },\n",
+                '      "staging": {\n',
+                "          ",
+                _getEmptyNetworkSection(),
+                "\n      }\n",
+                "  },\n",
+                '  "abi": []\n',
                 "}"
             )
         );
