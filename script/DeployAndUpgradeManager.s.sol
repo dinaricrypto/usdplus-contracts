@@ -140,31 +140,45 @@ contract DeployAndUpgradeManager is Script {
             json = _getDefaultTemplate(vm.envString("CONTRACT"));
         }
 
-        string memory productionSection;
-        string memory stagingSection;
+        string memory productionSection = "{}";
+        string memory stagingSection = "{}";
 
-        // Extract current sections
-        bytes memory currentProduction = stdJson.parseRaw(json, ".deployments.production");
-        bytes memory currentStaging = stdJson.parseRaw(json, ".deployments.staging");
+        // Manual parsing to extract sections
+        bytes memory jsonBytes = bytes(json);
 
-        // Extra validation to ensure we have valid JSON sections
-        bool productionValid = bytes(string(currentProduction))[0] == '"';
-        bool stagingValid = bytes(string(currentStaging))[0] == '"';
+        // Find production section
+        uint256 prodStart = _findSectionStart(jsonBytes, "production");
+        if (prodStart != type(uint256).max) {
+            uint256 prodEnd = _findSectionEnd(jsonBytes, prodStart);
+            if (prodEnd != type(uint256).max) {
+                bytes memory prodContent = new bytes(prodEnd - prodStart);
+                for (uint256 i = 0; i < prodEnd - prodStart; i++) {
+                    prodContent[i] = jsonBytes[prodStart + i];
+                }
+                productionSection = string(prodContent);
+            }
+        }
+
+        // Find staging section
+        uint256 stagStart = _findSectionStart(jsonBytes, "staging");
+        if (stagStart != type(uint256).max) {
+            uint256 stagEnd = _findSectionEnd(jsonBytes, stagStart);
+            if (stagEnd != type(uint256).max) {
+                bytes memory stagContent = new bytes(stagEnd - stagStart);
+                for (uint256 i = 0; i < stagEnd - stagStart; i++) {
+                    stagContent[i] = jsonBytes[stagStart + i];
+                }
+                stagingSection = string(stagContent);
+            }
+        }
+
+        console2.log("Extracted production section:", productionSection);
+        console2.log("Extracted staging section:", stagingSection);
 
         if (keccak256(bytes(environment)) == keccak256(bytes("production"))) {
-            // If production section is corrupted, start with empty
-            productionSection = _buildNetworkSection(
-                chainId, config.proxy, productionValid ? string(currentProduction) : _getEmptyNetworkSection()
-            );
-            // Keep staging as is if valid, otherwise empty
-            stagingSection = stagingValid ? string(currentStaging) : _getEmptyNetworkSection();
+            productionSection = _buildNetworkSection(chainId, config.proxy, productionSection);
         } else {
-            // Keep production as is if valid, otherwise empty
-            productionSection = productionValid ? string(currentProduction) : _getEmptyNetworkSection();
-            // If staging section is corrupted, start with empty
-            stagingSection = _buildNetworkSection(
-                chainId, config.proxy, stagingValid ? string(currentStaging) : _getEmptyNetworkSection()
-            );
+            stagingSection = _buildNetworkSection(chainId, config.proxy, stagingSection);
         }
 
         return string(
@@ -177,12 +191,11 @@ contract DeployAndUpgradeManager is Script {
                 config.version,
                 '",',
                 '"deployments":{',
-                '"production":{',
+                '"production":',
                 productionSection,
-                "},",
-                '"staging":{',
+                ",",
+                '"staging":',
                 stagingSection,
-                "}",
                 "},",
                 '"abi":[]',
                 "}"
@@ -190,40 +203,52 @@ contract DeployAndUpgradeManager is Script {
         );
     }
 
+    function _findSectionStart(bytes memory json, string memory section) internal pure returns (uint256) {
+        // Look for the pattern '"section": {'
+        bytes memory pattern = bytes(string.concat('"', section, '": {'));
+        uint256 pos = _indexOf(json, pattern);
+        if (pos != type(uint256).max) {
+            return pos + pattern.length - 1; // Return position after the opening brace
+        }
+        return type(uint256).max;
+    }
+
+    function _findSectionEnd(bytes memory json, uint256 start) internal pure returns (uint256) {
+        if (start == type(uint256).max) return type(uint256).max;
+
+        // Find matching closing brace considering nesting
+        uint256 depth = 1;
+        for (uint256 i = start + 1; i < json.length; i++) {
+            if (json[i] == bytes1("{")) {
+                depth++;
+            } else if (json[i] == bytes1("}")) {
+                depth--;
+                if (depth == 0) return i + 1; // Include the closing brace
+            }
+        }
+        return type(uint256).max;
+    }
+
     function _buildNetworkSection(uint256 targetChainId, address proxyAddress, string memory currentSection)
         internal
         view
         returns (string memory)
     {
-        string[10] memory chainIds = [
-            "1", "11155111", "42161", "421614", "8453", 
-            "84532", "81457", "168587773", "7887", "161221135"
-        ];
+        string[10] memory chainIds =
+            ["1", "11155111", "42161", "421614", "8453", "84532", "81457", "168587773", "7887", "161221135"];
 
         console2.log("\nBuilding network section:");
         console2.log("Target chainId:", targetChainId);
-        console2.log("Proxy address:", proxyAddress);
-        console2.log("Current section length:", bytes(currentSection).length);
-        console2.log("Current section content:", currentSection);
+        console2.log("Current section:", currentSection);
 
         // Store existing addresses
         string[10] memory existingAddresses;
-        
-        // Try to find any braces and remove them
-        bytes memory sectionBytes = bytes(currentSection);
-        if (sectionBytes.length > 2 && sectionBytes[0] == "{" && sectionBytes[sectionBytes.length - 1] == "}") {
-            bytes memory innerContent = new bytes(sectionBytes.length - 2);
-            for (uint256 i = 1; i < sectionBytes.length - 1; i++) {
-                innerContent[i - 1] = sectionBytes[i];
-            }
-            currentSection = string(innerContent);
-            console2.log("Cleaned section:", currentSection);
-        }
 
-        // First, parse and store all existing addresses
+        // Parse each address in the current section
         for (uint256 i = 0; i < chainIds.length; i++) {
-            bytes memory pattern = bytes(string.concat('"', chainIds[i], '":"'));
-            sectionBytes = bytes(currentSection);
+            // Look for pattern '"chainId": "address"'
+            bytes memory pattern = bytes(string.concat('"', chainIds[i], '": "'));
+            bytes memory sectionBytes = bytes(currentSection);
 
             uint256 start = _indexOf(sectionBytes, pattern);
             if (start != type(uint256).max) {
@@ -244,7 +269,8 @@ contract DeployAndUpgradeManager is Script {
             }
         }
 
-        string memory section = "";
+        // Build new section
+        string memory section = "{";
         for (uint256 i = 0; i < chainIds.length; i++) {
             uint256 currentChainId;
             bytes memory chainIdBytes = bytes(chainIds[i]);
@@ -255,18 +281,19 @@ contract DeployAndUpgradeManager is Script {
             string memory addr;
             if (currentChainId == targetChainId) {
                 addr = vm.toString(proxyAddress);
-                console2.log("Setting target address for chain", chainIds[i], ":", addr);
+                console2.log("Setting new address for chain", chainIds[i], ":", addr);
+            } else if (bytes(existingAddresses[i]).length > 0) {
+                addr = existingAddresses[i];
+                console2.log("Keeping existing address for chain", chainIds[i], ":", addr);
             } else {
-                addr = bytes(existingAddresses[i]).length > 0 ? existingAddresses[i] : "";
-                if (bytes(addr).length > 0) {
-                    console2.log("Using existing address for chain", chainIds[i], ":", addr);
-                }
+                addr = "";
             }
 
-            section = string.concat(section, '"', chainIds[i], '":"', addr, '"', i < chainIds.length - 1 ? "," : "");
+            section = string.concat(section, ' "', chainIds[i], '": "', addr, '"', i < chainIds.length - 1 ? "," : "");
         }
+        section = string.concat(section, "}");
 
-        console2.log("Final section:", section);
+        console2.log("Built section:", section);
         return section;
     }
 
