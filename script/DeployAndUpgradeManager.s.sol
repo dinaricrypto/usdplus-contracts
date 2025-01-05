@@ -73,32 +73,70 @@ contract DeployAndUpgradeManager is Script {
         uint8 targetMajorVersion
     ) internal view returns (bool shouldUpgrade, address proxyAddress) {
         string memory root = vm.projectRoot();
-
-        // First check current major version
         string memory versionPath = string.concat(root, "/releases/v", vm.toString(targetMajorVersion), "/");
         string memory fileName = string.concat(_toLowerSnakeCase(contractName), ".json");
         string memory jsonPath = string.concat(versionPath, fileName);
 
-        // Try to read deployment file
+        console2.log("\nChecking for upgrades in file:", jsonPath);
+        console2.log("Environment:", environment);
+        console2.log("Chain ID:", chainId);
+
+        // Read deployment file
         string memory content = vm.readFile(jsonPath);
         if (bytes(content).length == 0) {
+            console2.log("No existing deployment file found");
             return (false, address(0));
         }
 
-        // Parse deployments and get the address for current chain
-        bytes memory section = stdJson.parseRaw(content, string.concat(".deployments.", environment));
-        if (section.length == 0) {
+        // Find environment section using the same method as _updateJson
+        bytes memory jsonBytes = bytes(content);
+        uint256 sectionStart = _findSectionStart(jsonBytes, environment);
+        if (sectionStart == type(uint256).max) {
+            console2.log("No section found for environment:", environment);
             return (false, address(0));
         }
 
-        bytes memory addrBytes = stdJson.parseRaw(string(section), string.concat(".", vm.toString(chainId)));
-        if (addrBytes.length > 0) {
-            string memory addr = string(addrBytes);
-            if (bytes(addr).length > 0) {
-                return (true, vm.parseAddress(addr));
+        uint256 sectionEnd = _findSectionEnd(jsonBytes, sectionStart);
+        if (sectionEnd == type(uint256).max) {
+            console2.log("Invalid section format for environment:", environment);
+            return (false, address(0));
+        }
+
+        // Extract section content
+        bytes memory sectionContent = new bytes(sectionEnd - sectionStart);
+        for (uint256 i = 0; i < sectionEnd - sectionStart; i++) {
+            sectionContent[i] = jsonBytes[sectionStart + i];
+        }
+        string memory sectionStr = string(sectionContent);
+        console2.log("Found section content:", sectionStr);
+
+        // Search for chain address
+        bytes memory pattern = bytes(string.concat('"', vm.toString(chainId), '": "'));
+        uint256 start = _indexOf(bytes(sectionStr), pattern);
+
+        if (start != type(uint256).max) {
+            start += pattern.length;
+            bytes memory sectionBytes = bytes(sectionStr);
+            uint256 end = start;
+
+            while (end < sectionBytes.length && sectionBytes[end] != '"') {
+                end++;
+            }
+
+            if (end > start) {
+                bytes memory addrBytes = new bytes(end - start);
+                for (uint256 i = 0; i < end - start; i++) {
+                    addrBytes[i] = sectionBytes[start + i];
+                }
+                string memory addr = string(addrBytes);
+                if (bytes(addr).length > 0) {
+                    console2.log("Found existing proxy:", addr);
+                    return (true, vm.parseAddress(addr));
+                }
             }
         }
 
+        console2.log("No existing proxy found for environment", environment, "and chain:", chainId);
         return (false, address(0));
     }
 
@@ -144,7 +182,11 @@ contract DeployAndUpgradeManager is Script {
         uint256 chainId
     ) internal {
         string memory root = vm.projectRoot();
+
+        // Parse the target version from config
         (uint8 majorVersion,) = _parseVersion(config.version);
+
+        // Create the version path using the major version from the VERSION
         string memory versionPath = string.concat(root, "/releases/v", vm.toString(majorVersion), "/");
         string memory fileName = string.concat(_toLowerSnakeCase(contractName), ".json");
         string memory jsonPath = string.concat(versionPath, fileName);
@@ -152,27 +194,18 @@ contract DeployAndUpgradeManager is Script {
         // Create directory if it doesn't exist
         vm.createDir(versionPath, true);
 
-        string memory json;
-        try vm.readFile(jsonPath) returns (string memory content) {
+        // Read existing file or use default template
+        string memory content;
+        try vm.readFile(jsonPath) returns (string memory fileContent) {
+            content = fileContent;
             console2.log("Reading existing file:");
             console2.log(content);
-
-            if (bytes(content).length == 0) {
-                console2.log("Empty file, using default template");
-                json = _getDefaultTemplate(contractName);
-            } else {
-                // Validate JSON structure
-                if (bytes(content)[0] == "{" && bytes(content)[bytes(content).length - 1] == "}") {
-                    json = content;
-                } else {
-                    console2.log("Invalid JSON structure, using default template");
-                    json = _getDefaultTemplate(contractName);
-                }
-            }
         } catch {
-            console2.log("File not found, using default template");
-            json = _getDefaultTemplate(contractName);
+            content = "";
+            console2.log("No existing file found, using default template");
         }
+
+        string memory json = bytes(content).length == 0 ? _getDefaultTemplate(contractName) : content;
 
         // Update deployment path and version
         json = _updateJson(json, config, environment, chainId);
@@ -181,6 +214,53 @@ contract DeployAndUpgradeManager is Script {
         console2.log(json);
 
         vm.writeFile(jsonPath, json);
+    }
+
+    function _parseVersion(string memory version) internal pure returns (uint8 major, uint8 minor) {
+        bytes memory versionBytes = bytes(version);
+        uint256 pos = 0;
+        major = 0;
+        minor = 0;
+        uint8 patch = 0;
+
+        // Parse major version
+        while (pos < versionBytes.length && versionBytes[pos] != ".") {
+            major = major * 10 + uint8(uint8(versionBytes[pos]) - 48);
+            pos++;
+        }
+        if (pos >= versionBytes.length) revert InvalidVersionFormat();
+
+        // Move past first dot
+        pos++;
+
+        // Parse minor version
+        while (pos < versionBytes.length && versionBytes[pos] != ".") {
+            minor = minor * 10 + uint8(uint8(versionBytes[pos]) - 48);
+            pos++;
+        }
+        if (pos >= versionBytes.length) revert InvalidVersionFormat();
+
+        // Move past second dot
+        pos++;
+
+        // Parse patch version
+        while (pos < versionBytes.length && versionBytes[pos] != ".") {
+            patch = patch * 10 + uint8(uint8(versionBytes[pos]) - 48);
+            pos++;
+        }
+
+        // Ensure we've reached the end and found all three numbers
+        if (pos != versionBytes.length) revert InvalidVersionFormat();
+    }
+
+    // Helper function to build the deployment path
+    function _getDeploymentPath(string memory root, string memory contractName, uint8 majorVersion)
+        internal
+        pure
+        returns (string memory)
+    {
+        return
+            string.concat(root, "/releases/v", vm.toString(majorVersion), "/", _toLowerSnakeCase(contractName), ".json");
     }
 
     function _updateJson(string memory json, DeploymentConfig memory config, string memory environment, uint256 chainId)
@@ -192,13 +272,14 @@ contract DeployAndUpgradeManager is Script {
             json = _getDefaultTemplate(vm.envString("CONTRACT"));
         }
 
-        string memory productionSection = "{}";
-        string memory stagingSection = "{}";
+        // Initialize sections with default empty network sections
+        string memory productionSection = string(abi.encodePacked("{", _getEmptyNetworkSection(), "}"));
+        string memory stagingSection = string(abi.encodePacked("{", _getEmptyNetworkSection(), "}"));
 
         // Manual parsing to extract sections
         bytes memory jsonBytes = bytes(json);
 
-        // Find production section
+        // Find and extract production section if it exists
         uint256 prodStart = _findSectionStart(jsonBytes, "production");
         if (prodStart != type(uint256).max) {
             uint256 prodEnd = _findSectionEnd(jsonBytes, prodStart);
@@ -207,11 +288,14 @@ contract DeployAndUpgradeManager is Script {
                 for (uint256 i = 0; i < prodEnd - prodStart; i++) {
                     prodContent[i] = jsonBytes[prodStart + i];
                 }
-                productionSection = string(prodContent);
+                string memory prodSection = string(prodContent);
+                if (bytes(prodSection).length > 0 && keccak256(bytes(prodSection)) != keccak256(bytes("{}"))) {
+                    productionSection = prodSection;
+                }
             }
         }
 
-        // Find staging section
+        // Find and extract staging section if it exists
         uint256 stagStart = _findSectionStart(jsonBytes, "staging");
         if (stagStart != type(uint256).max) {
             uint256 stagEnd = _findSectionEnd(jsonBytes, stagStart);
@@ -220,19 +304,21 @@ contract DeployAndUpgradeManager is Script {
                 for (uint256 i = 0; i < stagEnd - stagStart; i++) {
                     stagContent[i] = jsonBytes[stagStart + i];
                 }
-                stagingSection = string(stagContent);
+                string memory stagSection = string(stagContent);
+                if (bytes(stagSection).length > 0 && keccak256(bytes(stagSection)) != keccak256(bytes("{}"))) {
+                    stagingSection = stagSection;
+                }
             }
         }
 
-        console2.log("Extracted production section:", productionSection);
-        console2.log("Extracted staging section:", stagingSection);
-
+        // Update the appropriate section based on environment
         if (keccak256(bytes(environment)) == keccak256(bytes("production"))) {
             productionSection = _buildNetworkSection(chainId, config.proxy, productionSection);
         } else {
             stagingSection = _buildNetworkSection(chainId, config.proxy, stagingSection);
         }
 
+        // Construct the final JSON with both sections properly formatted
         return string(
             abi.encodePacked(
                 "{",
@@ -283,7 +369,7 @@ contract DeployAndUpgradeManager is Script {
 
     function _buildNetworkSection(uint256 targetChainId, address proxyAddress, string memory currentSection)
         internal
-        pure
+        view
         returns (string memory)
     {
         string[10] memory chainIds =
@@ -297,14 +383,23 @@ contract DeployAndUpgradeManager is Script {
         string[10] memory existingAddresses;
 
         // Parse each address in the current section
+        bytes memory sectionBytes = bytes(currentSection);
         for (uint256 i = 0; i < chainIds.length; i++) {
-            // Look for pattern '"chainId": "address"'
-            bytes memory pattern = bytes(string.concat('"', chainIds[i], '": "'));
-            bytes memory sectionBytes = bytes(currentSection);
+            // Look for pattern '"chainId":"address"' or '"chainId": "address"'
+            bytes memory pattern1 = bytes(string.concat('"', chainIds[i], '":"'));
+            bytes memory pattern2 = bytes(string.concat('"', chainIds[i], '": "'));
 
-            uint256 start = _indexOf(sectionBytes, pattern);
+            uint256 start = _indexOf(sectionBytes, pattern1);
+            if (start == type(uint256).max) {
+                start = _indexOf(sectionBytes, pattern2);
+                if (start != type(uint256).max) {
+                    start += pattern2.length;
+                }
+            } else {
+                start += pattern1.length;
+            }
+
             if (start != type(uint256).max) {
-                start += pattern.length;
                 uint256 end = start;
                 while (end < sectionBytes.length && sectionBytes[end] != '"') {
                     end++;
@@ -341,7 +436,7 @@ contract DeployAndUpgradeManager is Script {
                 addr = "";
             }
 
-            section = string.concat(section, ' "', chainIds[i], '": "', addr, '"', i < chainIds.length - 1 ? "," : "");
+            section = string.concat(section, '"', chainIds[i], '":"', addr, '"', i < chainIds.length - 1 ? "," : "");
         }
         section = string.concat(section, "}");
 
@@ -421,30 +516,40 @@ contract DeployAndUpgradeManager is Script {
 
     function _validateVersionFormat(string memory version) internal pure {
         bytes memory versionBytes = bytes(version);
+        uint256 pos = 0;
+        bool hasDigit = false;
         uint8 dots = 0;
 
-        for (uint256 i = 0; i < versionBytes.length; i++) {
-            if (versionBytes[i] == ".") dots++;
-            else if (versionBytes[i] < "0" || versionBytes[i] > "9") revert InvalidVersionFormat();
+        // Check major version
+        while (pos < versionBytes.length && versionBytes[pos] != ".") {
+            if (versionBytes[pos] < "0" || versionBytes[pos] > "9") revert InvalidVersionFormat();
+            hasDigit = true;
+            pos++;
         }
+        if (!hasDigit || pos >= versionBytes.length) revert InvalidVersionFormat();
+        dots++;
 
-        if (dots != 2) revert InvalidVersionFormat();
-    }
-
-    function _parseVersion(string memory version) internal pure returns (uint8 major, uint8 minor) {
-        bytes memory versionBytes = bytes(version);
-        uint8 firstDot = 0;
-
-        while (firstDot < versionBytes.length && versionBytes[firstDot] != ".") {
-            major = major * 10 + uint8(uint8(versionBytes[firstDot]) - 48);
-            firstDot++;
+        // Check minor version
+        pos++; // Skip dot
+        hasDigit = false;
+        while (pos < versionBytes.length && versionBytes[pos] != ".") {
+            if (versionBytes[pos] < "0" || versionBytes[pos] > "9") revert InvalidVersionFormat();
+            hasDigit = true;
+            pos++;
         }
+        if (!hasDigit || pos >= versionBytes.length) revert InvalidVersionFormat();
+        dots++;
 
-        uint8 secondDot = uint8(firstDot + 1);
-        while (secondDot < versionBytes.length && versionBytes[secondDot] != ".") {
-            minor = minor * 10 + uint8(uint8(versionBytes[secondDot]) - 48);
-            secondDot++;
+        // Check patch version
+        pos++; // Skip dot
+        hasDigit = false;
+        while (pos < versionBytes.length) {
+            if (versionBytes[pos] == ".") revert InvalidVersionFormat();
+            if (versionBytes[pos] < "0" || versionBytes[pos] > "9") revert InvalidVersionFormat();
+            hasDigit = true;
+            pos++;
         }
+        if (!hasDigit || dots != 2) revert InvalidVersionFormat();
     }
 
     function _toLowerSnakeCase(string memory input) internal pure returns (string memory) {
