@@ -40,8 +40,22 @@ contract DeployAndUpgradeManager is Script {
         _validateEnvironment(environment);
         _validateVersionFormat(version);
 
+        // Check for exisitng proxy
+        (uint8 targetMajor,) = _parseVersion(version);
+        (bool shouldUpgrade, address proxyAddress) = _checkForUpgrade(contractName, environment, chainId, targetMajor);
+
         // Deploy implementation and proxy
-        DeploymentConfig memory config = _deploy(contractName);
+        DeploymentConfig memory config;
+
+        if (shouldUpgrade) {
+            console2.log("Found existing proxy at:", proxyAddress, "for major version", targetMajor);
+            console2.log("Upgrading to version:", version);
+            // config = _upgrade(contractName, proxyAddress);
+        } else {
+            console2.log("Major version change detected or no existing proxy found");
+            console2.log("Deploying new implementation and proxy for version", version);
+            config = _deploy(contractName);
+        }
 
         // Update deployment files
         _updateDeploymentFiles(contractName, config, environment, chainId);
@@ -50,6 +64,42 @@ contract DeployAndUpgradeManager is Script {
         console2.log("- Implementation:", config.implementation);
         console2.log("- Proxy:", config.proxy);
         console2.log("- Version:", config.version);
+    }
+
+    function _checkForUpgrade(
+        string memory contractName,
+        string memory environment,
+        uint256 chainId,
+        uint8 targetMajorVersion
+    ) internal view returns (bool shouldUpgrade, address proxyAddress) {
+        string memory root = vm.projectRoot();
+
+        // First check current major version
+        string memory versionPath = string.concat(root, "/releases/v", vm.toString(targetMajorVersion), "/");
+        string memory fileName = string.concat(_toLowerSnakeCase(contractName), ".json");
+        string memory jsonPath = string.concat(versionPath, fileName);
+
+        // Try to read deployment file
+        string memory content = vm.readFile(jsonPath);
+        if (bytes(content).length == 0) {
+            return (false, address(0));
+        }
+
+        // Parse deployments and get the address for current chain
+        bytes memory section = stdJson.parseRaw(content, string.concat(".deployments.", environment));
+        if (section.length == 0) {
+            return (false, address(0));
+        }
+
+        bytes memory addrBytes = stdJson.parseRaw(string(section), string.concat(".", vm.toString(chainId)));
+        if (addrBytes.length > 0) {
+            string memory addr = string(addrBytes);
+            if (bytes(addr).length > 0) {
+                return (true, vm.parseAddress(addr));
+            }
+        }
+
+        return (false, address(0));
     }
 
     function _deploy(string memory contractName) internal returns (DeploymentConfig memory config) {
@@ -74,6 +124,8 @@ contract DeployAndUpgradeManager is Script {
 
         return DeploymentConfig({implementation: implementation, proxy: address(proxy), version: params.version});
     }
+
+    // function _upgrade(string memory contractName, address proxyAddress) internal returns (DeploymentConfig memory config) {}
 
     function _deployImplementation(string memory contractName) internal returns (address) {
         bytes memory bytecode =
@@ -231,7 +283,7 @@ contract DeployAndUpgradeManager is Script {
 
     function _buildNetworkSection(uint256 targetChainId, address proxyAddress, string memory currentSection)
         internal
-        view
+        pure
         returns (string memory)
     {
         string[10] memory chainIds =
