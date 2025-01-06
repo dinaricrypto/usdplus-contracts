@@ -50,7 +50,7 @@ contract DeployAndUpgradeManager is Script {
         if (shouldUpgrade) {
             console2.log("Found existing proxy at:", proxyAddress, "for major version", targetMajor);
             console2.log("Upgrading to version:", version);
-            // config = _upgrade(contractName, proxyAddress);
+            config = _upgrade(contractName, proxyAddress);
         } else {
             console2.log("Major version change detected or no existing proxy found");
             console2.log("Deploying new implementation and proxy for version", version);
@@ -163,7 +163,29 @@ contract DeployAndUpgradeManager is Script {
         return DeploymentConfig({implementation: implementation, proxy: address(proxy), version: params.version});
     }
 
-    // function _upgrade(string memory contractName, address proxyAddress) internal returns (DeploymentConfig memory config) {}
+    function _upgrade(string memory contractName, address proxyAddress)
+        internal
+        returns (DeploymentConfig memory config)
+    {
+        DeployHelper.InitializeParams memory params = helper.getInitializeParams();
+
+        // deploy new implementation
+        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+        address newImplementation = _deployImplementation(contractName);
+        vm.stopBroadcast();
+
+        ControlledUpgradeable proxy = ControlledUpgradeable(proxyAddress);
+
+        bytes memory data = helper.getInitializeCalldata(params);
+
+        uint256 upgraderPrivateKey = vm.envUint("UPGRADER_KEY");
+        vm.startBroadcast(upgraderPrivateKey);
+        proxy.upgradeToAndCall(newImplementation, data);
+        vm.stopBroadcast();
+
+        return DeploymentConfig({implementation: newImplementation, proxy: address(proxy), version: params.version});
+    }
 
     function _deployImplementation(string memory contractName) internal returns (address) {
         bytes memory bytecode =
@@ -369,7 +391,7 @@ contract DeployAndUpgradeManager is Script {
 
     function _buildNetworkSection(uint256 targetChainId, address proxyAddress, string memory currentSection)
         internal
-        view
+        pure
         returns (string memory)
     {
         string[10] memory chainIds =
