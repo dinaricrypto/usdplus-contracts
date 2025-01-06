@@ -60,6 +60,11 @@ contract DeployHelper is Script {
         );
     }
 
+
+    function getReinitializeCalldata(InitializeParams memory params) public pure returns (bytes memory) {
+        return abi.encodeWithSignature("reinitialize(address, string)", params.upgrader, params.version);
+    }
+
     function getContractAbi(string memory contractName) public view returns (string memory) {
         string memory root = vm.projectRoot();
         string memory jsonPath = string.concat(root, "/out/", contractName, ".sol/", contractName, ".json");

@@ -179,9 +179,9 @@ contract DeployAndUpgradeManager is Script {
 
         bytes memory data = helper.getInitializeCalldata(params);
 
-        uint256 upgraderPrivateKey = vm.envUint("UPGRADER_KEY");
+        uint256 upgraderPrivateKey = vm.envUint("DEPLOYER_KEY");
         vm.startBroadcast(upgraderPrivateKey);
-        proxy.upgradeToAndCall(newImplementation, data);
+        proxy.upgradeToAndCall(newImplementation, "");
         vm.stopBroadcast();
 
         return DeploymentConfig({implementation: newImplementation, proxy: address(proxy), version: params.version});
