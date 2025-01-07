@@ -7,8 +7,11 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
 import {DeployHelper} from "./DeployHelper.sol";
 import {JsonHandler} from "./JsonHandler.sol";
+import {stdJson} from "forge-std/StdJson.sol";
 
 contract DeployAndUpgradeManager is Script {
+    using stdJson for string;
+
     error InvalidEnvironment(string environment);
     error InvalidVersionFormat();
     error ProxyDeploymentFailed();
@@ -36,30 +39,58 @@ contract DeployAndUpgradeManager is Script {
         _validateEnvironment(environment);
         _validateVersionFormat(version);
 
-        // Check for existing proxy
+        // Check for existing proxy and version
         (uint8 targetMajor,) = _parseVersion(version);
-        (bool shouldUpgrade, address proxyAddress) = _checkForUpgrade(contractName, environment, chainId, targetMajor);
+        (bool shouldUpgrade, address proxyAddress, string memory currentVersion) =
+            _checkForUpgrade(contractName, environment, chainId, targetMajor);
 
         // Deploy implementation and proxy
         DeploymentConfig memory config;
 
         if (shouldUpgrade) {
-            console2.log("Found existing proxy at:", proxyAddress, "for major version", targetMajor);
-            console2.log("Upgrading to version:", version);
+            // Check if versions match
+            if (keccak256(bytes(version)) == keccak256(bytes(currentVersion))) {
+                console2.log("\nContract already at requested version:", version);
+                console2.log("- Contract:", contractName);
+                console2.log("- Environment:", environment);
+                console2.log("- Chain ID:", chainId);
+                console2.log("- Proxy:", proxyAddress);
+                console2.log("No upgrade needed");
+                return;
+            }
+
+            console2.log("\nUpgrading contract:");
+            console2.log("- Contract:", contractName);
+            console2.log("- Environment:", environment);
+            console2.log("- Chain ID:", chainId);
+            console2.log("- Proxy:", proxyAddress);
+            console2.log(string.concat("- Version: ", currentVersion, " -> ", version));
             config = _upgrade(contractName, proxyAddress, version, environment);
         } else {
-            console2.log("Major version change detected or no existing proxy found");
-            console2.log("Deploying new implementation and proxy for version", version);
+            console2.log("\nDeploying new contract:");
+            console2.log("- Contract:", contractName);
+            console2.log("- Environment:", environment);
+            console2.log("- Chain ID:", chainId);
+            if (bytes(currentVersion).length > 0) {
+                console2.log(string.concat("- Version: ", currentVersion, " -> ", version, " (major version change)"));
+            } else {
+                console2.log(string.concat("- Version: Initial deployment ", version));
+            }
             config = _deploy(contractName, version, environment);
         }
 
         // Update deployment files
         _updateDeploymentFiles(contractName, config, environment, chainId);
 
-        console2.log("Deployment successful for contract:", contractName);
+        console2.log("\nDeployment successful:");
+        console2.log("- Contract:", contractName);
         console2.log("- Implementation:", config.implementation);
         console2.log("- Proxy:", config.proxy);
-        console2.log("- Version:", config.version);
+        if (shouldUpgrade) {
+            console2.log(string.concat("- Version: ", currentVersion, " -> ", version));
+        } else {
+            console2.log(string.concat("- Version: ", version));
+        }
     }
 
     function _checkForUpgrade(
@@ -67,7 +98,7 @@ contract DeployAndUpgradeManager is Script {
         string memory environment,
         uint256 chainId,
         uint8 targetMajorVersion
-    ) internal view returns (bool shouldUpgrade, address proxyAddress) {
+    ) internal view returns (bool shouldUpgrade, address proxyAddress, string memory currentVersion) {
         string memory root = vm.projectRoot();
         string memory versionPath = string.concat(root, "/releases/v", vm.toString(targetMajorVersion), "/");
         string memory fileName = string.concat(_toLowerSnakeCase(contractName), ".json");
@@ -81,8 +112,12 @@ contract DeployAndUpgradeManager is Script {
         string memory content = JsonHandler._readDeploymentFile(jsonPath);
         if (bytes(content).length == 0) {
             console2.log("No existing deployment file found");
-            return (false, address(0));
+            return (false, address(0), "");
         }
+
+        // Get current version - handle potential errors by checking if the bytes are valid
+        bytes memory versionBytes = content.parseRaw(".version");
+        currentVersion = versionBytes.length > 0 ? abi.decode(versionBytes, (string)) : "";
 
         JsonHandler.NetworkSection memory sections = JsonHandler._extractNetworkSections(content);
         string memory currentSection =
@@ -92,11 +127,11 @@ contract DeployAndUpgradeManager is Script {
 
         if (found && bytes(addr).length > 0) {
             console2.log("Found existing proxy:", addr);
-            return (true, vm.parseAddress(addr));
+            return (true, vm.parseAddress(addr), currentVersion);
         }
 
         console2.log("No existing proxy found for environment", environment, "and chain:", chainId);
-        return (false, address(0));
+        return (false, address(0), currentVersion);
     }
 
     function _deploy(string memory contractName, string memory version, string memory environment)
