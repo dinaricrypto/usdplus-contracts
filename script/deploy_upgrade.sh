@@ -5,7 +5,7 @@ cp .env-local .env
 source .env
 
 # Deploy contracts
-forge script script/DeployAndUpgradeManager.s.sol --rpc-url $RPC_URL --broadcast -vvv
+forge script script/DeployAndUpgradeManager.s.sol --rpc-url $RPC_URL -vvv
 
 FILE_PATH="releases/v1/$(echo $CONTRACT | tr '[:upper:]' '[:lower:]').json"
 
