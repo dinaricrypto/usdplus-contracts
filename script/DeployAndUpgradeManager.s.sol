@@ -93,16 +93,36 @@ contract DeployAndUpgradeManager is Script {
         }
     }
 
+    function _getDeploymentPath(string memory contractName, uint8 targetMajorVersion)
+        internal
+        view
+        returns (string memory)
+    {
+        string memory root = vm.projectRoot();
+        string memory versionPath = string.concat(root, "/releases/v", vm.toString(targetMajorVersion), "/");
+        return string.concat(versionPath, _toLowerSnakeCase(contractName), ".json");
+    }
+
+    function _getProxyFromSection(string memory currentSection, uint256 chainId)
+        internal
+        pure
+        returns (bool found, address proxyAddr)
+    {
+        (bool exists, string memory addr) = JsonHandler._findAddress(bytes(currentSection), vm.toString(chainId));
+        if (exists && bytes(addr).length > 0) {
+            return (true, vm.parseAddress(addr));
+        }
+        return (false, address(0));
+    }
+
     function _checkForUpgrade(
         string memory contractName,
         string memory environment,
         uint256 chainId,
         uint8 targetMajorVersion
     ) internal view returns (bool shouldUpgrade, address proxyAddress, string memory currentVersion) {
-        string memory root = vm.projectRoot();
-        string memory versionPath = string.concat(root, "/releases/v", vm.toString(targetMajorVersion), "/");
-        string memory fileName = string.concat(_toLowerSnakeCase(contractName), ".json");
-        string memory jsonPath = string.concat(versionPath, fileName);
+        // Get deployment file path
+        string memory jsonPath = _getDeploymentPath(contractName, targetMajorVersion);
 
         console2.log("\nChecking for upgrades in file:", jsonPath);
         console2.log("Environment:", environment);
@@ -115,19 +135,21 @@ contract DeployAndUpgradeManager is Script {
             return (false, address(0), "");
         }
 
-        // Get current version - handle potential errors by checking if the bytes are valid
+        // Get current version
         bytes memory versionBytes = content.parseRaw(".version");
         currentVersion = versionBytes.length > 0 ? abi.decode(versionBytes, (string)) : "";
 
+        // Get network section
         JsonHandler.NetworkSection memory sections = JsonHandler._extractNetworkSections(content);
         string memory currentSection =
             keccak256(bytes(environment)) == keccak256(bytes("production")) ? sections.production : sections.staging;
 
-        (bool found, string memory addr) = JsonHandler._findAddress(bytes(currentSection), vm.toString(chainId));
+        // Find proxy address
+        (bool found, address proxy) = _getProxyFromSection(currentSection, chainId);
 
-        if (found && bytes(addr).length > 0) {
-            console2.log("Found existing proxy:", addr);
-            return (true, vm.parseAddress(addr), currentVersion);
+        if (found) {
+            console2.log("Found existing proxy:", proxy);
+            return (true, proxy, currentVersion);
         }
 
         console2.log("No existing proxy found for environment", environment, "and chain:", chainId);

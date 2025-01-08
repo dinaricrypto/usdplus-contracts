@@ -91,14 +91,14 @@ contract DeployHelper is Script {
         });
     }
 
-    function _checkInitParamsExist(string memory json, string memory initKey) internal view returns (bool) {
+    function _checkInitParamsExist(string memory json, string memory initKey) internal pure returns (bool) {
         bytes memory rawValue = json.parseRaw(string.concat(initKey, ".initialTreasury"));
         return rawValue.length > 0;
     }
 
     function _readParamsFromJson(string memory json, string memory initKey, string memory version)
         internal
-        view
+        pure
         returns (InitializeParams memory)
     {
         InitializeParams memory params;
