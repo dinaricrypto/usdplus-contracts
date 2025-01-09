@@ -30,7 +30,7 @@ contract UsdPlusTest is Test {
             address(
                 new ERC1967Proxy(
                     address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER))
                 )
             )
         );
@@ -39,7 +39,7 @@ contract UsdPlusTest is Test {
             address(
                 new ERC1967Proxy(
                     address(usdplusImpl),
-                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER))
                 )
             )
         );

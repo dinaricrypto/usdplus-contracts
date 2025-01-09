@@ -35,7 +35,7 @@ contract DeployAllCreate2 is Script {
                     salt: keccak256(abi.encode(string.concat("TransferRestrictorProxy", environmentName, "0.2.1")))
                 }(
                     address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (owner, upgrader, "1.0.0"))
+                    abi.encodeCall(TransferRestrictor.initialize, (owner, upgrader))
                 )
             )
         );
@@ -48,7 +48,7 @@ contract DeployAllCreate2 is Script {
             address(
                 new ERC1967Proxy{salt: keccak256(abi.encode(string.concat("UsdPlusProxy", environmentName, "0.2.1")))}(
                     address(usdplusImpl),
-                    abi.encodeCall(UsdPlus.initialize, (treasury, transferRestrictor, owner, upgrader, "1.0.0"))
+                    abi.encodeCall(UsdPlus.initialize, (treasury, transferRestrictor, owner, upgrader))
                 )
             )
         );
@@ -63,7 +63,7 @@ contract DeployAllCreate2 is Script {
                     salt: keccak256(abi.encode(string.concat("WrappedUsdPlusProxy", environmentName, "0.2.1")))
                 }(
                     address(wrappedusdplusImpl),
-                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), owner, upgrader, "1.0.0"))
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), owner, upgrader))
                 )
             )
         );
@@ -80,7 +80,7 @@ contract DeployAllCreate2 is Script {
                     salt: keccak256(abi.encode(string.concat("UsdPlusMinterProxy", environmentName, "0.2.1")))
                 }(
                     address(minterImpl),
-                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), treasury, owner, upgrader, "1.0.0"))
+                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), treasury, owner, upgrader))
                 )
             )
         );
@@ -96,7 +96,7 @@ contract DeployAllCreate2 is Script {
                     salt: keccak256(abi.encode(string.concat("UsdPlusRedeemerProxy", environmentName, "0.2.1")))
                 }(
                     address(redeemerImpl),
-                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), owner, upgrader, "1.0.0"))
+                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), owner, upgrader))
                 )
             )
         );

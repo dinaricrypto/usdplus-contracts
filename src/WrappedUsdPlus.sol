@@ -19,18 +19,14 @@ import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, ControlledUpgradeable {
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdplus, address initialOwner, address upgrader, string memory newVersion)
+    function initialize(address usdplus, address initialOwner, address upgrader)
         public
         initializer
     {
         __ERC4626_init(IERC20(usdplus));
         __ERC20Permit_init("wUSD+");
         __ERC20_init("wUSD+", "wUSD+");
-        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
-    }
-
-    function reinitialize(string memory newVersion) external reinitializer(2) {
-        _setVersion(newVersion);
+        __ControlledUpgradeable_init(initialOwner, upgrader);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -44,14 +40,19 @@ contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgra
         return ERC4626Upgradeable.decimals();
     }
 
+    function version() public pure returns (int) {
+        return 1;
+    }
+
+    function isBlacklisted(address account) external view returns (bool) {
+        return UsdPlus(asset()).isBlacklisted(account);
+    }
+
+
     function _update(address from, address to, uint256 value) internal virtual override {
         // check if transfer is allowed
         UsdPlus(asset()).checkTransferRestricted(from, to);
 
         super._update(from, to, value);
-    }
-
-    function isBlacklisted(address account) external view returns (bool) {
-        return UsdPlus(asset()).isBlacklisted(account);
     }
 }

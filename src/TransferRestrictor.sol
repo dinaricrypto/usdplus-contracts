@@ -38,10 +38,16 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
         }
     }
 
+    /// ------------------ Version ------------------ ///
+
+    function version() public pure returns (int) {
+        return 1;
+    }
+
     /// ------------------ Initialization ------------------ ///
 
-    function initialize(address initialOwner, address upgrader, string memory newVersion) public initializer {
-        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
+    function initialize(address initialOwner, address upgrader) public initializer {
+        __ControlledUpgradeable_init(initialOwner, upgrader);
         _grantRole(RESTRICTOR_ROLE, initialOwner);
     }
 

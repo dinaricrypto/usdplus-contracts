@@ -49,7 +49,7 @@ contract CCIPWaypointTest is Test {
             address(
                 new ERC1967Proxy(
                     address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER))
                 )
             )
         );
@@ -58,7 +58,7 @@ contract CCIPWaypointTest is Test {
             address(
                 new ERC1967Proxy(
                     address(usdplusImpl),
-                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER))
                 )
             )
         );
@@ -69,7 +69,7 @@ contract CCIPWaypointTest is Test {
                 new ERC1967Proxy(
                     address(waypointImpl),
                     abi.encodeCall(
-                        CCIPWaypoint.initialize, (address(usdplus), address(router), ADMIN, UPGRADER, "1.0.0")
+                        CCIPWaypoint.initialize, (address(usdplus), address(router), ADMIN, UPGRADER)
                     )
                 )
             )

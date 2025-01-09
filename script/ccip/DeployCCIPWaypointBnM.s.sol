@@ -35,7 +35,7 @@ contract DeployCCIPWaypointBnM is Script {
                 new ERC1967Proxy(
                     address(ccipWaypointImpl),
                     abi.encodeCall(
-                        CCIPWaypoint.initialize, (cfg.bnm, cfg.ccipRouter, cfg.deployer, cfg.upgrader, "1.0.0")
+                        CCIPWaypoint.initialize, (cfg.bnm, cfg.ccipRouter, cfg.deployer, cfg.upgrader)
                     )
                 )
             )

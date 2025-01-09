@@ -46,18 +46,16 @@ contract UsdPlus is ControlledUpgradeable, ERC20Rebasing, ERC7281Min {
         address initialTreasury,
         ITransferRestrictor initialTransferRestrictor,
         address initialOwner,
-        address upgrader,
-        string memory newVersion
+        address upgrader
     ) public initializer {
-        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
+        __ControlledUpgradeable_init(initialOwner, upgrader);
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._treasury = initialTreasury;
         $._transferRestrictor = initialTransferRestrictor;
     }
 
-    function reinitialize(address upgrader, string memory newVersion) public reinitializer(2) {
+    function reinitialize(address upgrader) public reinitializer(2) {
         grantRole(UPGRADER_ROLE, upgrader);
-        _setVersion(newVersion);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -75,6 +73,10 @@ contract UsdPlus is ControlledUpgradeable, ERC20Rebasing, ERC7281Min {
     /// @notice Token symbol
     function symbol() public pure override returns (string memory) {
         return "USD+";
+    }
+
+    function version() public pure returns (int) {
+        return 1;
     }
 
     /// @notice treasury for digital assets backing USD+

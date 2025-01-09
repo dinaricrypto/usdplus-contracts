@@ -4,10 +4,11 @@ pragma solidity ^0.8.23;
 import {ControlledUpgradeable} from "../../../src/deployment/ControlledUpgradeable.sol";
 
 contract MockControlledV2 is ControlledUpgradeable {
-    uint256 private _value;
+    uint256 public value;
 
-    function initialize(address initialOwner) public initializer {
+    function initialize(address initialOwner, address upgrader) public initializer {
         __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
+        _grantRole(UPGRADER_ROLE, upgrader);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -15,7 +16,11 @@ contract MockControlledV2 is ControlledUpgradeable {
         _disableInitializers();
     }
 
-    function reinitialize(string memory newVersion) external reinitializer(3) {
-        _setVersion(newVersion);
+    function reinitialize(uint256 _value) external reinitializer(3) {
+        value = _value;
+    }
+
+    function version() public pure returns (int) {
+        return 2;
     }
 }
