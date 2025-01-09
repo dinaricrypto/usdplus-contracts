@@ -119,6 +119,10 @@ contract CCIPWaypoint is Initializable, ControlledUpgradeable, PausableUpgradeab
         );
     }
 
+    function version() public pure returns (uint8) {
+        return 1;
+    }
+
     /// @notice IERC165 supports an interfaceId
     /// @param interfaceId The interfaceId to check
     /// @return true if the interfaceId is supported

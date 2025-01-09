@@ -75,7 +75,7 @@ contract UsdPlus is ControlledUpgradeable, ERC20Rebasing, ERC7281Min {
         return "USD+";
     }
 
-    function version() public pure returns (int256) {
+    function version() public pure returns (uint8) {
         return 1;
     }
 

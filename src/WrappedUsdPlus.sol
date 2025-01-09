@@ -37,7 +37,7 @@ contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgra
         return ERC4626Upgradeable.decimals();
     }
 
-    function version() public pure returns (int256) {
+    function version() public pure returns (uint8) {
         return 1;
     }
 

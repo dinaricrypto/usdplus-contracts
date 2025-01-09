@@ -51,6 +51,10 @@ contract UsdPlusTest is Test {
         vm.stopPrank();
     }
 
+    function test_deployment() public {
+        assertEq(usdplus.version(), 1);
+    }
+
     function test_treasury(address treasury) public {
         // non-admin cannot set treasury
         vm.expectRevert(

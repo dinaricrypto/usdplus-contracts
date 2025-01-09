@@ -78,6 +78,10 @@ contract UsdPlusMinterTest is Test {
         assertEq(minter.usdplus(), address(usdplus));
     }
 
+    function test_version() public {
+        assertEq(minter.version(), 1);
+    }
+
     function test_setPaymentRecipient(address recipient) public {
         if (recipient == address(0)) {
             vm.expectRevert(UsdPlusMinter.ZeroAddress.selector);

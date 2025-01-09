@@ -93,7 +93,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         return $._nextTicket;
     }
 
-    function version() public pure returns (int256) {
+    function version() public pure returns (uint8) {
         return 1;
     }
 

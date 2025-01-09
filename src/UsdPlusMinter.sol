@@ -87,7 +87,7 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
         return $._paymentTokenOracle[paymentToken];
     }
 
-    function version() public pure returns (int256) {
+    function version() public pure returns (uint8) {
         return 1;
     }
 

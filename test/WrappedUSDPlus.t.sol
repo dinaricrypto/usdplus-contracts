@@ -67,6 +67,7 @@ contract WrappedUsdPlusTest is Test {
 
     function test_deploymentConfig() public {
         assertEq(wrappedUsdplus.decimals(), 6);
+        assertEq(wrappedUsdplus.version(), 1);
     }
 
     function test_transferReverts(address to, uint104 amount) public {
