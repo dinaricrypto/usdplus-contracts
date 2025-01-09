@@ -40,7 +40,7 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
 
     /// ------------------ Version ------------------ ///
 
-    function version() public pure returns (int) {
+    function version() public pure returns (int256) {
         return 1;
     }
 

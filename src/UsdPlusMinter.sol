@@ -48,12 +48,10 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
 
     /// ------------------ Initialization ------------------
 
-    function initialize(
-        address usdPlus,
-        address initialPaymentRecipient,
-        address initialOwner,
-        address upgrader
-    ) public initializer {
+    function initialize(address usdPlus, address initialPaymentRecipient, address initialOwner, address upgrader)
+        public
+        initializer
+    {
         __ControlledUpgradeable_init(initialOwner, upgrader);
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         $._usdplus = usdPlus;
@@ -89,7 +87,7 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
         return $._paymentTokenOracle[paymentToken];
     }
 
-    function version() public pure returns (int) {
+    function version() public pure returns (int256) {
         return 1;
     }
 

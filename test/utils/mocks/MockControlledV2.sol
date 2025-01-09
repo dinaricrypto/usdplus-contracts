@@ -20,7 +20,7 @@ contract MockControlledV2 is ControlledUpgradeable {
         value = _value;
     }
 
-    function version() public pure returns (int) {
+    function version() public pure returns (int256) {
         return 2;
     }
 }

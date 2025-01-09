@@ -61,9 +61,7 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(usdplusImpl),
-                    abi.encodeCall(
-                        UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner, cfg.upgrader)
-                    )
+                    abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner, cfg.upgrader))
                 )
             )
         );
@@ -86,9 +84,7 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(minterImpl),
-                    abi.encodeCall(
-                        UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner, cfg.upgrader)
-                    )
+                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner, cfg.upgrader))
                 )
             )
         );

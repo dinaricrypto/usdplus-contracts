@@ -36,9 +36,7 @@ contract WrappedUsdPlusTest is Test {
             address(
                 new ERC1967Proxy(
                     address(usdplusImpl),
-                    abi.encodeCall(
-                        UsdPlus.initialize, (address(this), transferRestrictor, address(this), UPGRADER)
-                    )
+                    abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, address(this), UPGRADER))
                 )
             )
         );

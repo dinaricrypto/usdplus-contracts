@@ -79,12 +79,7 @@ contract CCIPWaypoint is Initializable, ControlledUpgradeable, PausableUpgradeab
 
     /// ------------------ Initialization ------------------
 
-    function initialize(
-        address usdPlus,
-        address router,
-        address initialOwner,
-        address upgrader
-    ) public initializer {
+    function initialize(address usdPlus, address router, address initialOwner, address upgrader) public initializer {
         __CCIPReceiver_init(router);
         __ControlledUpgradeable_init(initialOwner, upgrader);
         __Pausable_init();

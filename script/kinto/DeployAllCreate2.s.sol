@@ -33,10 +33,7 @@ contract DeployAllCreate2 is Script {
             address(
                 new ERC1967Proxy{
                     salt: keccak256(abi.encode(string.concat("TransferRestrictorProxy", environmentName, "0.2.1")))
-                }(
-                    address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (owner, upgrader))
-                )
+                }(address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (owner, upgrader)))
             )
         );
         console.log("transferRestrictorImpl: %s", address(transferRestrictorImpl));

@@ -43,8 +43,7 @@ contract UsdPlusMinterTest is Test {
         transferRestrictor = TransferRestrictor(
             address(
                 new ERC1967Proxy(
-                    address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER))
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER))
                 )
             )
         );
