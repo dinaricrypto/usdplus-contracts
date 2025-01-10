@@ -98,7 +98,7 @@ contract Deploy_02 is Script {
             address(
                 new ERC1967Proxy(
                     address(wrappedusdplusImpl),
-                    abi.encodeCall(WrappedUsdPlus.initialize, (address(cfg.usdPlus), cfg.owner, cfg.upgrader, "1.0.0"))
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(cfg.usdPlus), cfg.owner, cfg.upgrader))
                 )
             )
         );
@@ -125,7 +125,7 @@ contract Deploy_02 is Script {
                 new ERC1967Proxy(
                     address(minterImpl),
                     abi.encodeCall(
-                        UsdPlusMinter.initialize, (address(cfg.usdPlus), cfg.treasury, cfg.owner, cfg.upgrader, "1.0.0")
+                        UsdPlusMinter.initialize, (address(cfg.usdPlus), cfg.treasury, cfg.owner, cfg.upgrader)
                     )
                 )
             )
@@ -138,7 +138,7 @@ contract Deploy_02 is Script {
             address(
                 new ERC1967Proxy(
                     address(redeemerImpl),
-                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(cfg.usdPlus), cfg.owner, cfg.upgrader, "1.0.0"))
+                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(cfg.usdPlus), cfg.owner, cfg.upgrader))
                 )
             )
         );

@@ -43,8 +43,7 @@ contract UsdPlusMinterTest is Test {
         transferRestrictor = TransferRestrictor(
             address(
                 new ERC1967Proxy(
-                    address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER, "1.0.0"))
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER))
                 )
             )
         );
@@ -53,7 +52,7 @@ contract UsdPlusMinterTest is Test {
             address(
                 new ERC1967Proxy(
                     address(usdplusImpl),
-                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER))
                 )
             )
         );
@@ -62,7 +61,7 @@ contract UsdPlusMinterTest is Test {
             address(
                 new ERC1967Proxy(
                     address(minterImpl),
-                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), TREASURY, ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), TREASURY, ADMIN, UPGRADER))
                 )
             )
         );
@@ -77,6 +76,10 @@ contract UsdPlusMinterTest is Test {
 
     function test_initialization() public {
         assertEq(minter.usdplus(), address(usdplus));
+    }
+
+    function test_version() public {
+        assertEq(minter.version(), 1);
     }
 
     function test_setPaymentRecipient(address recipient) public {

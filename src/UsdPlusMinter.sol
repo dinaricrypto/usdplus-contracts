@@ -48,22 +48,18 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
 
     /// ------------------ Initialization ------------------
 
-    function initialize(
-        address usdPlus,
-        address initialPaymentRecipient,
-        address initialOwner,
-        address upgrader,
-        string memory newVersion
-    ) public initializer {
-        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
+    function initialize(address usdPlus, address initialPaymentRecipient, address initialOwner, address upgrader)
+        public
+        initializer
+    {
+        __ControlledUpgradeable_init(initialOwner, upgrader);
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         $._usdplus = usdPlus;
         $._paymentRecipient = initialPaymentRecipient;
     }
 
-    function reinitialize(address upgrader, string memory newVersion) public reinitializer(2) {
+    function reinitialize(address upgrader) public reinitializer(2) {
         grantRole(UPGRADER_ROLE, upgrader);
-        _setVersion(newVersion);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -89,6 +85,10 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
     function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._paymentTokenOracle[paymentToken];
+    }
+
+    function version() public pure returns (uint8) {
+        return 1;
     }
 
     /// ------------------ Admin ------------------

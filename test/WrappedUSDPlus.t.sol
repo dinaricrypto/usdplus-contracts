@@ -27,7 +27,7 @@ contract WrappedUsdPlusTest is Test {
             address(
                 new ERC1967Proxy(
                     address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (address(this), UPGRADER, "1.0.0"))
+                    abi.encodeCall(TransferRestrictor.initialize, (address(this), UPGRADER))
                 )
             )
         );
@@ -36,9 +36,7 @@ contract WrappedUsdPlusTest is Test {
             address(
                 new ERC1967Proxy(
                     address(usdplusImpl),
-                    abi.encodeCall(
-                        UsdPlus.initialize, (address(this), transferRestrictor, address(this), UPGRADER, "1.0.0")
-                    )
+                    abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, address(this), UPGRADER))
                 )
             )
         );
@@ -47,7 +45,7 @@ contract WrappedUsdPlusTest is Test {
             address(
                 new ERC1967Proxy(
                     address(wrappedUsdplusImpl),
-                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), ADMIN, UPGRADER))
                 )
             )
         );
@@ -69,6 +67,7 @@ contract WrappedUsdPlusTest is Test {
 
     function test_deploymentConfig() public {
         assertEq(wrappedUsdplus.decimals(), 6);
+        assertEq(wrappedUsdplus.version(), 1);
     }
 
     function test_transferReverts(address to, uint104 amount) public {

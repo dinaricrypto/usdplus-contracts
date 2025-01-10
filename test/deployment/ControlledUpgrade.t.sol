@@ -45,23 +45,17 @@ contract ControlledUpgradeableTest is Test {
     function test_upgrade_access_control() public {
         MockControlled controlledImpl = new MockControlled();
 
-        vm.expectRevert(ControlledUpgradeable.IncorrectVersion.selector);
         vm.prank(ADMIN);
         upgradeableContract.upgradeToAndCall(
-            address(controlledImpl), abi.encodeWithSelector(MockControlled.reinitialize.selector, UPGRADER, "")
+            address(controlledImpl), abi.encodeWithSelector(MockControlled.reinitialize.selector, UPGRADER)
         );
 
-        vm.prank(ADMIN);
-        upgradeableContract.upgradeToAndCall(
-            address(controlledImpl), abi.encodeWithSelector(MockControlled.reinitialize.selector, UPGRADER, "1.0.0")
-        );
-
-        // check if the upgrade is successful
+        //check if the upgrade is successful
         assertEq(upgradeableContract.hasRole(controlledImpl.UPGRADER_ROLE(), UPGRADER), true);
         assertEq(upgradeableContract.hasRole(upgradeableContract.DEFAULT_ADMIN_ROLE(), ADMIN), true);
-        assertEq(MockControlled(address(upgradeableContract)).version(), "1.0.0");
+        assertEq(MockControlled(address(upgradeableContract)).version(), 1);
 
-        // // // upgrade with upgrader
+        //upgrade with upgrader
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector, ADMIN, controlledImpl.UPGRADER_ROLE()
@@ -69,46 +63,33 @@ contract ControlledUpgradeableTest is Test {
         );
         vm.prank(ADMIN);
         upgradeableContract.upgradeToAndCall(
-            address(controlledImpl), abi.encodeWithSelector(MockControlled.reinitialize.selector, UPGRADER, "1.0.1")
+            address(controlledImpl), abi.encodeWithSelector(MockControlled.reinitialize.selector, UPGRADER)
         );
 
         MockControlledV2 controlledV2Impl = new MockControlledV2();
 
-        // version is the same as previous one
-        vm.expectRevert(ControlledUpgradeable.IncorrectVersion.selector);
-        vm.prank(UPGRADER);
+        vm.startPrank(UPGRADER);
         upgradeableContract.upgradeToAndCall(
-            address(controlledV2Impl), abi.encodeWithSelector(controlledV2Impl.reinitialize.selector, "1.0.0")
+            address(controlledV2Impl), abi.encodeWithSelector(MockControlledV2.reinitialize.selector, 0)
         );
-
-        vm.prank(UPGRADER);
-        upgradeableContract.upgradeToAndCall(
-            address(controlledV2Impl), abi.encodeWithSelector(controlledV2Impl.reinitialize.selector, "1.0.1")
-        );
-        assertEq(MockControlled(address(upgradeableContract)).version(), "1.0.1");
+        assertEq(MockControlled(address(upgradeableContract)).version(), 2);
+        vm.stopPrank();
     }
 
     function test_ugprade_ownable() public {
         assertEq(ownable.owner(), ADMIN);
         MockOwnableControlled ownableControlledImpl = new MockOwnableControlled();
 
-        vm.expectRevert(ControlledUpgradeable.IncorrectVersion.selector);
         vm.prank(ADMIN);
         ownable.upgradeToAndCall(
             address(ownableControlledImpl),
-            abi.encodeWithSelector(MockOwnableControlled.reinitialize.selector, ADMIN, UPGRADER, "")
-        );
-
-        vm.prank(ADMIN);
-        ownable.upgradeToAndCall(
-            address(ownableControlledImpl),
-            abi.encodeWithSelector(MockOwnableControlled.reinitialize.selector, ADMIN, UPGRADER, "1.0.0")
+            abi.encodeWithSelector(MockOwnableControlled.reinitialize.selector, ADMIN, UPGRADER)
         );
         assertEq(
             MockOwnableControlled(address(ownable)).hasRole(ownableControlledImpl.DEFAULT_ADMIN_ROLE(), ADMIN), true
         );
         assertEq(MockOwnableControlled(address(ownable)).hasRole(ownableControlledImpl.UPGRADER_ROLE(), UPGRADER), true);
-        assertEq(MockOwnableControlled(address(ownable)).version(), "1.0.0");
+        assertEq(MockOwnableControlled(address(ownable)).version(), 1);
 
         vm.expectRevert(
             abi.encodeWithSelector(

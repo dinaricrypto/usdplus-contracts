@@ -15,7 +15,11 @@ contract MockOwnableControlled is ControlledUpgradeable {
         _disableInitializers();
     }
 
-    function reinitialize(address initialOwner, address upgrader, string memory newVersion) external reinitializer(2) {
-        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
+    function reinitialize(address initialOwner, address upgrader) external reinitializer(2) {
+        __ControlledUpgradeable_init(initialOwner, upgrader);
+    }
+
+    function version() public pure returns (int256) {
+        return 1;
     }
 }

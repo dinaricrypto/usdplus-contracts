@@ -29,8 +29,7 @@ contract UsdPlusTest is Test {
         transferRestrictor = TransferRestrictor(
             address(
                 new ERC1967Proxy(
-                    address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER, "1.0.0"))
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER))
                 )
             )
         );
@@ -39,7 +38,7 @@ contract UsdPlusTest is Test {
             address(
                 new ERC1967Proxy(
                     address(usdplusImpl),
-                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER))
                 )
             )
         );
@@ -50,6 +49,10 @@ contract UsdPlusTest is Test {
         usdplus.setIssuerLimits(BURNER, 0, type(uint256).max);
         usdplus.setIssuerLimits(BRIDGE, 100 ether, 100 ether);
         vm.stopPrank();
+    }
+
+    function test_deployment() public {
+        assertEq(usdplus.version(), 1);
     }
 
     function test_treasury(address treasury) public {
