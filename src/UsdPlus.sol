@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.23;
 
-import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from
-    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
+import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 import {FixedPointMathLib} from "solady/src/utils/FixedPointMathLib.sol";
 import {ERC20Rebasing} from "sbt-contracts/src/ERC20Rebasing.sol";
 import {ERC7281Min, IERC7281Min} from "./ERC7281/ERC7281Min.sol";
@@ -11,7 +9,7 @@ import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 
 /// @notice stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/UsdPlus.sol)
-contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDefaultAdminRulesUpgradeable {
+contract UsdPlus is ControlledUpgradeable, ERC20Rebasing, ERC7281Min {
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
     /// ------------------ Types ------------------
@@ -44,23 +42,26 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
 
     /// ------------------ Initialization ------------------
 
-    function initialize(address initialTreasury, ITransferRestrictor initialTransferRestrictor, address initialOwner)
-        public
-        initializer
-    {
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
-
+    function initialize(
+        address initialTreasury,
+        ITransferRestrictor initialTransferRestrictor,
+        address initialOwner,
+        address upgrader
+    ) public initializer {
+        __ControlledUpgradeable_init(initialOwner, upgrader);
         UsdPlusStorage storage $ = _getUsdPlusStorage();
         $._treasury = initialTreasury;
         $._transferRestrictor = initialTransferRestrictor;
+    }
+
+    function reinitialize(address upgrader) public reinitializer(2) {
+        grantRole(UPGRADER_ROLE, upgrader);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
-
-    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// ------------------ Getters ------------------
 
@@ -72,6 +73,10 @@ contract UsdPlus is UUPSUpgradeable, ERC20Rebasing, ERC7281Min, AccessControlDef
     /// @notice Token symbol
     function symbol() public pure override returns (string memory) {
         return "USD+";
+    }
+
+    function version() public pure returns (uint8) {
+        return 1;
     }
 
     /// @notice treasury for digital assets backing USD+

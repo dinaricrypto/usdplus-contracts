@@ -10,6 +10,7 @@ contract DeployCCIPWaypointBnM is Script {
         address deployer;
         address bnm;
         address ccipRouter;
+        address upgrader;
     }
 
     function run() external {
@@ -19,7 +20,8 @@ contract DeployCCIPWaypointBnM is Script {
         DeployConfig memory cfg = DeployConfig({
             deployer: vm.addr(deployerPrivateKey),
             bnm: vm.envAddress("CCIP_TOKEN"),
-            ccipRouter: vm.envAddress("CCIP_ROUTER")
+            ccipRouter: vm.envAddress("CCIP_ROUTER"),
+            upgrader: vm.envAddress("UPGRADER")
         });
 
         console.log("deployer: %s", cfg.deployer);
@@ -32,7 +34,7 @@ contract DeployCCIPWaypointBnM is Script {
             address(
                 new ERC1967Proxy(
                     address(ccipWaypointImpl),
-                    abi.encodeCall(CCIPWaypoint.initialize, (cfg.bnm, cfg.ccipRouter, cfg.deployer))
+                    abi.encodeCall(CCIPWaypoint.initialize, (cfg.bnm, cfg.ccipRouter, cfg.deployer, cfg.upgrader))
                 )
             )
         );

@@ -9,6 +9,7 @@ import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC19
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {ERC20Mock} from "openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 import {CCIPRouterMock} from "../../src/mocks/CCIPRouterMock.sol";
+import {IAccessControl} from "openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 contract CCIPWaypointTest is Test {
     event RouterSet(address indexed router);
@@ -40,14 +41,23 @@ contract CCIPWaypointTest is Test {
     address public constant TREASURY = address(0x1235);
     address public constant USER = address(0x1238);
     address public constant OTHER = address(0x1239);
+    address public constant UPGRADER = address(0x1237);
 
     function setUp() public {
-        transferRestrictor = new TransferRestrictor(ADMIN);
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor();
+        transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy(
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER))
+                )
+            )
+        );
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(
                 new ERC1967Proxy(
-                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN))
+                    address(usdplusImpl),
+                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER))
                 )
             )
         );
@@ -57,7 +67,7 @@ contract CCIPWaypointTest is Test {
             address(
                 new ERC1967Proxy(
                     address(waypointImpl),
-                    abi.encodeCall(CCIPWaypoint.initialize, (address(usdplus), address(router), ADMIN))
+                    abi.encodeCall(CCIPWaypoint.initialize, (address(usdplus), address(router), ADMIN, UPGRADER))
                 )
             )
         );
@@ -80,6 +90,7 @@ contract CCIPWaypointTest is Test {
 
     function test_initialization() public {
         assertEq(address(waypoint.getRouter()), address(router));
+        assertEq(waypoint.version(), 1);
     }
 
     function test_setRouterZeroReverts() public {
@@ -91,7 +102,11 @@ contract CCIPWaypointTest is Test {
     function test_setRouter(address account) public {
         vm.assume(account != address(0));
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, (address(this))));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), waypoint.DEFAULT_ADMIN_ROLE()
+            )
+        );
         waypoint.setRouter(account);
 
         vm.expectEmit(true, true, true, true);
@@ -102,7 +117,11 @@ contract CCIPWaypointTest is Test {
     }
 
     function test_setApprovedSender(uint64 chain, address account) public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, (address(this))));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), waypoint.DEFAULT_ADMIN_ROLE()
+            )
+        );
         waypoint.setApprovedSender(chain, account);
 
         vm.expectEmit(true, true, true, true);
@@ -113,7 +132,11 @@ contract CCIPWaypointTest is Test {
     }
 
     function test_setApprovedReceiver(uint64 chain, address account) public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, (address(this))));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), waypoint.DEFAULT_ADMIN_ROLE()
+            )
+        );
         waypoint.setApprovedReceiver(chain, account);
 
         vm.expectEmit(true, true, true, true);
@@ -124,14 +147,22 @@ contract CCIPWaypointTest is Test {
     }
 
     function test_pause() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, (address(this))));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), waypoint.DEFAULT_ADMIN_ROLE()
+            )
+        );
         waypoint.pause();
 
         vm.prank(ADMIN);
         waypoint.pause();
         assertTrue(waypoint.paused());
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, (address(this))));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), waypoint.DEFAULT_ADMIN_ROLE()
+            )
+        );
         waypoint.unpause();
 
         vm.prank(ADMIN);
@@ -158,7 +189,11 @@ contract CCIPWaypointTest is Test {
     }
 
     function test_rescue(uint256 amount) public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, (address(this))));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), waypoint.DEFAULT_ADMIN_ROLE()
+            )
+        );
         waypoint.rescue(address(this), address(0), amount);
 
         vm.deal(address(waypoint), amount);
@@ -169,7 +204,11 @@ contract CCIPWaypointTest is Test {
     }
 
     function test_rescueToken(uint256 amount) public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, (address(this))));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), waypoint.DEFAULT_ADMIN_ROLE()
+            )
+        );
         waypoint.rescue(address(this), address(usdplus), amount);
 
         vm.prank(USER);

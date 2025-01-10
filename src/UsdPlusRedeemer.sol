@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.23;
 
-import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from
-    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
+import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 import {IUsdPlusRedeemer} from "./IUsdPlusRedeemer.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 import {SelfPermit} from "./SelfPermit.sol";
@@ -17,13 +15,7 @@ import {SelfPermit} from "./SelfPermit.sol";
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
 // TODO: remove owner from redeem request calls
-contract UsdPlusRedeemer is
-    IUsdPlusRedeemer,
-    UUPSUpgradeable,
-    AccessControlDefaultAdminRulesUpgradeable,
-    SelfPermit,
-    PausableUpgradeable
-{
+contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit, PausableUpgradeable {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
@@ -57,8 +49,8 @@ contract UsdPlusRedeemer is
 
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdPlus, address initialOwner) public initializer {
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
+    function initialize(address usdPlus, address initialOwner, address upgrader) public initializer {
+        __ControlledUpgradeable_init(initialOwner, upgrader);
         __Pausable_init();
 
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
@@ -66,12 +58,14 @@ contract UsdPlusRedeemer is
         $._nextTicket = 0;
     }
 
+    function reinitialize(address upgrader, string memory newVersion) public reinitializer(2) {
+        grantRole(UPGRADER_ROLE, upgrader);
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
-
-    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// ------------------ Getters ------------------
 
@@ -97,6 +91,10 @@ contract UsdPlusRedeemer is
     function nextTicket() external view returns (uint256) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         return $._nextTicket;
+    }
+
+    function version() public pure returns (uint8) {
+        return 1;
     }
 
     /// ------------------ Admin ------------------
