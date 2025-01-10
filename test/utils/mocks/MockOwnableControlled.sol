@@ -6,7 +6,7 @@ import {ControlledUpgradeable} from "../../../src/deployment/ControlledUpgradeab
 contract MockOwnableControlled is ControlledUpgradeable {
     uint256 private _value;
 
-    function initialize(address initialOwner) public initializer {
+    function initialize(address initialOwner) public reinitializer(version()) {
         __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
     }
 
@@ -15,11 +15,11 @@ contract MockOwnableControlled is ControlledUpgradeable {
         _disableInitializers();
     }
 
-    function reinitialize(address initialOwner, address upgrader) external reinitializer(2) {
+    function reinitialize(address initialOwner, address upgrader) external reinitializer(version()) {
         __ControlledUpgradeable_init(initialOwner, upgrader);
     }
 
-    function version() public pure returns (int256) {
-        return 1;
+    function version() public pure override returns (uint8) {
+        return 2;
     }
 }

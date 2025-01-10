@@ -6,9 +6,8 @@ import {ControlledUpgradeable} from "../../../src/deployment/ControlledUpgradeab
 contract MockControlledV2 is ControlledUpgradeable {
     uint256 public value;
 
-    function initialize(address initialOwner, address upgrader) public initializer {
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
-        _grantRole(UPGRADER_ROLE, upgrader);
+    function initialize(address initialOwner, address upgrader) public reinitializer(version()) {
+        __ControlledUpgradeable_init(initialOwner, upgrader);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -16,11 +15,11 @@ contract MockControlledV2 is ControlledUpgradeable {
         _disableInitializers();
     }
 
-    function reinitialize(uint256 _value) external reinitializer(3) {
+    function reinitialize(uint256 _value) external reinitializer(version()) {
         value = _value;
     }
 
-    function version() public pure returns (int256) {
-        return 2;
+    function version() public pure override returns (uint8) {
+        return 3;
     }
 }
