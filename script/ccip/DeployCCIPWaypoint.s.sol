@@ -34,9 +34,7 @@ contract DeployCCIPWaypoint is Script {
             address(
                 new ERC1967Proxy(
                     address(ccipWaypointImpl),
-                    abi.encodeCall(
-                        CCIPWaypoint.initialize, (cfg.usdPlus, cfg.ccipRouter, cfg.deployer, cfg.upgrader, "1.0.0")
-                    )
+                    abi.encodeCall(CCIPWaypoint.initialize, (cfg.usdPlus, cfg.ccipRouter, cfg.deployer, cfg.upgrader))
                 )
             )
         );

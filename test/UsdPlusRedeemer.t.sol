@@ -53,8 +53,7 @@ contract UsdPlusRedeemerTest is Test {
         transferRestrictor = TransferRestrictor(
             address(
                 new ERC1967Proxy(
-                    address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER, "1.0.0"))
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER))
                 )
             )
         );
@@ -63,7 +62,7 @@ contract UsdPlusRedeemerTest is Test {
             address(
                 new ERC1967Proxy(
                     address(usdplusImpl),
-                    abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(UsdPlus.initialize, (address(this), transferRestrictor, ADMIN, UPGRADER))
                 )
             )
         );
@@ -72,7 +71,7 @@ contract UsdPlusRedeemerTest is Test {
             address(
                 new ERC1967Proxy(
                     address(redeemerImpl),
-                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), ADMIN, UPGRADER, "1.0.0"))
+                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), ADMIN, UPGRADER))
                 )
             )
         );
@@ -91,6 +90,7 @@ contract UsdPlusRedeemerTest is Test {
     function test_initialization() public {
         assertEq(redeemer.usdplus(), address(usdplus));
         assertEq(redeemer.nextTicket(), 0);
+        assertEq(redeemer.version(), 1);
     }
 
     function test_setPaymentTokenOracle(IERC20 token, address oracle) public {

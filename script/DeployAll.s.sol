@@ -50,7 +50,7 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(transferRestrictorImpl),
-                    abi.encodeCall(TransferRestrictor.initialize, (cfg.owner, cfg.upgrader, "1.0.0"))
+                    abi.encodeCall(TransferRestrictor.initialize, (cfg.owner, cfg.upgrader))
                 )
             )
         );
@@ -61,9 +61,7 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(usdplusImpl),
-                    abi.encodeCall(
-                        UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner, cfg.upgrader, "1.0.0")
-                    )
+                    abi.encodeCall(UsdPlus.initialize, (cfg.treasury, transferRestrictor, cfg.owner, cfg.upgrader))
                 )
             )
         );
@@ -74,7 +72,7 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(wrappedusdplusImpl),
-                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner, cfg.upgrader, "1.0.0"))
+                    abi.encodeCall(WrappedUsdPlus.initialize, (address(usdplus), cfg.owner, cfg.upgrader))
                 )
             )
         );
@@ -86,9 +84,7 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(minterImpl),
-                    abi.encodeCall(
-                        UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner, cfg.upgrader, "1.0.0")
-                    )
+                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), cfg.treasury, cfg.owner, cfg.upgrader))
                 )
             )
         );
@@ -101,7 +97,7 @@ contract DeployAll is Script {
             address(
                 new ERC1967Proxy{salt: salt}(
                     address(redeemerImpl),
-                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner, cfg.upgrader, "1.0.0"))
+                    abi.encodeCall(UsdPlusRedeemer.initialize, (address(usdplus), cfg.owner, cfg.upgrader))
                 )
             )
         );

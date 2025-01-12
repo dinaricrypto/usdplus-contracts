@@ -79,23 +79,17 @@ contract CCIPWaypoint is Initializable, ControlledUpgradeable, PausableUpgradeab
 
     /// ------------------ Initialization ------------------
 
-    function initialize(
-        address usdPlus,
-        address router,
-        address initialOwner,
-        address upgrader,
-        string memory newVersion
-    ) public initializer {
+    function initialize(address usdPlus, address router, address initialOwner, address upgrader) public initializer {
         __CCIPReceiver_init(router);
-        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
+        __ControlledUpgradeable_init(initialOwner, upgrader);
         __Pausable_init();
 
         CCIPWaypointStorage storage $ = _getCCIPWaypointStorage();
         $._usdplus = usdPlus;
     }
 
-    function reinitialize(address initialOwner, address upgrader, string memory newVersion) external reinitializer(2) {
-        __ControlledUpgradeable_init(initialOwner, upgrader, newVersion);
+    function reinitialize(address initialOwner, address upgrader) external reinitializer(2) {
+        __ControlledUpgradeable_init(initialOwner, upgrader);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -123,6 +117,10 @@ contract CCIPWaypoint is Initializable, ControlledUpgradeable, PausableUpgradeab
         return IRouterClient(getRouter()).getFee(
             destinationChainSelector, _createCCIPMessage(destinationChainWaypoint, to, amount)
         );
+    }
+
+    function version() public pure returns (uint8) {
+        return 1;
     }
 
     /// @notice IERC165 supports an interfaceId
