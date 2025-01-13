@@ -79,6 +79,10 @@ contract UsdPlus is ControlledUpgradeable, ERC20Rebasing, ERC7281Min {
         return 1;
     }
 
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
+    }
+
     /// @notice treasury for digital assets backing USD+
     function treasury() public view returns (address) {
         UsdPlusStorage storage $ = _getUsdPlusStorage();

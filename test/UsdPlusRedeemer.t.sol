@@ -91,6 +91,7 @@ contract UsdPlusRedeemerTest is Test {
         assertEq(redeemer.usdplus(), address(usdplus));
         assertEq(redeemer.nextTicket(), 0);
         assertEq(redeemer.version(), 1);
+        assertEq(redeemer.publicVersion(), "1.0.0");
     }
 
     function test_setPaymentTokenOracle(IERC20 token, address oracle) public {

@@ -73,6 +73,7 @@ contract ControlledUpgradeableTest is Test {
             address(controlledV2Impl), abi.encodeWithSelector(MockControlledV2.reinitialize.selector, 0)
         );
         assertEq(MockControlled(address(upgradeableContract)).version(), 3);
+        assertEq(MockControlled(address(upgradeableContract)).publicVersion(), "1.0.2");
         vm.stopPrank();
     }
 
@@ -90,6 +91,7 @@ contract ControlledUpgradeableTest is Test {
         );
         assertEq(MockOwnableControlled(address(ownable)).hasRole(ownableControlledImpl.UPGRADER_ROLE(), UPGRADER), true);
         assertEq(MockOwnableControlled(address(ownable)).version(), 2);
+        assertEq(MockOwnableControlled(address(ownable)).publicVersion(), "1.0.1");
 
         vm.expectRevert(
             abi.encodeWithSelector(

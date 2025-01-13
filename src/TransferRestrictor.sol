@@ -44,6 +44,10 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
         return 1;
     }
 
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
+    }
+
     /// ------------------ Initialization ------------------ ///
 
     function initialize(address initialOwner, address upgrader) public reinitializer(version()) {

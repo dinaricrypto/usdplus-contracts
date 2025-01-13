@@ -53,6 +53,7 @@ contract UsdPlusTest is Test {
 
     function test_deployment() public {
         assertEq(usdplus.version(), 1);
+        assertEq(usdplus.publicVersion(), "1.0.0");
     }
 
     function test_treasury(address treasury) public {

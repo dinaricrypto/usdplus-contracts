@@ -80,6 +80,7 @@ contract UsdPlusMinterTest is Test {
 
     function test_version() public {
         assertEq(minter.version(), 1);
+        assertEq(minter.publicVersion(), "1.0.0");
     }
 
     function test_setPaymentRecipient(address recipient) public {
