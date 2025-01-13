@@ -91,6 +91,7 @@ contract CCIPWaypointTest is Test {
     function test_initialization() public {
         assertEq(address(waypoint.getRouter()), address(router));
         assertEq(waypoint.version(), 1);
+        assertEq(waypoint.publicVersion(), "1.0.0");
     }
 
     function test_setRouterZeroReverts() public {

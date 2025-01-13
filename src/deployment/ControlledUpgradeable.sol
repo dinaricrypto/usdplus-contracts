@@ -22,5 +22,5 @@ abstract contract ControlledUpgradeable is UUPSUpgradeable, AccessControlDefault
 
     function version() public virtual returns (uint8);
 
-    function publicVersion() public virtual returns (string memory) {}
+    function publicVersion() public virtual returns (string memory);
 }
