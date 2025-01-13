@@ -53,7 +53,7 @@ contract ControlledUpgradeableTest is Test {
         //check if the upgrade is successful
         assertEq(upgradeableContract.hasRole(controlledImpl.UPGRADER_ROLE(), UPGRADER), true);
         assertEq(upgradeableContract.hasRole(upgradeableContract.DEFAULT_ADMIN_ROLE(), ADMIN), true);
-        assertEq(MockControlled(address(upgradeableContract)).version(), 1);
+        assertEq(MockControlled(address(upgradeableContract)).version(), 2);
 
         //upgrade with upgrader
         vm.expectRevert(
@@ -72,7 +72,7 @@ contract ControlledUpgradeableTest is Test {
         upgradeableContract.upgradeToAndCall(
             address(controlledV2Impl), abi.encodeWithSelector(MockControlledV2.reinitialize.selector, 0)
         );
-        assertEq(MockControlled(address(upgradeableContract)).version(), 2);
+        assertEq(MockControlled(address(upgradeableContract)).version(), 3);
         vm.stopPrank();
     }
 
@@ -89,7 +89,7 @@ contract ControlledUpgradeableTest is Test {
             MockOwnableControlled(address(ownable)).hasRole(ownableControlledImpl.DEFAULT_ADMIN_ROLE(), ADMIN), true
         );
         assertEq(MockOwnableControlled(address(ownable)).hasRole(ownableControlledImpl.UPGRADER_ROLE(), UPGRADER), true);
-        assertEq(MockOwnableControlled(address(ownable)).version(), 1);
+        assertEq(MockOwnableControlled(address(ownable)).version(), 2);
 
         vm.expectRevert(
             abi.encodeWithSelector(
