@@ -91,6 +91,10 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
         return 1;
     }
 
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
+    }
+
     /// ------------------ Admin ------------------
 
     /// @notice set payment recipient

@@ -58,7 +58,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         $._nextTicket = 0;
     }
 
-    function reinitialize(address upgrader, string memory newVersion) public reinitializer(version()) {
+    function reinitialize(address upgrader) public reinitializer(version()) {
         grantRole(UPGRADER_ROLE, upgrader);
     }
 
@@ -95,6 +95,10 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
 
     function version() public pure override returns (uint8) {
         return 1;
+    }
+
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
     }
 
     /// ------------------ Admin ------------------

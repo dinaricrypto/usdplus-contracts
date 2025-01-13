@@ -41,6 +41,10 @@ contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgra
         return 1;
     }
 
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
+    }
+
     function isBlacklisted(address account) external view returns (bool) {
         return UsdPlus(asset()).isBlacklisted(account);
     }

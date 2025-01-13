@@ -22,4 +22,8 @@ contract MockOwnableControlled is ControlledUpgradeable {
     function version() public pure override returns (uint8) {
         return 2;
     }
+
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.1";
+    }
 }
