@@ -33,15 +33,19 @@ jobs:
         run: |
           forge fmt --check
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'yarn'
-
+          - name: Setup Node.js
+          uses: actions/setup-node@v3
+          with:
+            node-version: '18'
+            
+      - name: Enable Corepack
+        run: |
+            corepack enable
+            yarn set version 3.6.4
+  
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-
+  
       - name: Validate JSON Schema
         run: yarn lint:json
 
