@@ -33,22 +33,17 @@ jobs:
         run: |
           forge fmt --check
 
-      - name: Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
-          
-      - name: Install JSON Schema validator
-        run: npm install -g ajv-cli
-      
-      - name: Validate Release JSON files
-        run: |
-          for version in releases/v*; do
-            if [ -f "$version/contract.json" ]; then
-              echo "Validating $version/contract.json"
-              ajv validate -s releases/schema.json -d "$version/contract.json" --strict=false || exit 1
-            fi
-          done
+          node-version: '18'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Validate JSON Schema
+        run: yarn lint:json
 
   analyze:
     strategy:
