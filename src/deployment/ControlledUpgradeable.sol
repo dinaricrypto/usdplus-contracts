@@ -19,4 +19,8 @@ abstract contract ControlledUpgradeable is UUPSUpgradeable, AccessControlDefault
         __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
         _grantRole(UPGRADER_ROLE, upgrader);
     }
+
+    function version() public virtual returns (uint8);
+
+    function publicVersion() public virtual returns (string memory);
 }

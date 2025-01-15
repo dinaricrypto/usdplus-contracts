@@ -49,7 +49,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
 
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdPlus, address initialOwner, address upgrader) public initializer {
+    function initialize(address usdPlus, address initialOwner, address upgrader) public reinitializer(version()) {
         __ControlledUpgradeable_init(initialOwner, upgrader);
         __Pausable_init();
 
@@ -58,7 +58,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         $._nextTicket = 0;
     }
 
-    function reinitialize(address upgrader, string memory newVersion) public reinitializer(2) {
+    function reinitialize(address upgrader) public reinitializer(version()) {
         grantRole(UPGRADER_ROLE, upgrader);
     }
 
@@ -93,8 +93,12 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         return $._nextTicket;
     }
 
-    function version() public pure returns (uint8) {
+    function version() public pure override returns (uint8) {
         return 1;
+    }
+
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
     }
 
     /// ------------------ Admin ------------------

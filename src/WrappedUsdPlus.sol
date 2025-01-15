@@ -19,7 +19,7 @@ import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, ControlledUpgradeable {
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdplus, address initialOwner, address upgrader) public initializer {
+    function initialize(address usdplus, address initialOwner, address upgrader) public reinitializer(version()) {
         __ERC4626_init(IERC20(usdplus));
         __ERC20Permit_init("wUSD+");
         __ERC20_init("wUSD+", "wUSD+");
@@ -37,8 +37,12 @@ contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgra
         return ERC4626Upgradeable.decimals();
     }
 
-    function version() public pure returns (uint8) {
+    function version() public pure override returns (uint8) {
         return 1;
+    }
+
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
     }
 
     function isBlacklisted(address account) external view returns (bool) {
