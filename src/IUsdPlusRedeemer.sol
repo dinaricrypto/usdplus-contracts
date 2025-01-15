@@ -5,6 +5,11 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 interface IUsdPlusRedeemer {
+    struct PaymentTokenOracleInfo {
+        AggregatorV3Interface oracle;
+        uint256 heartbeat;
+    }
+
     struct Request {
         address owner;
         address receiver;
@@ -13,7 +18,9 @@ interface IUsdPlusRedeemer {
         uint256 usdplusAmount;
     }
 
-    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
+    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle, uint256 heartbeat);
+    event L2SequencerOracleSet(address indexed l2SequencerOracle);
+    event SequencerGracePeriodSet(uint256 sequencerGracePeriod);
     event RequestCreated(
         uint256 indexed ticket,
         address indexed receiver,
@@ -42,7 +49,7 @@ interface IUsdPlusRedeemer {
     /// @notice Oracle for payment token
     /// @param paymentToken payment token
     /// @dev address(0) if payment token not accepted
-    function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface oracle);
+    function paymentTokenOracle(IERC20 paymentToken) external view returns (PaymentTokenOracleInfo memory oracle);
 
     /// @notice get request info
     /// @param ticket request ticket number
@@ -68,11 +75,16 @@ interface IUsdPlusRedeemer {
     /// @param paymentTokenAmount amount of payment token
     /// @param receiver recipient
     /// @param owner USD+ owner
+    /// @param maxUsdplusAmount maximum amount of USD+ to burn
     /// @return ticket request ticket number
     /// @dev exchange rate fixed at time of request creation
-    function requestWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, address owner)
-        external
-        returns (uint256 ticket);
+    function requestWithdraw(
+        IERC20 paymentToken,
+        uint256 paymentTokenAmount,
+        address receiver,
+        address owner,
+        uint256 maxUsdplusAmount
+    ) external returns (uint256 ticket);
 
     /// @notice calculate payment token amount received for burning USD+
     /// @param paymentToken payment token
@@ -87,11 +99,16 @@ interface IUsdPlusRedeemer {
     /// @param usdplusAmount amount of USD+ to burn
     /// @param receiver recipient
     /// @param owner USD+ owner
+    /// @param minPaymentTokenAmount minimum amount of payment token to receive
     /// @return ticket request ticket number
     /// @dev exchange rate fixed at time of request creation
-    function requestRedeem(IERC20 paymentToken, uint256 usdplusAmount, address receiver, address owner)
-        external
-        returns (uint256 ticket);
+    function requestRedeem(
+        IERC20 paymentToken,
+        uint256 usdplusAmount,
+        address receiver,
+        address owner,
+        uint256 minPaymentTokenAmount
+    ) external returns (uint256 ticket);
 
     /// @notice Allows rescue of USD+ tokens that are stuck in the contract
     /// @dev CAUTION: Only rescue truly stuck funds. Ensure enough USD+ remains for pending redemptions
