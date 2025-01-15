@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cp .env-kinto-prod .env
+cp .env.plume-testnet .env
 source .env
 
 # proxy
@@ -9,4 +9,4 @@ source .env
 # forge verify-contract --chain-id 42161 --watch 0xF2C65AE853A14Cb8A7bD4945990A7e17A5a50802 src/UsdPlusRedeemer.sol:UsdPlusRedeemer
 # forge verify-contract --chain-id 11155111 --watch 0x3bb9cBe6fDA88ee2BB59bcD7f32c11F110AEaae8 src/UsdPlusMinter.sol:UsdPlusMinter
 
-forge verify-contract --watch --constructor-args $(cast abi-encode "constructor(address)" "0x25EA8c663BA8cCd79284B8c4001e7A245071885c") 0xd4ee24378201190c7C50D52D3D29C459a1278F91 src/TransferRestrictor.sol:TransferRestrictor --verifier blockscout --verifier-url https://explorer.kinto.xyz/api
+forge verify-contract --watch 0x58f0fC8aF49843D99Fde922b3F3D906b6Dd1C653 src/mocks/OracleMock.sol:OracleMock --verifier blockscout
