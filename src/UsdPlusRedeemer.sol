@@ -16,7 +16,6 @@ import {SelfPermit} from "./SelfPermit.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
-// TODO: remove owner from redeem request calls
 contract UsdPlusRedeemer is
     IUsdPlusRedeemer,
     UUPSUpgradeable,
