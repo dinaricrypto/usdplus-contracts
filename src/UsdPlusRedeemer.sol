@@ -194,6 +194,7 @@ contract UsdPlusRedeemer is
 
         emit RequestCreated(ticket, receiver, paymentToken, paymentTokenAmount, usdplusAmount);
 
+        // slither-disable-next-line arbitrary-send-erc20
         IERC20($._usdplus).safeTransferFrom(owner, address(this), usdplusAmount);
 
         UsdPlus($._usdplus).burn(address(this), usdplusAmount);
