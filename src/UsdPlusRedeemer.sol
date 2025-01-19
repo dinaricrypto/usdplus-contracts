@@ -16,8 +16,7 @@ import {SelfPermit} from "./SelfPermit.sol";
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
 contract UsdPlusRedeemer is
     IUsdPlusRedeemer,
-    UUPSUpgradeable,
-    AccessControlDefaultAdminRulesUpgradeable,
+    ControlledUpgradeable,
     SelfPermit,
     PausableUpgradeable
 {
