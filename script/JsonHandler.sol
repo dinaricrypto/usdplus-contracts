@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import {stdJson} from "forge-std/StdJson.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {DeployHelper} from "./DeployHelper.sol";
+import {InitializeParams} from "./InitializeParams.sol";
 
 library JsonHandler {
     using stdJson for string;
@@ -79,11 +80,12 @@ library JsonHandler {
         return sections;
     }
 
-    function _updateInitializationParams(
+    function _updateUsdPlusInitializationParams(
         string memory json,
         string memory version,
         string memory environment,
-        DeployHelper.InitializeParams memory params
+        // DeployHelper.InitializeParams memory params
+        InitializeParams.UsdPlusInitializeParams memory params
     ) internal pure returns (string memory) {
         // Create new initialization section for this version
         string memory newInitSection = string(
@@ -132,6 +134,195 @@ library JsonHandler {
         bool isEmpty = _isEmptyObject(currentInit);
 
         // If not empty, take the content between the first { and last }
+        string memory currentContent = "";
+        if (!isEmpty) {
+            bytes memory innerContent = _sliceBytes(currentInit, 1, currentInit.length - 1);
+            currentContent = string(innerContent);
+        }
+
+        string memory separator = isEmpty ? "" : ",";
+
+        return string(
+            abi.encodePacked(string(prefix), "{", currentContent, separator, newInitSection, "}", string(suffix))
+        );
+    }
+
+    function _updateCCIPWayPointIntializationParams(
+        string memory json,
+        string memory version,
+        string memory environment,
+        InitializeParams.CCIPWaypointInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory newInitSection = string(
+            abi.encodePacked(
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"usdPlus":"',
+                vm.toString(params.usdPlus),
+                '",',
+                '"router":"',
+                vm.toString(params.router),
+                '",',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _updateJsonWithSection(json, newInitSection);
+    }
+
+    function _updateUsdPlusMinterInitializationParams(
+        string memory json,
+        string memory version,
+        string memory environment,
+        InitializeParams.UsdPlusMinterInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory newInitSection = string(
+            abi.encodePacked(
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"usdPlus":"',
+                vm.toString(params.usdPlus),
+                '",',
+                '"initialPaymentRecipient":"',
+                vm.toString(params.initialPaymentRecipient),
+                '",',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _updateJsonWithSection(json, newInitSection);
+    }
+
+    function _updateUsdPlusRedeemerInitializationParams(
+        string memory json,
+        string memory version,
+        string memory environment,
+        InitializeParams.UsdPlusRedeemerInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory newInitSection = string(
+            abi.encodePacked(
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"usdPlus":"',
+                vm.toString(params.usdPlus),
+                '",',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _updateJsonWithSection(json, newInitSection);
+    }
+
+    function _updateWrappedUsdPlusInitializationParams(
+        string memory json,
+        string memory version,
+        string memory environment,
+        InitializeParams.WrappedUsdPlusInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory newInitSection = string(
+            abi.encodePacked(
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"usdplus":"',
+                vm.toString(params.usdplus),
+                '",',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _updateJsonWithSection(json, newInitSection);
+    }
+
+    function _updateTransferRestrictorInitializationParams(
+        string memory json,
+        string memory version,
+        string memory environment,
+        InitializeParams.TransferRestrictorInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory newInitSection = string(
+            abi.encodePacked(
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _updateJsonWithSection(json, newInitSection);
+    }
+
+    function _updateJsonWithSection(string memory json, string memory newInitSection)
+        internal
+        pure
+        returns (string memory)
+    {
+        // Extract existing initialization section
+        bytes memory jsonBytes = bytes(json);
+        uint256 initStart = _findSectionStart(jsonBytes, "initialization");
+        uint256 initEnd = _findSectionEnd(jsonBytes, initStart);
+
+        if (initStart == type(uint256).max || initEnd == type(uint256).max) {
+            // No initialization section found, create new one
+            uint256 lastBrace = _findLastBrace(jsonBytes);
+            bytes memory pre = _sliceBytes(jsonBytes, 0, lastBrace);
+            return string(abi.encodePacked(string(pre), ',"initialization":{', newInitSection, "}}"));
+        }
+
+        // Add new version to existing initialization section
+        bytes memory prefix = _sliceBytes(jsonBytes, 0, initStart);
+        bytes memory currentInit = _sliceBytes(jsonBytes, initStart, initEnd);
+        bytes memory suffix = _sliceBytes(jsonBytes, initEnd, jsonBytes.length);
+
+        bool isEmpty = _isEmptyObject(currentInit);
         string memory currentContent = "";
         if (!isEmpty) {
             bytes memory innerContent = _sliceBytes(currentInit, 1, currentInit.length - 1);
@@ -301,13 +492,12 @@ library JsonHandler {
         );
     }
 
-    function _createInitialJson(
+    function _createUsdPlusInitialJson(
         string memory contractName,
         string memory version,
         string memory environment,
-        DeployHelper.InitializeParams memory params
+        InitializeParams.UsdPlusInitializeParams memory params
     ) internal pure returns (string memory) {
-        // Create initialization section with proper structure
         string memory initSection = string(
             abi.encodePacked(
                 "{",
@@ -333,7 +523,172 @@ library JsonHandler {
             )
         );
 
-        // Create full JSON
+        return _createBaseJson(contractName, version, initSection);
+    }
+
+    function _createCCIPWaypointInitialJson(
+        string memory contractName,
+        string memory version,
+        string memory environment,
+        InitializeParams.CCIPWaypointInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory initSection = string(
+            abi.encodePacked(
+                "{",
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"usdPlus":"',
+                vm.toString(params.usdPlus),
+                '",',
+                '"router":"',
+                vm.toString(params.router),
+                '",',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _createBaseJson(contractName, version, initSection);
+    }
+
+    function _createUsdPlusMinterInitialJson(
+        string memory contractName,
+        string memory version,
+        string memory environment,
+        InitializeParams.UsdPlusMinterInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory initSection = string(
+            abi.encodePacked(
+                "{",
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"usdPlus":"',
+                vm.toString(params.usdPlus),
+                '",',
+                '"initialPaymentRecipient":"',
+                vm.toString(params.initialPaymentRecipient),
+                '",',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _createBaseJson(contractName, version, initSection);
+    }
+
+    function _createUsdPlusRedeemerInitialJson(
+        string memory contractName,
+        string memory version,
+        string memory environment,
+        InitializeParams.UsdPlusRedeemerInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory initSection = string(
+            abi.encodePacked(
+                "{",
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"usdPlus":"',
+                vm.toString(params.usdPlus),
+                '",',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _createBaseJson(contractName, version, initSection);
+    }
+
+    function _createWrappedUsdPlusInitialJson(
+        string memory contractName,
+        string memory version,
+        string memory environment,
+        InitializeParams.WrappedUsdPlusInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory initSection = string(
+            abi.encodePacked(
+                "{",
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"usdplus":"',
+                vm.toString(params.usdplus),
+                '",',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _createBaseJson(contractName, version, initSection);
+    }
+
+    function _createTransferRestrictorInitialJson(
+        string memory contractName,
+        string memory version,
+        string memory environment,
+        InitializeParams.TransferRestrictorInitializeParams memory params
+    ) internal pure returns (string memory) {
+        string memory initSection = string(
+            abi.encodePacked(
+                "{",
+                '"',
+                version,
+                '": {',
+                '"',
+                environment,
+                '": {',
+                '"initialOwner":"',
+                vm.toString(params.initialOwner),
+                '",',
+                '"upgrader":"',
+                vm.toString(params.upgrader),
+                '"',
+                "}}"
+            )
+        );
+
+        return _createBaseJson(contractName, version, initSection);
+    }
+
+    function _createBaseJson(string memory contractName, string memory version, string memory initSection)
+        internal
+        pure
+        returns (string memory)
+    {
         return string(
             abi.encodePacked(
                 "{",

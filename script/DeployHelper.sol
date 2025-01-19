@@ -5,6 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 import {JsonHandler} from "./JsonHandler.sol";
+import {InitializeParams} from "./InitializeParams.sol";
 
 contract DeployHelper is Script {
     using stdJson for string;
@@ -16,18 +17,11 @@ contract DeployHelper is Script {
     error InvalidAbiFormat();
     error VersionNotFound(string version);
     error EnvironmentNotFound(string environment);
-
-    struct InitializeParams {
-        address initialTreasury;
-        address initialTransferRestrictor;
-        address initialOwner;
-        address upgrader;
-        string version;
-    }
+    error UnsupportedContract(string contractName);
 
     function getInitializeParams(string memory contractName, string memory version, string memory environment)
         public
-        returns (InitializeParams memory)
+        returns (bytes memory)
     {
         string memory root = vm.projectRoot();
         (uint8 majorVersion,) = _parseVersion(version);
@@ -42,49 +36,311 @@ contract DeployHelper is Script {
         string memory json = vm.readFile(jsonPath);
         bool isNewFile = bytes(json).length == 0;
 
-        // Get initial parameters (either from env vars or existing json)
-        InitializeParams memory params = _getInitialParams(version);
+        bytes32 contractHash = keccak256(bytes(contractName));
+        if (contractHash == keccak256(bytes("UsdPlus"))) {
+            return _handleUsdPlusParams(json, isNewFile, jsonPath, contractName, version, environment);
+        } else if (contractHash == keccak256(bytes("CCIPWaypoint"))) {
+            return _handleCCIPWaypointParams(json, isNewFile, jsonPath, contractName, version, environment);
+        } else if (contractHash == keccak256(bytes("UsdPlusMinter"))) {
+            return _handleUsdPlusMinterParams(json, isNewFile, jsonPath, contractName, version, environment);
+        } else if (contractHash == keccak256(bytes("UsdPlusRedeemer"))) {
+            return _handleUsdPlusRedeemerParams(json, isNewFile, jsonPath, contractName, version, environment);
+        } else if (contractHash == keccak256(bytes("WrappedUsdPlus"))) {
+            return _handleWrappedUsdPlusParams(json, isNewFile, jsonPath, contractName, version, environment);
+        } else if (contractHash == keccak256(bytes("TransferRestrictor"))) {
+            return _handleTransferRestrictorParams(json, isNewFile, jsonPath, contractName, version, environment);
+        }
+
+        revert UnsupportedContract(contractName);
+    }
+
+    function _handleUsdPlusParams(
+        string memory json,
+        bool isNewFile,
+        string memory jsonPath,
+        string memory contractName,
+        string memory version,
+        string memory environment
+    ) internal returns (bytes memory) {
+        InitializeParams.UsdPlusInitializeParams memory params = _getUsdPlusInitialParams(version);
 
         if (isNewFile) {
-            // Create new JSON file with these parameters
-            json = JsonHandler._createInitialJson(contractName, version, environment, params);
+            json = JsonHandler._createUsdPlusInitialJson(contractName, version, environment, params);
             vm.writeFile(jsonPath, json);
         } else {
-            // Try to read from existing JSON first
             string memory initKey = string.concat(".initialization.", version, ".", environment);
             bool paramsExist = _checkInitParamsExist(json, initKey);
 
             if (!paramsExist) {
-                // Parameters don't exist for this version, update JSON
-                json = JsonHandler._updateInitializationParams(json, version, environment, params);
+                json = JsonHandler._updateUsdPlusInitializationParams(json, version, environment, params);
                 vm.writeFile(jsonPath, json);
             } else {
-                // Read parameters from JSON
-                params = _readParamsFromJson(json, initKey, version);
+                params = _readUsdPlusParamsFromJson(json, initKey, version);
             }
         }
 
-        // Validate addresses
         _validateAddress("treasury", params.initialTreasury);
         _validateAddress("transferRestrictor", params.initialTransferRestrictor);
         _validateAddress("owner", params.initialOwner);
         _validateAddress("upgrader", params.upgrader);
 
-        // Log the parameters
-        console2.log("Initialize Parameters:");
-        console2.log("- Initial Treasury:", params.initialTreasury);
-        console2.log("- Initial Transfer Restrictor:", params.initialTransferRestrictor);
-        console2.log("- Initial Owner:", params.initialOwner);
-        console2.log("- Upgrader:", params.upgrader);
-        console2.log("- Version:", params.version);
-
-        return params;
+        // Return the encoded parameters without the function signature
+        return
+            abi.encode(params.initialTreasury, params.initialTransferRestrictor, params.initialOwner, params.upgrader);
     }
 
-    function _getInitialParams(string memory version) internal view returns (InitializeParams memory) {
-        return InitializeParams({
+    function _handleUsdPlusMinterParams(
+        string memory json,
+        bool isNewFile,
+        string memory jsonPath,
+        string memory contractName,
+        string memory version,
+        string memory environment
+    ) internal returns (bytes memory) {
+        InitializeParams.UsdPlusMinterInitializeParams memory params = _getUsdPlusMinterInitialParams(version);
+
+        if (isNewFile) {
+            json = JsonHandler._createUsdPlusMinterInitialJson(contractName, version, environment, params);
+            vm.writeFile(jsonPath, json);
+        } else {
+            string memory initKey = string.concat(".initialization.", version, ".", environment);
+            bool paramsExist = _checkInitParamsExist(json, initKey);
+
+            if (!paramsExist) {
+                json = JsonHandler._updateUsdPlusMinterInitializationParams(json, version, environment, params);
+                vm.writeFile(jsonPath, json);
+            } else {
+                params = _readUsdPlusMinterParamsFromJson(json, initKey, version);
+            }
+        }
+
+        _validateAddress("usdplus", params.usdPlus);
+        _validateAddress("paymentRecipient", params.initialPaymentRecipient);
+        _validateAddress("owner", params.initialOwner);
+        _validateAddress("upgrader", params.upgrader);
+
+        return abi.encodeWithSignature(
+            "initialize(address,address,address,address,string)",
+            params.usdPlus,
+            params.initialPaymentRecipient,
+            params.initialOwner,
+            params.upgrader,
+            params.version
+        );
+    }
+
+    function _handleCCIPWaypointParams(
+        string memory json,
+        bool isNewFile,
+        string memory jsonPath,
+        string memory contractName,
+        string memory version,
+        string memory environment
+    ) internal returns (bytes memory) {
+        InitializeParams.CCIPWaypointInitializeParams memory params = _getCCIPWaypointInitialParams(version);
+
+        if (isNewFile) {
+            json = JsonHandler._createCCIPWaypointInitialJson(contractName, version, environment, params);
+            vm.writeFile(jsonPath, json);
+        } else {
+            string memory initKey = string.concat(".initialization.", version, ".", environment);
+            bool paramsExist = _checkInitParamsExist(json, initKey);
+
+            if (!paramsExist) {
+                json = JsonHandler._updateCCIPWayPointIntializationParams(json, version, environment, params);
+                vm.writeFile(jsonPath, json);
+            } else {
+                params = _readCCIPWaypointParamsFromJson(json, initKey, version);
+            }
+        }
+
+        _validateAddress("usdplus", params.usdPlus);
+        _validateAddress("router", params.router);
+        _validateAddress("owner", params.initialOwner);
+        _validateAddress("upgrader", params.upgrader);
+
+        return abi.encodeWithSignature(
+            "initialize(address,address,address,address)",
+            params.usdPlus,
+            params.router,
+            params.initialOwner,
+            params.upgrader
+        );
+    }
+
+    function _handleUsdPlusRedeemerParams(
+        string memory json,
+        bool isNewFile,
+        string memory jsonPath,
+        string memory contractName,
+        string memory version,
+        string memory environment
+    ) internal returns (bytes memory) {
+        InitializeParams.UsdPlusRedeemerInitializeParams memory params = _getUsdPlusRedeemerInitialParams(version);
+
+        if (isNewFile) {
+            json = JsonHandler._createUsdPlusRedeemerInitialJson(contractName, version, environment, params);
+            vm.writeFile(jsonPath, json);
+        } else {
+            string memory initKey = string.concat(".initialization.", version, ".", environment);
+            bool paramsExist = _checkInitParamsExist(json, initKey);
+
+            if (!paramsExist) {
+                json = JsonHandler._updateUsdPlusRedeemerInitializationParams(json, version, environment, params);
+                vm.writeFile(jsonPath, json);
+            } else {
+                params = _readUsdPlusRedeemerParamsFromJson(json, initKey, version);
+            }
+        }
+
+        _validateAddress("usdplus", params.usdPlus);
+        _validateAddress("owner", params.initialOwner);
+        _validateAddress("upgrader", params.upgrader);
+
+        return abi.encodeWithSignature(
+            "initialize(address,address,address)", params.usdPlus, params.initialOwner, params.upgrader
+        );
+    }
+
+    function _handleWrappedUsdPlusParams(
+        string memory json,
+        bool isNewFile,
+        string memory jsonPath,
+        string memory contractName,
+        string memory version,
+        string memory environment
+    ) internal returns (bytes memory) {
+        InitializeParams.WrappedUsdPlusInitializeParams memory params = _getWrappedUsdPlusInitialParams(version);
+
+        if (isNewFile) {
+            json = JsonHandler._createWrappedUsdPlusInitialJson(contractName, version, environment, params);
+            vm.writeFile(jsonPath, json);
+        } else {
+            string memory initKey = string.concat(".initialization.", version, ".", environment);
+            bool paramsExist = _checkInitParamsExist(json, initKey);
+
+            if (!paramsExist) {
+                json = JsonHandler._updateWrappedUsdPlusInitializationParams(json, version, environment, params);
+                vm.writeFile(jsonPath, json);
+            } else {
+                params = _readWrappedUsdPlusParamsFromJson(json, initKey, version);
+            }
+        }
+
+        _validateAddress("usdplus", params.usdplus);
+        _validateAddress("owner", params.initialOwner);
+        _validateAddress("upgrader", params.upgrader);
+
+        return abi.encodeWithSignature(
+            "initialize(address,address,address)", params.usdplus, params.initialOwner, params.upgrader
+        );
+    }
+
+    function _handleTransferRestrictorParams(
+        string memory json,
+        bool isNewFile,
+        string memory jsonPath,
+        string memory contractName,
+        string memory version,
+        string memory environment
+    ) internal returns (bytes memory) {
+        InitializeParams.TransferRestrictorInitializeParams memory params = _getTransferRestrictorInitialParams(version);
+
+        if (isNewFile) {
+            json = JsonHandler._createTransferRestrictorInitialJson(contractName, version, environment, params);
+            vm.writeFile(jsonPath, json);
+        } else {
+            string memory initKey = string.concat(".initialization.", version, ".", environment);
+            bool paramsExist = _checkInitParamsExist(json, initKey);
+
+            if (!paramsExist) {
+                json = JsonHandler._updateTransferRestrictorInitializationParams(json, version, environment, params);
+                vm.writeFile(jsonPath, json);
+            } else {
+                params = _readTransferRestrictorParamsFromJson(json, initKey, version);
+            }
+        }
+
+        _validateAddress("owner", params.initialOwner);
+        _validateAddress("upgrader", params.upgrader);
+
+        return abi.encodeWithSignature("initialize(address,address)", params.initialOwner, params.upgrader);
+    }
+
+    function _getUsdPlusMinterInitialParams(string memory version)
+        internal
+        view
+        returns (InitializeParams.UsdPlusMinterInitializeParams memory)
+    {
+        return InitializeParams.UsdPlusMinterInitializeParams({
+            usdPlus: vm.envAddress("USDPLUS_ADDRESS"),
+            initialPaymentRecipient: vm.envAddress("PAYMENT_RECIPIENT_ADDRESS"),
+            initialOwner: vm.envAddress("OWNER_ADDRESS"),
+            upgrader: vm.envAddress("UPGRADER_ADDRESS"),
+            version: version
+        });
+    }
+
+    function _getUsdPlusInitialParams(string memory version)
+        internal
+        view
+        returns (InitializeParams.UsdPlusInitializeParams memory)
+    {
+        return InitializeParams.UsdPlusInitializeParams({
             initialTreasury: vm.envAddress("TREASURY_ADDRESS"),
             initialTransferRestrictor: vm.envAddress("TRANSFER_RESTRICTOR"),
+            initialOwner: vm.envAddress("OWNER_ADDRESS"),
+            upgrader: vm.envAddress("UPGRADER_ADDRESS"),
+            version: version
+        });
+    }
+
+    function _getCCIPWaypointInitialParams(string memory version)
+        internal
+        view
+        returns (InitializeParams.CCIPWaypointInitializeParams memory)
+    {
+        return InitializeParams.CCIPWaypointInitializeParams({
+            usdPlus: vm.envAddress("USDPLUS_ADDRESS"),
+            router: vm.envAddress("ROUTER_ADDRESS"),
+            initialOwner: vm.envAddress("OWNER_ADDRESS"),
+            upgrader: vm.envAddress("UPGRADER_ADDRESS"),
+            version: version
+        });
+    }
+
+    function _getUsdPlusRedeemerInitialParams(string memory version)
+        internal
+        view
+        returns (InitializeParams.UsdPlusRedeemerInitializeParams memory)
+    {
+        return InitializeParams.UsdPlusRedeemerInitializeParams({
+            usdPlus: vm.envAddress("USDPLUS_ADDRESS"),
+            initialOwner: vm.envAddress("OWNER_ADDRESS"),
+            upgrader: vm.envAddress("UPGRADER_ADDRESS"),
+            version: version
+        });
+    }
+
+    function _getWrappedUsdPlusInitialParams(string memory version)
+        internal
+        view
+        returns (InitializeParams.WrappedUsdPlusInitializeParams memory)
+    {
+        return InitializeParams.WrappedUsdPlusInitializeParams({
+            usdplus: vm.envAddress("USDPLUS_ADDRESS"),
+            initialOwner: vm.envAddress("OWNER_ADDRESS"),
+            upgrader: vm.envAddress("UPGRADER_ADDRESS"),
+            version: version
+        });
+    }
+
+    function _getTransferRestrictorInitialParams(string memory version)
+        internal
+        view
+        returns (InitializeParams.TransferRestrictorInitializeParams memory)
+    {
+        return InitializeParams.TransferRestrictorInitializeParams({
             initialOwner: vm.envAddress("OWNER_ADDRESS"),
             upgrader: vm.envAddress("UPGRADER_ADDRESS"),
             version: version
@@ -96,15 +352,14 @@ contract DeployHelper is Script {
         return rawValue.length > 0;
     }
 
-    function _readParamsFromJson(string memory json, string memory initKey, string memory version)
+    function _readUsdPlusParamsFromJson(string memory json, string memory initKey, string memory version)
         internal
         pure
-        returns (InitializeParams memory)
+        returns (InitializeParams.UsdPlusInitializeParams memory)
     {
-        InitializeParams memory params;
+        InitializeParams.UsdPlusInitializeParams memory params;
         params.version = version;
 
-        // Try to read each parameter
         bytes memory rawValue = json.parseRaw(string.concat(initKey, ".initialTreasury"));
         if (rawValue.length > 0) {
             params.initialTreasury = _parseAddress(abi.decode(rawValue, (string)));
@@ -116,6 +371,141 @@ contract DeployHelper is Script {
         }
 
         rawValue = json.parseRaw(string.concat(initKey, ".initialOwner"));
+        if (rawValue.length > 0) {
+            params.initialOwner = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".upgrader"));
+        if (rawValue.length > 0) {
+            params.upgrader = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        return params;
+    }
+
+    function _readUsdPlusMinterParamsFromJson(string memory json, string memory initKey, string memory version)
+        internal
+        pure
+        returns (InitializeParams.UsdPlusMinterInitializeParams memory)
+    {
+        InitializeParams.UsdPlusMinterInitializeParams memory params;
+        params.version = version;
+
+        bytes memory rawValue = json.parseRaw(string.concat(initKey, ".usdPlus"));
+        if (rawValue.length > 0) {
+            params.usdPlus = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".initialPaymentRecipient"));
+        if (rawValue.length > 0) {
+            params.initialPaymentRecipient = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".initialOwner"));
+        if (rawValue.length > 0) {
+            params.initialOwner = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".upgrader"));
+        if (rawValue.length > 0) {
+            params.upgrader = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        return params;
+    }
+
+    function _readUsdPlusRedeemerParamsFromJson(string memory json, string memory initKey, string memory version)
+        internal
+        pure
+        returns (InitializeParams.UsdPlusRedeemerInitializeParams memory)
+    {
+        InitializeParams.UsdPlusRedeemerInitializeParams memory params;
+        params.version = version;
+
+        bytes memory rawValue = json.parseRaw(string.concat(initKey, ".usdPlus"));
+        if (rawValue.length > 0) {
+            params.usdPlus = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".initialOwner"));
+        if (rawValue.length > 0) {
+            params.initialOwner = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".upgrader"));
+        if (rawValue.length > 0) {
+            params.upgrader = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        return params;
+    }
+
+    function _readWrappedUsdPlusParamsFromJson(string memory json, string memory initKey, string memory version)
+        internal
+        pure
+        returns (InitializeParams.WrappedUsdPlusInitializeParams memory)
+    {
+        InitializeParams.WrappedUsdPlusInitializeParams memory params;
+        params.version = version;
+
+        bytes memory rawValue = json.parseRaw(string.concat(initKey, ".usdplus"));
+        if (rawValue.length > 0) {
+            params.usdplus = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".initialOwner"));
+        if (rawValue.length > 0) {
+            params.initialOwner = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".upgrader"));
+        if (rawValue.length > 0) {
+            params.upgrader = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        return params;
+    }
+
+    function _readCCIPWaypointParamsFromJson(string memory json, string memory initKey, string memory version)
+        internal
+        pure
+        returns (InitializeParams.CCIPWaypointInitializeParams memory)
+    {
+        InitializeParams.CCIPWaypointInitializeParams memory params;
+        params.version = version;
+
+        bytes memory rawValue = json.parseRaw(string.concat(initKey, ".usdPlus"));
+        if (rawValue.length > 0) {
+            params.usdPlus = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".router"));
+        if (rawValue.length > 0) {
+            params.router = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".initialOwner"));
+        if (rawValue.length > 0) {
+            params.initialOwner = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        rawValue = json.parseRaw(string.concat(initKey, ".upgrader"));
+        if (rawValue.length > 0) {
+            params.upgrader = _parseAddress(abi.decode(rawValue, (string)));
+        }
+
+        return params;
+    }
+
+    function _readTransferRestrictorParamsFromJson(string memory json, string memory initKey, string memory version)
+        internal
+        pure
+        returns (InitializeParams.TransferRestrictorInitializeParams memory)
+    {
+        InitializeParams.TransferRestrictorInitializeParams memory params;
+        params.version = version;
+
+        bytes memory rawValue = json.parseRaw(string.concat(initKey, ".initialOwner"));
         if (rawValue.length > 0) {
             params.initialOwner = _parseAddress(abi.decode(rawValue, (string)));
         }
@@ -152,20 +542,47 @@ contract DeployHelper is Script {
         return address(uint160(result));
     }
 
-    // Rest of the helper functions remain the same...
-    function getInitializeCalldata(InitializeParams memory params) public pure returns (bytes memory) {
-        return abi.encodeWithSignature(
-            "initialize(address,address,address,address,string)",
-            params.initialTreasury,
-            params.initialTransferRestrictor,
-            params.initialOwner,
-            params.upgrader,
-            params.version
-        );
+    function getInitializeCalldata(string memory contractName, bytes memory params)
+        public
+        pure
+        returns (bytes memory)
+    {
+        bytes32 contractHash = keccak256(bytes(contractName));
+
+        if (contractHash == keccak256(bytes("UsdPlus"))) {
+            return abi.encodeWithSignature("initialize(address,address,address,address)", params);
+        } else if (contractHash == keccak256(bytes("CCIPWaypoint"))) {
+            return abi.encodeWithSignature("initialize(address,address,address,address)", params);
+        } else if (contractHash == keccak256(bytes("UsdPlusMinter"))) {
+            return abi.encodeWithSignature("initialize(address,address,address,address)", params);
+        } else if (contractHash == keccak256(bytes("UsdPlusRedeemer"))) {
+            return abi.encodeWithSignature("initialize(address,address,address)", params);
+        } else if (contractHash == keccak256(bytes("WrappedUsdPlus"))) {
+            return abi.encodeWithSignature("initialize(address,address,address)", params);
+        } else if (contractHash == keccak256(bytes("TransferRestrictor"))) {
+            return abi.encodeWithSignature("initialize(address,address)", params);
+        }
+        revert UnsupportedContract(contractName);
     }
 
-    function getReinitializeCalldata(InitializeParams memory params) public pure returns (bytes memory) {
-        return abi.encodeWithSignature("reinitialize(address,string)", params.upgrader, params.version);
+    function getReinitializeCalldata(string memory contractName, bytes memory params)
+        public
+        pure
+        returns (bytes memory)
+    {
+        bytes32 contractHash = keccak256(bytes(contractName));
+
+        if (contractHash == keccak256(bytes("CCIPWaypoint"))) {
+            InitializeParams.CCIPWaypointInitializeParams memory ccipParams =
+                abi.decode(params, (InitializeParams.CCIPWaypointInitializeParams));
+            return
+                abi.encodeWithSignature("reinitialize(address,address)", ccipParams.initialOwner, ccipParams.upgrader);
+        }
+
+        // All other contracts just need upgrader
+        InitializeParams.BaseInitializeParams memory baseParams =
+            abi.decode(params, (InitializeParams.BaseInitializeParams));
+        return abi.encodeWithSignature("reinitialize(address)", baseParams.upgrader);
     }
 
     function _validateAddress(string memory name, address value) internal pure {

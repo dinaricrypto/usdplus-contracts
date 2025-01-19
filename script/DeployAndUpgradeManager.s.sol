@@ -8,6 +8,7 @@ import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol
 import {DeployHelper} from "./DeployHelper.sol";
 import {JsonHandler} from "./JsonHandler.sol";
 import {stdJson} from "forge-std/StdJson.sol";
+import {InitializeParams} from "./InitializeParams.sol";
 
 contract DeployAndUpgradeManager is Script {
     using stdJson for string;
@@ -167,10 +168,10 @@ contract DeployAndUpgradeManager is Script {
         address implementation = _deployImplementation(contractName);
 
         // Get initialization parameters from helper
-        DeployHelper.InitializeParams memory params = helper.getInitializeParams(contractName, version, environment);
+        bytes memory params = helper.getInitializeParams(contractName, version, environment);
 
         // Get initialization data using helper
-        bytes memory initData = helper.getInitializeCalldata(params);
+        bytes memory initData = helper.getInitializeCalldata(contractName, params);
 
         // Deploy proxy
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, initData);
@@ -179,7 +180,7 @@ contract DeployAndUpgradeManager is Script {
 
         vm.stopBroadcast();
 
-        return DeploymentConfig({implementation: implementation, proxy: address(proxy), version: params.version});
+        return DeploymentConfig({implementation: implementation, proxy: address(proxy), version: version});
     }
 
     function _upgrade(
@@ -188,7 +189,11 @@ contract DeployAndUpgradeManager is Script {
         string memory version,
         string memory environment
     ) internal returns (DeploymentConfig memory config) {
-        DeployHelper.InitializeParams memory params = helper.getInitializeParams(contractName, version, environment);
+        // Get initialization parameters from helper
+        bytes memory params = helper.getInitializeParams(contractName, version, environment);
+
+        // Get reinitialization data
+        bytes memory initData = helper.getReinitializeCalldata(contractName, params);
 
         // deploy new implementation
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_KEY");
@@ -198,14 +203,12 @@ contract DeployAndUpgradeManager is Script {
 
         ControlledUpgradeable proxy = ControlledUpgradeable(proxyAddress);
 
-        bytes memory initData = helper.getReinitializeCalldata(params);
-
         uint256 upgraderPrivateKey = vm.envUint("DEPLOYER_KEY");
         vm.startBroadcast(upgraderPrivateKey);
         proxy.upgradeToAndCall(newImplementation, initData);
         vm.stopBroadcast();
 
-        return DeploymentConfig({implementation: newImplementation, proxy: address(proxy), version: params.version});
+        return DeploymentConfig({implementation: newImplementation, proxy: address(proxy), version: version});
     }
 
     function _deployImplementation(string memory contractName) internal returns (address) {
