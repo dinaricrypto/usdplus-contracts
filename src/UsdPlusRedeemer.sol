@@ -14,8 +14,13 @@ import {SelfPermit} from "./SelfPermit.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
-// TODO: remove owner from redeem request calls
-contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit, PausableUpgradeable {
+contract UsdPlusRedeemer is
+    IUsdPlusRedeemer,
+    UUPSUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable,
+    SelfPermit,
+    PausableUpgradeable
+{
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
@@ -23,6 +28,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
     error ZeroAmount();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
+    bytes32 public constant PROXY_ROLE = keccak256("PROXY_ROLE");
 
     /// ------------------ Storage ------------------
 
@@ -175,7 +181,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         address receiver,
         address owner
     ) internal returns (uint256 ticket) {
-        if (msg.sender != owner) {
+        if (msg.sender != owner && !hasRole(PROXY_ROLE, msg.sender)) {
             revert UnauthorizedRedeemer();
         }
 
@@ -186,7 +192,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         }
 
         $._requests[ticket] = Request({
-            owner: msg.sender,
+            owner: owner,
             receiver: receiver,
             paymentToken: paymentToken,
             paymentTokenAmount: paymentTokenAmount,
@@ -195,7 +201,8 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
 
         emit RequestCreated(ticket, receiver, paymentToken, paymentTokenAmount, usdplusAmount);
 
-        IERC20($._usdplus).safeTransferFrom(msg.sender, address(this), usdplusAmount);
+        // slither-disable-next-line arbitrary-send-erc20
+        IERC20($._usdplus).safeTransferFrom(owner, address(this), usdplusAmount);
 
         UsdPlus($._usdplus).burn(address(this), usdplusAmount);
     }
