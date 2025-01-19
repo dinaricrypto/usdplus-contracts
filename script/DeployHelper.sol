@@ -120,12 +120,11 @@ contract DeployHelper is Script {
         _validateAddress("upgrader", params.upgrader);
 
         return abi.encodeWithSignature(
-            "initialize(address,address,address,address,string)",
+            "initialize(address,address,address,address)",
             params.usdPlus,
             params.initialPaymentRecipient,
             params.initialOwner,
-            params.upgrader,
-            params.version
+            params.upgrader
         );
     }
 
