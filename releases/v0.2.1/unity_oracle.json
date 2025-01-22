@@ -8,8 +8,7 @@
       "42161": "0x497d6CEDE7C59CB97Bf1593A742C43BB647a8eDa",
       "8453": "0xba16CA497a2e3eD1D2559636FeDDf99757E0B945"
     },
-    "staging": {
-    }
+    "staging": {}
   },
   "abi": [
     {
