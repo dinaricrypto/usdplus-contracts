@@ -1,44 +1,18 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.8.23;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
 
 import {Script} from "forge-std/Script.sol";
-import {console2} from "forge-std/console2.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
+import {console} from "forge-std/console.sol";
 
-contract DeployAndUpgradeManager is Script {
+contract DeployManager is Script {
     using stdJson for string;
 
-    struct ContractConfig {
+    struct DeploymentConfig {
         string version;
-        ChainConfig[] chainConfigs;
-        DeploymentInfo[] deployments;
-    }
-
-    struct ChainConfig {
-        uint256 chainId;
-        InitParams params;
-    }
-
-    struct DeploymentInfo {
-        string environment;
-        ChainDeployment[] chainDeployments;
-    }
-
-    struct ChainDeployment {
-        uint256 chainId;
-        address proxyAddress;
-    }
-
-    struct InitParams {
-        address treasury;
-        address transferRestrictor;
-        address usdPlus;
-        address router;
-        address paymentRecipient;
-        address owner;
-        address upgrader;
+        mapping(string => mapping(uint256 => address)) deployments; // environment -> chainId -> address
     }
 
     function run() external {
@@ -47,431 +21,255 @@ contract DeployAndUpgradeManager is Script {
         string memory environment = vm.envString("ENVIRONMENT");
         uint256 chainId = block.chainid;
 
-        // Get config path
-        string memory configPath = _getConfigPath(contractName, version);
+        require(bytes(contractName).length > 0, "CONTRACT_NAME not set");
+        require(bytes(version).length > 0, "VERSION not set");
+        require(bytes(environment).length > 0, "ENVIRONMENT not set");
 
-        // Load and deserialize config
-        ContractConfig memory config = _deserializeConfig(configPath);
+        // Load chain-specific config
+        string memory configPath = string.concat("releases/config/", vm.toString(chainId), ".json");
+        string memory configJson = vm.readFile(configPath);
+        bytes memory initParams = configJson.parseRaw(string.concat(".", contractName));
 
-        // Get initialization params for this chain
-        InitParams memory params = _getChainParams(config, chainId);
-        if (params.owner == address(0)) {
-            // If no config found, try to get from env
-            params = InitParams({
-                treasury: _safeGetEnvAddress("TREASURY_ADDRESS"),
-                transferRestrictor: _safeGetEnvAddress("TRANSFER_RESTRICTOR"),
-                usdPlus: _safeGetEnvAddress("USDPLUS_ADDRESS"),
-                router: _safeGetEnvAddress("ROUTER_ADDRESS"),
-                paymentRecipient: _safeGetEnvAddress("PAYMENT_RECIPIENT_ADDRESS"),
-                owner: _safeGetEnvAddress("OWNER_ADDRESS"),
-                upgrader: _safeGetEnvAddress("UPGRADER_ADDRESS")
-            });
-            require(params.owner != address(0), "Owner address not set in config or env");
-        }
+        // Check existing deployment
+        address existingAddr = _getExistingDeployment(contractName, version, environment, chainId);
+        address proxyAddress;
 
-        // Get existing deployment if any
-        address proxyAddress = _getDeployedProxy(config, environment, chainId);
-
-        // Deploy implementation
-        address implementation = _deployImplementation(contractName);
-
-        uint256 deployerKey = vm.envUint("DEPLOYER_KEY");
-        vm.startBroadcast(deployerKey);
-
-        if (proxyAddress == address(0)) {
-            // New deployment
-            bytes memory initData = _encodeInitData(contractName, params, false);
-            proxyAddress = address(new ERC1967Proxy(implementation, initData));
-            require(proxyAddress != address(0), "Proxy deployment failed");
-
-            // Update config
-            _updateConfig(configPath, config, environment, chainId, proxyAddress);
-
-            console2.log("\nNew deployment:");
+        vm.startBroadcast();
+        if (existingAddr != address(0)) {
+            bytes memory upgradeData = _getInitData(contractName, initParams, true);
+            proxyAddress = _upgradeContract(contractName, existingAddr, upgradeData);
         } else {
-            // Upgrade
-            bytes memory initData = _encodeInitData(contractName, params, true);
-            ControlledUpgradeable proxy = ControlledUpgradeable(proxyAddress);
-            proxy.upgradeToAndCall(implementation, initData);
-
-            console2.log("\nUpgrade:");
+            bytes memory initData = _getInitData(contractName, initParams, false);
+            proxyAddress = _deployNewContract(contractName, initData);
         }
-
         vm.stopBroadcast();
 
-        console2.log("Contract:", contractName);
-        console2.log("Implementation:", implementation);
-        console2.log("Proxy:", proxyAddress);
-        console2.log("Version:", version);
-        console2.log("Chain ID:", chainId);
+        _recordDeployment(contractName, version, environment, chainId, proxyAddress);
     }
 
-    function _deserializeConfig(string memory path) internal returns (ContractConfig memory) {
-        // Create directory first
-        (uint8 major,) = _parseVersion(vm.envString("VERSION"));
-        string memory dir = string.concat(vm.projectRoot(), "/releases/v", vm.toString(major));
-        vm.createDir(dir, true);
-
-        string memory json;
-        try vm.readFile(path) returns (string memory existingJson) {
-            if (bytes(existingJson).length > 0) {
-                json = existingJson;
-            } else {
-                json = _createInitialJson();
-                vm.writeFile(path, json);
-            }
-        } catch {
-            json = _createInitialJson();
-            vm.writeFile(path, json);
-        }
-
-        ContractConfig memory config;
-        config.version = abi.decode(json.parseRaw(".version"), (string));
-
-        // Parse chain configs
-        bytes memory chainsRaw = json.parseRaw(".config");
-        if (chainsRaw.length > 0) {
-            string[] memory chainIds = abi.decode(chainsRaw, (string[]));
-            config.chainConfigs = new ChainConfig[](chainIds.length);
-
-            for (uint256 i = 0; i < chainIds.length; i++) {
-                uint256 chainId = vm.parseUint(chainIds[i]);
-                bytes memory paramsRaw = json.parseRaw(string.concat(".config.", chainIds[i]));
-
-                InitParams memory params;
-                params.treasury = abi.decode(vm.parseJson(string(paramsRaw), ".treasury"), (address));
-                params.transferRestrictor =
-                    abi.decode(vm.parseJson(string(paramsRaw), ".transferRestrictor"), (address));
-                params.usdPlus = abi.decode(vm.parseJson(string(paramsRaw), ".usdPlus"), (address));
-                params.router = abi.decode(vm.parseJson(string(paramsRaw), ".router"), (address));
-                params.paymentRecipient = abi.decode(vm.parseJson(string(paramsRaw), ".paymentRecipient"), (address));
-                params.owner = abi.decode(vm.parseJson(string(paramsRaw), ".owner"), (address));
-                params.upgrader = abi.decode(vm.parseJson(string(paramsRaw), ".upgrader"), (address));
-
-                config.chainConfigs[i] = ChainConfig({chainId: chainId, params: params});
-            }
-        } else {
-            // If no chain configs exist, create one for current chain
-            config.chainConfigs = new ChainConfig[](1);
-            config.chainConfigs[0] = ChainConfig({
-                chainId: block.chainid,
-                params: InitParams({
-                    treasury: _safeGetEnvAddress("TREASURY_ADDRESS"),
-                    transferRestrictor: _safeGetEnvAddress("TRANSFER_RESTRICTOR"),
-                    usdPlus: _safeGetEnvAddress("USDPLUS_ADDRESS"),
-                    router: _safeGetEnvAddress("ROUTER_ADDRESS"),
-                    paymentRecipient: _safeGetEnvAddress("PAYMENT_RECIPIENT_ADDRESS"),
-                    owner: _safeGetEnvAddress("OWNER_ADDRESS"),
-                    upgrader: _safeGetEnvAddress("UPGRADER_ADDRESS")
-                })
-            });
-            // Update the json file with the new config
-            json = _addChainConfig(json, block.chainid, config.chainConfigs[0].params);
-            vm.writeFile(path, json);
-        }
-
-        return config;
-    }
-
-    function _safeGetEnvAddress(string memory key) internal view returns (address) {
-        try vm.envAddress(key) returns (address value) {
-            return value;
-        } catch {
-            return address(0);
-        }
-    }
-
-    function _getChainParams(ContractConfig memory config, uint256 chainId) internal pure returns (InitParams memory) {
-        for (uint256 i = 0; i < config.chainConfigs.length; i++) {
-            if (config.chainConfigs[i].chainId == chainId) {
-                return config.chainConfigs[i].params;
-            }
-        }
-        return InitParams(address(0), address(0), address(0), address(0), address(0), address(0), address(0));
-    }
-
-    function _getDeployedProxy(ContractConfig memory config, string memory environment, uint256 chainId)
-        internal
-        pure
-        returns (address)
-    {
-        for (uint256 i = 0; i < config.deployments.length; i++) {
-            if (keccak256(bytes(config.deployments[i].environment)) == keccak256(bytes(environment))) {
-                for (uint256 j = 0; j < config.deployments[i].chainDeployments.length; j++) {
-                    if (config.deployments[i].chainDeployments[j].chainId == chainId) {
-                        return config.deployments[i].chainDeployments[j].proxyAddress;
-                    }
-                }
-            }
-        }
-        return address(0);
-    }
-
-    function _updateConfig(
-        string memory path,
-        ContractConfig memory config,
-        string memory environment,
-        uint256 chainId,
-        address proxyAddress
-    ) internal {
-        bool found = false;
-        // Update existing deployment if found
-        for (uint256 i = 0; i < config.deployments.length; i++) {
-            if (keccak256(bytes(config.deployments[i].environment)) == keccak256(bytes(environment))) {
-                bool chainFound = false;
-                for (uint256 j = 0; j < config.deployments[i].chainDeployments.length; j++) {
-                    if (config.deployments[i].chainDeployments[j].chainId == chainId) {
-                        config.deployments[i].chainDeployments[j].proxyAddress = proxyAddress;
-                        chainFound = true;
-                        break;
-                    }
-                }
-                if (!chainFound) {
-                    // Add new chain deployment
-                    uint256 newLength = config.deployments[i].chainDeployments.length + 1;
-                    ChainDeployment[] memory newDeployments = new ChainDeployment[](newLength);
-                    for (uint256 j = 0; j < config.deployments[i].chainDeployments.length; j++) {
-                        newDeployments[j] = config.deployments[i].chainDeployments[j];
-                    }
-                    newDeployments[newLength - 1] = ChainDeployment({chainId: chainId, proxyAddress: proxyAddress});
-                    config.deployments[i].chainDeployments = newDeployments;
-                }
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
-            // Add new environment with deployment
-            uint256 newLength = config.deployments.length + 1;
-            DeploymentInfo[] memory newDeployments = new DeploymentInfo[](newLength);
-            for (uint256 i = 0; i < config.deployments.length; i++) {
-                newDeployments[i] = config.deployments[i];
-            }
-            ChainDeployment[] memory chainDeployments = new ChainDeployment[](1);
-            chainDeployments[0] = ChainDeployment({chainId: chainId, proxyAddress: proxyAddress});
-            newDeployments[newLength - 1] =
-                DeploymentInfo({environment: environment, chainDeployments: chainDeployments});
-            config.deployments = newDeployments;
-        }
-
-        _serializeConfig(path, config);
-    }
-
-    function _serializeConfig(string memory path, ContractConfig memory config) internal {
-        string memory json = string(
-            abi.encodePacked(
-                "{",
-                '"version":"',
-                config.version,
-                '",',
-                '"config":{',
-                _serializeChainConfigs(config.chainConfigs),
-                "},",
-                '"deployments":{',
-                _serializeDeployments(config.deployments),
-                "}" "}"
-            )
-        );
-        vm.writeFile(path, json);
-    }
-
-    function _serializeChainConfigs(ChainConfig[] memory configs) internal pure returns (string memory) {
-        string memory result = "";
-        for (uint256 i = 0; i < configs.length; i++) {
-            result = string.concat(
-                result,
-                i > 0 ? "," : "",
-                '"',
-                vm.toString(configs[i].chainId),
-                '":{',
-                _serializeInitParams(configs[i].params),
-                "}"
-            );
-        }
-        return result;
-    }
-
-    function _serializeInitParams(InitParams memory params) internal pure returns (string memory) {
-        return string(
-            abi.encodePacked(
-                '"treasury":"',
-                vm.toString(params.treasury),
-                '",',
-                '"transferRestrictor":"',
-                vm.toString(params.transferRestrictor),
-                '",',
-                '"usdPlus":"',
-                vm.toString(params.usdPlus),
-                '",',
-                '"router":"',
-                vm.toString(params.router),
-                '",',
-                '"paymentRecipient":"',
-                vm.toString(params.paymentRecipient),
-                '",',
-                '"owner":"',
-                vm.toString(params.owner),
-                '",',
-                '"upgrader":"',
-                vm.toString(params.upgrader),
-                '"'
-            )
-        );
-    }
-
-    function _serializeDeployments(DeploymentInfo[] memory deployments) internal pure returns (string memory) {
-        string memory result = "";
-        for (uint256 i = 0; i < deployments.length; i++) {
-            result = string.concat(
-                result,
-                i > 0 ? "," : "",
-                '"',
-                deployments[i].environment,
-                '":{',
-                _serializeChainDeployments(deployments[i].chainDeployments),
-                "}"
-            );
-        }
-        return result;
-    }
-
-    function _serializeChainDeployments(ChainDeployment[] memory deployments) internal pure returns (string memory) {
-        string memory result = "";
-        for (uint256 i = 0; i < deployments.length; i++) {
-            result = string.concat(
-                result,
-                i > 0 ? "," : "",
-                '"',
-                vm.toString(deployments[i].chainId),
-                '":"',
-                vm.toString(deployments[i].proxyAddress),
-                '"'
-            );
-        }
-        return result;
-    }
-
-    function _encodeInitData(string memory contractName, InitParams memory params, bool isUpgrade)
+    function _getInitData(string memory contractName, bytes memory params, bool isUpgrade)
         internal
         pure
         returns (bytes memory)
     {
-        if (isUpgrade) {
-            return abi.encodeWithSignature("reinitialize(address)", params.upgrader);
+        bytes32 nameHash = keccak256(bytes(contractName));
+
+        if (nameHash == keccak256(bytes("UsdPlus"))) {
+            return _handleUsdPlus(params, isUpgrade);
         }
-
-        bytes32 contractHash = keccak256(bytes(contractName));
-
-        if (contractHash == keccak256(bytes("UsdPlus"))) {
-            return abi.encodeWithSignature(
-                "initialize(address,address,address,address)",
-                params.treasury,
-                params.transferRestrictor,
-                params.owner,
-                params.upgrader
-            );
-        } else if (contractHash == keccak256(bytes("CCIPWaypoint"))) {
-            return abi.encodeWithSignature(
-                "initialize(address,address,address,address)",
-                params.usdPlus,
-                params.router,
-                params.owner,
-                params.upgrader
-            );
-        } else if (contractHash == keccak256(bytes("UsdPlusMinter"))) {
-            return abi.encodeWithSignature(
-                "initialize(address,address,address,address)",
-                params.usdPlus,
-                params.paymentRecipient,
-                params.owner,
-                params.upgrader
-            );
-        } else if (contractHash == keccak256(bytes("UsdPlusRedeemer"))) {
-            return abi.encodeWithSignature(
-                "initialize(address,address,address)", params.usdPlus, params.owner, params.upgrader
-            );
-        } else if (contractHash == keccak256(bytes("WrappedUsdPlus"))) {
-            return abi.encodeWithSignature(
-                "initialize(address,address,address)", params.usdPlus, params.owner, params.upgrader
-            );
-        } else if (contractHash == keccak256(bytes("TransferRestrictor"))) {
-            return abi.encodeWithSignature("initialize(address,address)", params.owner, params.upgrader);
+        if (nameHash == keccak256(bytes("TransferRestrictor"))) {
+            return _handleTransferRestrictor(params, isUpgrade);
         }
-
-        revert("Unsupported contract");
+        if (nameHash == keccak256(bytes("CCIPWaypoint"))) {
+            return _handleCCIPWaypoint(params, isUpgrade);
+        }
+        if (nameHash == keccak256(bytes("UsdPlusMinter"))) {
+            return _handleUsdPlusMinter(params, isUpgrade);
+        }
+        if (nameHash == keccak256(bytes("UsdPlusRedeemer"))) {
+            return _handleUsdPlusRedeemer(params, isUpgrade);
+        }
+        revert(string.concat("Unsupported contract: ", contractName));
     }
 
+    function _handleUsdPlus(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+        if (isUpgrade) {
+            address upgrader = abi.decode(params, (address));
+            return abi.encodeWithSignature("reinitialize(address)", upgrader);
+        }
+
+        (address treasury, address restrictor, address owner, address upgrader) =
+            abi.decode(params, (address, address, address, address));
+        return abi.encodeWithSignature(
+            "initialize(address,address,address,address)", treasury, restrictor, owner, upgrader
+        );
+    }
+
+    function _handleTransferRestrictor(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+        if (isUpgrade) return bytes(""); // No reinitialization needed
+
+        (address owner, address upgrader) = abi.decode(params, (address, address));
+        return abi.encodeWithSignature("initialize(address,address)", owner, upgrader);
+    }
+
+    function _handleCCIPWaypoint(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+        if (isUpgrade) {
+            address upgrader = abi.decode(params, (address));
+            return abi.encodeWithSignature("reinitialize(address)", upgrader);
+        }
+
+        (address usdPlus, address router, address owner, address upgrader) =
+            abi.decode(params, (address, address, address, address));
+        return abi.encodeWithSignature("initialize(address,address,address,address)", usdPlus, router, owner, upgrader);
+    }
+
+    function _handleUsdPlusMinter(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+        if (isUpgrade) {
+            address upgrader = abi.decode(params, (address));
+            return abi.encodeWithSignature("reinitialize(address)", upgrader);
+        }
+
+        (address usdPlus, address paymentRecipient, address owner, address upgrader) =
+            abi.decode(params, (address, address, address, address));
+        return abi.encodeWithSignature(
+            "initialize(address,address,address,address)", usdPlus, paymentRecipient, owner, upgrader
+        );
+    }
+
+    function _handleUsdPlusRedeemer(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+        if (isUpgrade) {
+            address upgrader = abi.decode(params, (address));
+            return abi.encodeWithSignature("reinitialize(address)", upgrader);
+        }
+
+        (address usdPlus, address owner, address upgrader) = abi.decode(params, (address, address, address));
+        return abi.encodeWithSignature("initialize(address,address,address)", usdPlus, owner, upgrader);
+    }
+
+    function _deployNewContract(string memory contractName, bytes memory initData) internal returns (address) {
+        address implementation = _deployImplementation(contractName);
+        ERC1967Proxy proxy = new ERC1967Proxy(implementation, initData);
+        console.log("Deployed %s at %s", contractName, address(proxy));
+        return address(proxy);
+    }
+
+    function _upgradeContract(string memory contractName, address proxyAddress, bytes memory upgradeData)
+        internal
+        returns (address)
+    {
+        address implementation = _deployImplementation(contractName);
+        if (upgradeData.length > 0) {
+            ControlledUpgradeable(payable(proxyAddress)).upgradeToAndCall(implementation, upgradeData);
+        } else {
+            revert ("Upgrade data not provided");
+        }
+        console.log("Upgraded %s at %s", contractName, proxyAddress);
+        return proxyAddress;
+    }
+
+    // Helper functions remain similar to previous implementation
     function _deployImplementation(string memory contractName) internal returns (address) {
-        bytes memory bytecode =
-            abi.encodePacked(vm.getCode(string.concat("out/", contractName, ".sol/", contractName, ".json")));
+        bytes memory creationCode = vm.getCode(string.concat(contractName, ".sol:", contractName));
+        require(creationCode.length > 0, string.concat("Contract code not found: ", contractName));
+
         address implementation;
         assembly {
-            implementation := create(0, add(bytecode, 0x20), mload(bytecode))
+            implementation := create(0, add(creationCode, 0x20), mload(creationCode))
         }
+        require(implementation != address(0), "Implementation deployment failed");
         return implementation;
     }
 
-    function _getConfigPath(string memory contractName, string memory version) internal view returns (string memory) {
-        (uint8 major,) = _parseVersion(version);
-        return string.concat(
-            vm.projectRoot(), "/releases/v", vm.toString(major), "/", _toLowerSnakeCase(contractName), ".json"
-        );
+    function _getExistingDeployment(
+        string memory contractName,
+        string memory currentVersion,
+        string memory environment,
+        uint256 chainId
+    ) internal returns (address) {
+        string memory prevVersion = _getPreviousVersion(currentVersion);
+        if (bytes(prevVersion).length == 0) return address(0);
+
+        string memory prevDeploymentPath = string.concat("releases/", prevVersion, "/", contractName, ".json");
+        if (!vm.exists(prevDeploymentPath)) return address(0);
+
+        string memory prevJson = vm.readFile(prevDeploymentPath);
+        return prevJson.readAddress(string.concat(".deployments.", environment, ".", vm.toString(chainId)));
     }
 
-    function _parseVersion(string memory version) internal pure returns (uint8 major, uint8 minor) {
-        bytes memory versionBytes = bytes(version);
-        uint256 pos = 0;
+    function _recordDeployment(
+        string memory contractName,
+        string memory version,
+        string memory environment,
+        uint256 chainId,
+        address deployedAddress
+    ) internal {
+        string memory releaseDir = string.concat("releases/", version, "/");
+        vm.createDir(releaseDir, true);
 
-        while (pos < versionBytes.length && versionBytes[pos] != ".") {
-            major = major * 10 + uint8(uint8(versionBytes[pos]) - 48);
-            pos++;
+        string memory deploymentPath = string.concat(releaseDir, contractName, ".json");
+        string memory json = vm.exists(deploymentPath) ? vm.readFile(deploymentPath) : "{}";
+
+        json = vm.serializeAddress(
+            json, string.concat(".deployments.", environment, ".", vm.toString(chainId)), deployedAddress
+        );
+        json = vm.serializeString(json, ".version", version);
+        vm.writeJson(json, deploymentPath);
+    }
+
+    function _getPreviousVersion(string memory currentVersion) internal pure returns (string memory) {
+        bytes memory versionBytes = bytes(currentVersion);
+        uint256 length = versionBytes.length;
+
+        // Basic format validation
+        if (length < 5 || versionBytes[0] != "v") return "";
+        if (versionBytes[1] == "." || versionBytes[length - 1] == ".") return "";
+
+        // Find dot positions
+        uint8[2] memory dotPositions;
+        uint8 dotCount = 0;
+        for (uint256 i = 1; i < length; i++) {
+            if (versionBytes[i] == ".") {
+                if (dotCount >= 2) return "";
+                dotPositions[dotCount] = uint8(i);
+                dotCount++;
+            }
         }
-        pos++;
+        if (dotCount != 2) return "";
 
-        while (pos < versionBytes.length && versionBytes[pos] != ".") {
-            minor = minor * 10 + uint8(uint8(versionBytes[pos]) - 48);
-            pos++;
+        // Extract version components
+        uint256 major = _parseVersionComponent(versionBytes, 1, dotPositions[0]);
+        uint256 minor = _parseVersionComponent(versionBytes, dotPositions[0] + 1, dotPositions[1]);
+        uint256 patch = _parseVersionComponent(versionBytes, dotPositions[1] + 1, length);
+
+        // Decrement logic
+        if (patch > 0) {
+            patch--;
+        } else {
+            if (minor > 0) {
+                minor--;
+                patch = 9; // Assuming max patch version 9 per your example
+            } else {
+                if (major > 0) {
+                    major--;
+                    minor = 9;
+                    patch = 9;
+                } else {
+                    return ""; // Can't decrement below v0.0.0
+                }
+            }
         }
+
+        // Reconstruct previous version
+        return string(abi.encodePacked("v", _uintToString(major), ".", _uintToString(minor), ".", _uintToString(patch)));
     }
 
-    function _toLowerSnakeCase(string memory input) internal pure returns (string memory) {
-        bytes memory inputBytes = bytes(input);
-        bytes memory result = new bytes(inputBytes.length);
-
-        for (uint256 i = 0; i < inputBytes.length; i++) {
-            bytes1 char = inputBytes[i];
-            result[i] = char >= 0x41 && char <= 0x5A ? bytes1(uint8(char) + 32) : char;
+    // Helper function to parse version components
+    function _parseVersionComponent(bytes memory version, uint256 start, uint256 end) private pure returns (uint256) {
+        uint256 result = 0;
+        for (uint256 i = start; i < end; i++) {
+            if (version[i] < "0" || version[i] > "9") return 0;
+            result = result * 10 + (uint256(uint8(version[i])) - 48);
         }
-        return string(result);
+        return result;
     }
 
-    function _createInitialJson() internal view returns (string memory) {
-        return string.concat(
-            '{"version":"', vm.envString("VERSION"), '","config":{},"deployments":{"production":{},"staging":{}}}'
-        );
-    }
+    // Helper function to convert uint to string
+    function _uintToString(uint256 value) private pure returns (string memory) {
+        if (value == 0) return "0";
 
-    function _addChainConfig(string memory json, uint256 chainId, InitParams memory params)
-        internal
-        returns (string memory)
-    {
-        string memory newJson = vm.serializeString(json, "version", vm.envString("VERSION"));
-        newJson =
-            vm.serializeAddress(newJson, string.concat(".config.", vm.toString(chainId), ".treasury"), params.treasury);
-        newJson = vm.serializeAddress(
-            newJson, string.concat(".config.", vm.toString(chainId), ".transferRestrictor"), params.transferRestrictor
-        );
-        newJson =
-            vm.serializeAddress(newJson, string.concat(".config.", vm.toString(chainId), ".usdPlus"), params.usdPlus);
-        newJson =
-            vm.serializeAddress(newJson, string.concat(".config.", vm.toString(chainId), ".router"), params.router);
-        newJson = vm.serializeAddress(
-            newJson, string.concat(".config.", vm.toString(chainId), ".paymentRecipient"), params.paymentRecipient
-        );
-        newJson = vm.serializeAddress(newJson, string.concat(".config.", vm.toString(chainId), ".owner"), params.owner);
-        newJson =
-            vm.serializeAddress(newJson, string.concat(".config.", vm.toString(chainId), ".upgrader"), params.upgrader);
-        return newJson;
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits--;
+            buffer[digits] = bytes1(uint8(48 + value % 10));
+            value /= 10;
+        }
+        return string(buffer);
     }
 }
