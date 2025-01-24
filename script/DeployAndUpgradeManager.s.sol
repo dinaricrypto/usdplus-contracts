@@ -141,7 +141,7 @@ contract DeployManager is Script {
         if (upgradeData.length > 0) {
             ControlledUpgradeable(payable(proxyAddress)).upgradeToAndCall(implementation, upgradeData);
         } else {
-            revert ("Upgrade data not provided");
+            revert("Upgrade data not provided");
         }
         console.log("Upgraded %s at %s", contractName, proxyAddress);
         return proxyAddress;
@@ -187,13 +187,68 @@ contract DeployManager is Script {
         vm.createDir(releaseDir, true);
 
         string memory deploymentPath = string.concat(releaseDir, contractName, ".json");
-        string memory json = vm.exists(deploymentPath) ? vm.readFile(deploymentPath) : "{}";
+        string memory chainIdStr = vm.toString(chainId);
 
-        json = vm.serializeAddress(
-            json, string.concat(".deployments.", environment, ".", vm.toString(chainId)), deployedAddress
-        );
+        // Initialize with complete structure if file doesn't exist
+        string memory json =
+            vm.exists(deploymentPath) ? vm.readFile(deploymentPath) : _getInitialDeploymentJson(contractName, version);
+
+        // Handle deployments
+        string memory deploymentsKey = string.concat(".deployments.", environment);
+
+        // Convert bytes to string explicitly
+        string memory envDeployments = string(vm.parseJson(json, deploymentsKey));
+
+        // Initialize environment deployments if empty
+        if (bytes(envDeployments).length == 0) {
+            envDeployments = _initChainIds();
+        }
+
+        // Update chain ID address
+        envDeployments = vm.serializeAddress(envDeployments, chainIdStr, deployedAddress);
+        json = vm.serializeString(json, deploymentsKey, envDeployments);
+
+        // Update name and version
+        json = vm.serializeString(json, ".name", contractName);
         json = vm.serializeString(json, ".version", version);
+
+        // Handle ABI
+        string memory artifactPath = string.concat("out/", contractName, ".sol/", contractName, ".json");
+        string memory artifactJson = vm.readFile(artifactPath);
+
+        // Get raw ABI bytes and serialize correctly
+        bytes memory abiBytes = artifactJson.parseRaw(".abi");
+        json = json.serialize("abi", abiBytes);
+
         vm.writeJson(json, deploymentPath);
+    }
+
+    function _getInitialDeploymentJson(string memory contractName, string memory version)
+        internal
+        pure
+        returns (string memory)
+    {
+        return string(
+            abi.encodePacked(
+                '{"name":"',
+                contractName,
+                '",',
+                '"version":"',
+                version,
+                '",',
+                '"deployments":{"production":',
+                _initChainIds(),
+                ',"staging":',
+                _initChainIds(),
+                "},",
+                '"abi":[]}'
+            )
+        );
+    }
+
+    function _initChainIds() internal pure returns (string memory) {
+        return
+        '{"1":"","11155111":"","42161":"","421614":"","8453":"","84532":"","81457":"","168587773":"","7887":"","161221135":""}';
     }
 
     function _getPreviousVersion(string memory currentVersion) internal pure returns (string memory) {
