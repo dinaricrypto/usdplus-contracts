@@ -6,9 +6,16 @@ import {stdJson} from "forge-std/StdJson.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
 import {console} from "forge-std/console.sol";
+import {console2} from "forge-std/console2.sol";
+
+import {VmSafe} from "forge-std/Vm.sol";
 
 contract DeployManager is Script {
     using stdJson for string;
+
+    error InvalidJsonFormat();
+
+    string constant DEPLOYMENTS_KEY = "deployments";
 
     struct DeploymentConfig {
         string version;
@@ -24,9 +31,10 @@ contract DeployManager is Script {
         require(bytes(contractName).length > 0, "CONTRACT_NAME not set");
         require(bytes(version).length > 0, "VERSION not set");
         require(bytes(environment).length > 0, "ENVIRONMENT not set");
+        require(_isValidVersion(version), "Invalid VERSION format");
 
         // Load chain-specific config
-        string memory configPath = string.concat("releases/config/", vm.toString(chainId), ".json");
+        string memory configPath = string.concat("release_config/", vm.toString(chainId), ".json");
         string memory configJson = vm.readFile(configPath);
         bytes memory initParams = configJson.parseRaw(string.concat(".", contractName));
 
@@ -166,14 +174,170 @@ contract DeployManager is Script {
         string memory environment,
         uint256 chainId
     ) internal returns (address) {
-        string memory prevVersion = _getPreviousVersion(currentVersion);
+        // Fixed directory reading with DirEntry handling
+        VmSafe.DirEntry[] memory dirEntries = vm.readDir("releases");
+        string[] memory allEntries = new string[](dirEntries.length);
+        for (uint256 i = 0; i < dirEntries.length; i++) {
+            allEntries[i] = dirEntries[i].path;
+        }
+
+        // Filter valid semantic versions
+        string[] memory versions = new string[](allEntries.length);
+        uint256 validCount = 0;
+        for (uint256 i = 0; i < allEntries.length; i++) {
+            if (_isValidVersion(allEntries[i])) {
+                versions[validCount++] = allEntries[i];
+            }
+        }
+
+        // Get all released versions from filesystem
+        if (versions.length == 0) return address(0);
+        versions = _sortVersionsDescending(versions);
+
+        // Resize array
+        string[] memory filteredVersions = new string[](validCount);
+        for (uint256 i = 0; i < validCount; i++) {
+            filteredVersions[i] = versions[i];
+        }
+
+        if (filteredVersions.length == 0) return address(0);
+        // Sort versions in descending order
+        versions = _sortVersionsDescending(versions);
+
+        // Find the latest version older than current
+        string memory prevVersion;
+        for (uint256 i = 0; i < versions.length; i++) {
+            if (_compareVersions(versions[i], currentVersion) < 0) {
+                prevVersion = versions[i];
+                break;
+            }
+        }
+
         if (bytes(prevVersion).length == 0) return address(0);
 
-        string memory prevDeploymentPath = string.concat("releases/", prevVersion, "/", contractName, ".json");
-        if (!vm.exists(prevDeploymentPath)) return address(0);
+        // Load deployment from chain-specific file
+        string memory deploymentPath = string.concat("releases/", prevVersion, "/", vm.toString(chainId), ".json");
 
-        string memory prevJson = vm.readFile(prevDeploymentPath);
-        return prevJson.readAddress(string.concat(".deployments.", environment, ".", vm.toString(chainId)));
+        if (!vm.exists(deploymentPath)) return address(0);
+
+        string memory deploymentJson = vm.readFile(deploymentPath);
+        if (bytes(deploymentJson).length == 0) return address(0);
+
+        return deploymentJson.readAddress(string.concat(".", contractName, ".", environment));
+    }
+
+    function _isValidVersion(string memory version) internal pure returns (bool) {
+        bytes memory v = bytes(version);
+        if (v.length < 5 || v[0] != "v") return false;
+        uint256 dotCount = 0;
+        for (uint256 i = 1; i < v.length; i++) {
+            if (v[i] == ".") dotCount++;
+        }
+        return dotCount == 2;
+    }
+
+    function _sortVersionsDescending(string[] memory versions) internal pure returns (string[] memory) {
+        string[] memory sorted = versions;
+        for (uint256 i = 1; i < sorted.length; i++) {
+            string memory key = sorted[i];
+            uint256 j = i;
+            while (j > 0 && _compareVersions(sorted[j - 1], key) < 0) {
+                sorted[j] = sorted[j - 1];
+                j--;
+            }
+            sorted[j] = key;
+        }
+        return sorted;
+    }
+
+    function _compareVersions(string memory a, string memory b) internal pure returns (int256) {
+        (uint256 aMajor, uint256 aMinor, uint256 aPatch) = _parseVersion(a);
+        (uint256 bMajor, uint256 bMinor, uint256 bPatch) = _parseVersion(b);
+
+        // Explicit int256 casting
+        if (aMajor != bMajor) {
+            return aMajor > bMajor ? int256(1) : int256(-1);
+        }
+        if (aMinor != bMinor) {
+            return aMinor > bMinor ? int256(1) : int256(-1);
+        }
+        if (aPatch != bPatch) {
+            return aPatch > bPatch ? int256(1) : int256(-1);
+        }
+        return 0;
+    }
+
+    function _parseVersion(string memory version) internal pure returns (uint256 major, uint256 minor, uint256 patch) {
+        bytes memory v = bytes(version);
+        uint256[3] memory parts;
+        uint256 partIndex = 0;
+        uint256 start = 1; // Skip 'v' prefix
+
+        for (uint256 i = start; i < v.length; i++) {
+            if (v[i] == ".") {
+                parts[partIndex] = _parseNumber(v, start, i);
+                start = i + 1;
+                partIndex++;
+                if (partIndex > 2) break;
+            }
+        }
+
+        // Parse last part
+        if (partIndex < 3) {
+            parts[partIndex] = _parseNumber(v, start, v.length);
+        }
+
+        return (parts[0], parts[1], parts[2]);
+    }
+
+    function _parseNumber(bytes memory version, uint256 start, uint256 end) internal pure returns (uint256) {
+        uint256 result = 0;
+        for (uint256 i = start; i < end; i++) {
+            if (version[i] >= "0" && version[i] <= "9") {
+                result = result * 10 + (uint256(uint8(version[i])) - 48);
+            }
+        }
+        return result;
+    }
+
+    function _updateDeployments(string memory json, string memory environment, uint256 chainId, address deployedAddress)
+        internal
+        returns (string memory)
+    {
+        string memory contractName = vm.envString("CONTRACT");
+        string memory version = vm.envString("VERSION");
+
+        if (bytes(json).length == 0) {
+            json = _getInitialJson(contractName, version);
+        }
+
+        bytes32 envHash = keccak256(bytes(environment));
+        bytes32 stagingHash = keccak256(bytes("staging"));
+        bytes32 productionHash = keccak256(bytes("production"));
+
+        string memory envData = string(
+            abi.encodePacked(
+                '{"1":"","11155111":"',
+                envHash == stagingHash && chainId == 11155111 ? vm.toString(deployedAddress) : "",
+                '","42161":"","421614":"","8453":"","84532":"","81457":"","168587773":"","7887":"","161221135":""}'
+            )
+        );
+
+        string memory updatedJson = string(
+            abi.encodePacked(
+                '{"name":"',
+                contractName,
+                '","version":"',
+                version,
+                '","deployments":{"production":',
+                envHash == productionHash ? envData : _initChainIds(),
+                ',"staging":',
+                envHash == stagingHash ? envData : _initChainIds(),
+                "}}"
+            )
+        );
+
+        return updatedJson;
     }
 
     function _recordDeployment(
@@ -183,148 +347,65 @@ contract DeployManager is Script {
         uint256 chainId,
         address deployedAddress
     ) internal {
-        string memory releaseDir = string.concat("releases/", version, "/");
-        vm.createDir(releaseDir, true);
+        string memory versionDir = string.concat("releases/", version, "/");
+        vm.createDir(versionDir, true);
+        string memory deploymentPath = string.concat(versionDir, contractName, ".json");
 
-        string memory deploymentPath = string.concat(releaseDir, contractName, ".json");
-        string memory chainIdStr = vm.toString(chainId);
-
-        // Initialize with complete structure if file doesn't exist
+        // Initialize or load existing JSON
         string memory json =
-            vm.exists(deploymentPath) ? vm.readFile(deploymentPath) : _getInitialDeploymentJson(contractName, version);
+            vm.exists(deploymentPath) ? vm.readFile(deploymentPath) : _getInitialJson(contractName, version);
 
-        // Handle deployments
-        string memory deploymentsKey = string.concat(".deployments.", environment);
+        // Update the specific deployment while preserving structure
+        json = _updateDeployments(json, environment, chainId, deployedAddress);
 
-        // Convert bytes to string explicitly
-        string memory envDeployments = string(vm.parseJson(json, deploymentsKey));
-
-        // Initialize environment deployments if empty
-        if (bytes(envDeployments).length == 0) {
-            envDeployments = _initChainIds();
-        }
-
-        // Update chain ID address
-        envDeployments = vm.serializeAddress(envDeployments, chainIdStr, deployedAddress);
-        json = vm.serializeString(json, deploymentsKey, envDeployments);
-
-        // Update name and version
-        json = vm.serializeString(json, ".name", contractName);
-        json = vm.serializeString(json, ".version", version);
-
-        // Handle ABI
-        string memory artifactPath = string.concat("out/", contractName, ".sol/", contractName, ".json");
-        string memory artifactJson = vm.readFile(artifactPath);
-
-        // Get raw ABI bytes and serialize correctly
-        bytes memory abiBytes = artifactJson.parseRaw(".abi");
-        json = json.serialize("abi", abiBytes);
-
+        // Write back to file
         vm.writeJson(json, deploymentPath);
     }
 
-    function _getInitialDeploymentJson(string memory contractName, string memory version)
-        internal
-        pure
-        returns (string memory)
-    {
+    function _fixJsonStructure(string memory json) internal pure returns (string memory) {
+        bytes memory jsonBytes = bytes(json);
+        uint256 lastBrace = _findLastBrace(jsonBytes);
+        if (lastBrace != jsonBytes.length - 1) {
+            // Remove trailing commas and add missing braces
+            return string(abi.encodePacked(_sliceBytes(jsonBytes, 0, lastBrace + 1), "}"));
+        }
+        return json;
+    }
+
+    function _getInitialJson(string memory contractName, string memory version) internal pure returns (string memory) {
         return string(
             abi.encodePacked(
-                '{"name":"',
-                contractName,
-                '",',
-                '"version":"',
-                version,
-                '",',
-                '"deployments":{"production":',
-                _initChainIds(),
-                ',"staging":',
-                _initChainIds(),
-                "},",
-                '"abi":[]}'
+                '{"name":"', contractName, '","version":"', version, '","deployments":', _initDeployments(), "}"
             )
         );
     }
 
-    function _initChainIds() internal pure returns (string memory) {
-        return
-        '{"1":"","11155111":"","42161":"","421614":"","8453":"","84532":"","81457":"","168587773":"","7887":"","161221135":""}';
-    }
+    function _sliceBytes(bytes memory data, uint256 start, uint256 end) internal pure returns (bytes memory) {
+        require(end >= start, "Invalid slice");
+        require(data.length >= end, "Slice out of bounds");
 
-    function _getPreviousVersion(string memory currentVersion) internal pure returns (string memory) {
-        bytes memory versionBytes = bytes(currentVersion);
-        uint256 length = versionBytes.length;
-
-        // Basic format validation
-        if (length < 5 || versionBytes[0] != "v") return "";
-        if (versionBytes[1] == "." || versionBytes[length - 1] == ".") return "";
-
-        // Find dot positions
-        uint8[2] memory dotPositions;
-        uint8 dotCount = 0;
-        for (uint256 i = 1; i < length; i++) {
-            if (versionBytes[i] == ".") {
-                if (dotCount >= 2) return "";
-                dotPositions[dotCount] = uint8(i);
-                dotCount++;
-            }
-        }
-        if (dotCount != 2) return "";
-
-        // Extract version components
-        uint256 major = _parseVersionComponent(versionBytes, 1, dotPositions[0]);
-        uint256 minor = _parseVersionComponent(versionBytes, dotPositions[0] + 1, dotPositions[1]);
-        uint256 patch = _parseVersionComponent(versionBytes, dotPositions[1] + 1, length);
-
-        // Decrement logic
-        if (patch > 0) {
-            patch--;
-        } else {
-            if (minor > 0) {
-                minor--;
-                patch = 9; // Assuming max patch version 9 per your example
-            } else {
-                if (major > 0) {
-                    major--;
-                    minor = 9;
-                    patch = 9;
-                } else {
-                    return ""; // Can't decrement below v0.0.0
-                }
-            }
-        }
-
-        // Reconstruct previous version
-        return string(abi.encodePacked("v", _uintToString(major), ".", _uintToString(minor), ".", _uintToString(patch)));
-    }
-
-    // Helper function to parse version components
-    function _parseVersionComponent(bytes memory version, uint256 start, uint256 end) private pure returns (uint256) {
-        uint256 result = 0;
-        for (uint256 i = start; i < end; i++) {
-            if (version[i] < "0" || version[i] > "9") return 0;
-            result = result * 10 + (uint256(uint8(version[i])) - 48);
+        bytes memory result = new bytes(end - start);
+        for (uint256 i = 0; i < end - start; i++) {
+            result[i] = data[start + i];
         }
         return result;
     }
 
-    // Helper function to convert uint to string
-    function _uintToString(uint256 value) private pure returns (string memory) {
-        if (value == 0) return "0";
-
-        uint256 temp = value;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
+    function _findLastBrace(bytes memory data) internal pure returns (uint256) {
+        for (uint256 i = data.length - 1; i > 0; i--) {
+            if (data[i] == bytes1("}")) {
+                return i;
+            }
         }
+        revert InvalidJsonFormat();
+    }
 
-        bytes memory buffer = new bytes(digits);
-        while (value != 0) {
-            digits--;
-            buffer[digits] = bytes1(uint8(48 + value % 10));
-            value /= 10;
-        }
-        return string(buffer);
+    function _initDeployments() internal pure returns (string memory) {
+        return string(abi.encodePacked('{"production":', _initChainIds(), ',"staging":', _initChainIds(), "}"));
+    }
+
+    function _initChainIds() internal pure returns (string memory) {
+        return
+        '{"1":"","11155111":"","42161":"","421614":"","8453":"","84532":"","81457":"","168587773":"","7887":"","161221135":"","98865":"","98864":""}';
     }
 }
