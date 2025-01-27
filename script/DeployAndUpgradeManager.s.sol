@@ -18,41 +18,72 @@ contract DeployManager is Script {
     string constant DEPLOYMENTS_KEY = "deployments";
 
     struct DeploymentConfig {
-        string version;
-        mapping(string => mapping(uint256 => address)) deployments; // environment -> chainId -> address
+        mapping(string => mapping(uint256 => address)) deployments; //
     }
 
     function run() external {
+        // Get environment variables
         string memory contractName = vm.envString("CONTRACT");
         string memory version = vm.envString("VERSION");
         string memory environment = vm.envString("ENVIRONMENT");
         uint256 chainId = block.chainid;
 
+        // Validate inputs
         require(bytes(contractName).length > 0, "CONTRACT_NAME not set");
         require(bytes(version).length > 0, "VERSION not set");
         require(bytes(environment).length > 0, "ENVIRONMENT not set");
         require(_isValidVersion(version), "Invalid VERSION format");
 
-        // Load chain-specific config
+        // Setup paths
         string memory configPath = string.concat("release_config/", vm.toString(chainId), ".json");
+        string memory releasePath = string.concat("releases/", version);
+        string memory jsonPath = string.concat(releasePath, "/", contractName, ".json");
+
+        // Read config first to ensure it exists
         string memory configJson = vm.readFile(configPath);
         bytes memory initParams = configJson.parseRaw(string.concat(".", contractName));
 
-        // Check existing deployment
+        // Check for existing deployment from previous version
         address existingAddr = _getExistingDeployment(contractName, version, environment, chainId);
         address proxyAddress;
 
+        // Create or read current version's release JSON file
+        string memory releaseJson;
+        if (!vm.exists(releasePath)) {
+            vm.createDir(releasePath, true);
+        }
+
+        if (!vm.exists(jsonPath)) {
+            releaseJson = _getInitialJson(contractName, version);
+            vm.writeFile(jsonPath, releaseJson);
+        } else {
+            try vm.readFile(jsonPath) returns (string memory content) {
+                releaseJson = content;
+            } catch {
+                releaseJson = _getInitialJson(contractName, version);
+                vm.writeFile(jsonPath, releaseJson);
+            }
+        }
+
+        console2.log("Release JSON:", releaseJson);
+
+        // Deploy or upgrade based on existing deployment
         vm.startBroadcast();
         if (existingAddr != address(0)) {
+            console2.log("Upgrading existing deployment at:", existingAddr);
             bytes memory upgradeData = _getInitData(contractName, initParams, true);
             proxyAddress = _upgradeContract(contractName, existingAddr, upgradeData);
         } else {
+            console2.log("Deploying new contract");
             bytes memory initData = _getInitData(contractName, initParams, false);
             proxyAddress = _deployNewContract(contractName, initData);
         }
         vm.stopBroadcast();
 
-        _recordDeployment(contractName, version, environment, chainId, proxyAddress);
+        // Update deployments in current version's JSON
+        _updateDeployments(releaseJson, environment, chainId, proxyAddress);
+
+        console2.log("Deployment completed. Proxy address:", proxyAddress);
     }
 
     function _getInitData(string memory contractName, bytes memory params, bool isUpgrade)
@@ -174,56 +205,90 @@ contract DeployManager is Script {
         string memory environment,
         uint256 chainId
     ) internal returns (address) {
-        // Fixed directory reading with DirEntry handling
+        // Get all release directories
         VmSafe.DirEntry[] memory dirEntries = vm.readDir("releases");
-        string[] memory allEntries = new string[](dirEntries.length);
-        for (uint256 i = 0; i < dirEntries.length; i++) {
-            allEntries[i] = dirEntries[i].path;
-        }
 
-        // Filter valid semantic versions
-        string[] memory versions = new string[](allEntries.length);
+        // Filter and collect valid versions that have our contract
+        string[] memory versions = new string[](dirEntries.length);
         uint256 validCount = 0;
-        for (uint256 i = 0; i < allEntries.length; i++) {
-            if (_isValidVersion(allEntries[i])) {
-                versions[validCount++] = allEntries[i];
+        for (uint256 i = 0; i < dirEntries.length; i++) {
+            string memory dirName = _getDirectoryName(dirEntries[i].path);
+            if (_isValidVersion(dirName)) {
+                versions[validCount] = dirName;
+                validCount++;
             }
         }
 
-        // Get all released versions from filesystem
-        if (versions.length == 0) return address(0);
-        versions = _sortVersionsDescending(versions);
+        // Return if no valid versions found
+        if (validCount == 0) return address(0);
 
-        // Resize array
+        // Resize array to valid count
         string[] memory filteredVersions = new string[](validCount);
         for (uint256 i = 0; i < validCount; i++) {
             filteredVersions[i] = versions[i];
         }
 
-        if (filteredVersions.length == 0) return address(0);
         // Sort versions in descending order
-        versions = _sortVersionsDescending(versions);
+        filteredVersions = _sortVersionsDescending(filteredVersions);
 
-        // Find the latest version older than current
-        string memory prevVersion;
-        for (uint256 i = 0; i < versions.length; i++) {
-            if (_compareVersions(versions[i], currentVersion) < 0) {
-                prevVersion = versions[i];
+        // Look through versions from newest to oldest to find latest deployment
+        address deployedAddress = address(0);
+        string memory deployedVersion;
+
+        for (uint256 i = 0; i < filteredVersions.length; i++) {
+            string memory version = filteredVersions[i];
+            string memory contractJsonPath = string.concat("releases/", version, "/", contractName, ".json");
+
+            // Skip if contract doesn't exist in this version
+            if (!vm.exists(contractJsonPath)) continue;
+
+            // Read and parse contract JSON
+            string memory contractJson = vm.readFile(contractJsonPath);
+            if (bytes(contractJson).length == 0) continue;
+
+            // Try to get deployment address for environment and chain
+            string memory jsonPath = string.concat(".deployments.", environment, ".", vm.toString(chainId));
+
+            try vm.parseJsonAddress(contractJson, jsonPath) returns (address addr) {
+                if (addr != address(0)) {
+                    deployedAddress = addr;
+                    deployedVersion = version;
+                    break; // Found the latest deployed version
+                }
+            } catch {
+                continue; // No deployment in this version, try older version
+            }
+        }
+
+        if (deployedAddress != address(0)) {
+            console.log("Found existing deployment of", contractName, "version", deployedVersion);
+            return deployedAddress;
+        }
+
+        console2.log("No existing version found for", contractName, "in environment", environment);
+        
+        return address(0);
+    }
+
+    // Helper function to get directory name from path
+    function _getDirectoryName(string memory path) internal pure returns (string memory) {
+        bytes memory pathBytes = bytes(path);
+        uint256 lastSlash = pathBytes.length;
+
+        for (uint256 i = pathBytes.length - 1; i > 0; i--) {
+            if (pathBytes[i] == 0x2f) {
+                // '/'
+                lastSlash = i + 1;
                 break;
             }
         }
 
-        if (bytes(prevVersion).length == 0) return address(0);
+        bytes memory dirName = new bytes(pathBytes.length - lastSlash);
+        for (uint256 i = 0; i < dirName.length; i++) {
+            dirName[i] = pathBytes[lastSlash + i];
+        }
 
-        // Load deployment from chain-specific file
-        string memory deploymentPath = string.concat("releases/", prevVersion, "/", vm.toString(chainId), ".json");
-
-        if (!vm.exists(deploymentPath)) return address(0);
-
-        string memory deploymentJson = vm.readFile(deploymentPath);
-        if (bytes(deploymentJson).length == 0) return address(0);
-
-        return deploymentJson.readAddress(string.concat(".", contractName, ".", environment));
+        return string(dirName);
     }
 
     function _isValidVersion(string memory version) internal pure returns (bool) {
@@ -302,7 +367,6 @@ contract DeployManager is Script {
 
     function _updateDeployments(string memory json, string memory environment, uint256 chainId, address deployedAddress)
         internal
-        returns (string memory)
     {
         string memory contractName = vm.envString("CONTRACT");
         string memory version = vm.envString("VERSION");
@@ -311,65 +375,94 @@ contract DeployManager is Script {
             json = _getInitialJson(contractName, version);
         }
 
+        // Parse base chains JSON to get the template
+        string memory baseChains = _initChainIds();
+
+        // Update the specific chain in the template
+        string memory updatedChains = _updateChainAddress(baseChains, chainId, deployedAddress);
+
         bytes32 envHash = keccak256(bytes(environment));
         bytes32 stagingHash = keccak256(bytes("staging"));
         bytes32 productionHash = keccak256(bytes("production"));
 
-        string memory envData = string(
-            abi.encodePacked(
-                '{"1":"","11155111":"',
-                envHash == stagingHash && chainId == 11155111 ? vm.toString(deployedAddress) : "",
-                '","42161":"","421614":"","8453":"","84532":"","81457":"","168587773":"","7887":"","161221135":""}'
-            )
-        );
-
+        // Construct the final JSON with the current environment having the updated chains
         string memory updatedJson = string(
             abi.encodePacked(
-                '{"name":"',
+                "{",
+                '"name":"',
                 contractName,
-                '","version":"',
+                '",',
+                '"version":"',
                 version,
-                '","deployments":{"production":',
-                envHash == productionHash ? envData : _initChainIds(),
-                ',"staging":',
-                envHash == stagingHash ? envData : _initChainIds(),
+                '",',
+                '"deployments":{',
+                '"production":',
+                envHash == productionHash ? updatedChains : _initChainIds(),
+                ",",
+                '"staging":',
+                envHash == stagingHash ? updatedChains : _initChainIds(),
                 "}}"
             )
         );
 
-        return updatedJson;
+        string memory jsonPath = string.concat("releases/", version, "/", contractName, ".json");
+        vm.writeFile(jsonPath, updatedJson);
     }
 
-    function _recordDeployment(
-        string memory contractName,
-        string memory version,
-        string memory environment,
-        uint256 chainId,
-        address deployedAddress
-    ) internal {
-        string memory versionDir = string.concat("releases/", version, "/");
-        vm.createDir(versionDir, true);
-        string memory deploymentPath = string.concat(versionDir, contractName, ".json");
+    function _updateChainAddress(string memory baseChains, uint256 chainId, address deployedAddress)
+        internal
+        view
+        returns (string memory)
+    {
+        // Find the position of the chainId in the template
+        string memory chainIdStr = vm.toString(chainId);
+        string memory searchStr = string.concat('"', chainIdStr, '":"');
 
-        // Initialize or load existing JSON
-        string memory json =
-            vm.exists(deploymentPath) ? vm.readFile(deploymentPath) : _getInitialJson(contractName, version);
+        // If we can't find the chain ID, return base unchanged
+        bytes memory baseBytes = bytes(baseChains);
+        bytes memory searchBytes = bytes(searchStr);
+        uint256 pos = _findSubstring(baseBytes, searchBytes);
+        if (pos == type(uint256).max) return baseChains;
 
-        // Update the specific deployment while preserving structure
-        json = _updateDeployments(json, environment, chainId, deployedAddress);
-
-        // Write back to file
-        vm.writeJson(json, deploymentPath);
-    }
-
-    function _fixJsonStructure(string memory json) internal pure returns (string memory) {
-        bytes memory jsonBytes = bytes(json);
-        uint256 lastBrace = _findLastBrace(jsonBytes);
-        if (lastBrace != jsonBytes.length - 1) {
-            // Remove trailing commas and add missing braces
-            return string(abi.encodePacked(_sliceBytes(jsonBytes, 0, lastBrace + 1), "}"));
+        // Find the end of the current address (next quote)
+        uint256 endPos = pos + searchBytes.length;
+        while (endPos < baseBytes.length && baseBytes[endPos] != '"') {
+            endPos++;
         }
-        return json;
+
+        // Construct the updated JSON with the new address
+        return string(
+            abi.encodePacked(
+                _sliceBytes(baseBytes, 0, pos + searchBytes.length),
+                vm.toString(deployedAddress),
+                _sliceBytes(baseBytes, endPos, baseBytes.length)
+            )
+        );
+    }
+
+    function _findSubstring(bytes memory str, bytes memory substr) internal pure returns (uint256) {
+        if (substr.length == 0) return 0;
+        if (str.length < substr.length) return type(uint256).max;
+
+        for (uint256 i = 0; i <= str.length - substr.length; i++) {
+            bool found = true;
+            for (uint256 j = 0; j < substr.length; j++) {
+                if (str[i + j] != substr[j]) {
+                    found = false;
+                    break;
+                }
+            }
+            if (found) return i;
+        }
+        return type(uint256).max;
+    }
+
+    function _sliceBytes(bytes memory data, uint256 start, uint256 end) internal pure returns (bytes memory) {
+        bytes memory result = new bytes(end - start);
+        for (uint256 i = start; i < end; i++) {
+            result[i - start] = data[i];
+        }
+        return result;
     }
 
     function _getInitialJson(string memory contractName, string memory version) internal pure returns (string memory) {
@@ -378,26 +471,6 @@ contract DeployManager is Script {
                 '{"name":"', contractName, '","version":"', version, '","deployments":', _initDeployments(), "}"
             )
         );
-    }
-
-    function _sliceBytes(bytes memory data, uint256 start, uint256 end) internal pure returns (bytes memory) {
-        require(end >= start, "Invalid slice");
-        require(data.length >= end, "Slice out of bounds");
-
-        bytes memory result = new bytes(end - start);
-        for (uint256 i = 0; i < end - start; i++) {
-            result[i] = data[start + i];
-        }
-        return result;
-    }
-
-    function _findLastBrace(bytes memory data) internal pure returns (uint256) {
-        for (uint256 i = data.length - 1; i > 0; i--) {
-            if (data[i] == bytes1("}")) {
-                return i;
-            }
-        }
-        revert InvalidJsonFormat();
     }
 
     function _initDeployments() internal pure returns (string memory) {
