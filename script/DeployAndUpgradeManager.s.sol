@@ -266,7 +266,7 @@ contract DeployManager is Script {
         }
 
         console2.log("No existing version found for", contractName, "in environment", environment);
-        
+
         return address(0);
     }
 
