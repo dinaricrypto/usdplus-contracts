@@ -13,14 +13,6 @@ import {VmSafe} from "forge-std/Vm.sol";
 contract DeployManager is Script {
     using stdJson for string;
 
-    error InvalidJsonFormat();
-
-    string constant DEPLOYMENTS_KEY = "deployments";
-
-    struct DeploymentConfig {
-        mapping(string => mapping(uint256 => address)) deployments; //
-    }
-
     function run() external {
         // Get environment variables
         string memory contractName = vm.envString("CONTRACT");
@@ -35,7 +27,8 @@ contract DeployManager is Script {
         require(_isValidVersion(version), "Invalid VERSION format");
 
         // Setup paths
-        string memory configPath = string.concat("release_config/", vm.toString(chainId), ".json");
+        // Setup paths
+        string memory configPath = string.concat("release_config/", environment, "/", vm.toString(chainId), ".json");
         string memory releasePath = string.concat("releases/", version);
         string memory jsonPath = string.concat(releasePath, "/", contractName, ".json");
 
@@ -117,10 +110,10 @@ contract DeployManager is Script {
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        (address treasury, address restrictor, address owner, address upgrader) =
+        (address _treasury, address _restrictor, address _owner, address _upgrader) =
             abi.decode(params, (address, address, address, address));
         return abi.encodeWithSignature(
-            "initialize(address,address,address,address)", treasury, restrictor, owner, upgrader
+            "initialize(address,address,address,address)", _treasury, _restrictor, _owner, _upgrader
         );
     }
 
@@ -137,9 +130,10 @@ contract DeployManager is Script {
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        (address usdPlus, address router, address owner, address upgrader) =
+        (address _usdPlus, address _router, address _owner, address _upgrader) =
             abi.decode(params, (address, address, address, address));
-        return abi.encodeWithSignature("initialize(address,address,address,address)", usdPlus, router, owner, upgrader);
+        return
+            abi.encodeWithSignature("initialize(address,address,address,address)", _usdPlus, _router, _owner, _upgrader);
     }
 
     function _handleUsdPlusMinter(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
@@ -148,10 +142,10 @@ contract DeployManager is Script {
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        (address usdPlus, address paymentRecipient, address owner, address upgrader) =
+        (address _usdPlus, address _paymentRecipient, address _owner, address _upgrader) =
             abi.decode(params, (address, address, address, address));
         return abi.encodeWithSignature(
-            "initialize(address,address,address,address)", usdPlus, paymentRecipient, owner, upgrader
+            "initialize(address,address,address,address)", _usdPlus, _paymentRecipient, _owner, _upgrader
         );
     }
 
@@ -161,8 +155,8 @@ contract DeployManager is Script {
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        (address usdPlus, address owner, address upgrader) = abi.decode(params, (address, address, address));
-        return abi.encodeWithSignature("initialize(address,address,address)", usdPlus, owner, upgrader);
+        (address _usdPlus, address _owner, address _upgrader) = abi.decode(params, (address, address, address));
+        return abi.encodeWithSignature("initialize(address,address,address)", _usdPlus, _owner, _upgrader);
     }
 
     function _deployNewContract(string memory contractName, bytes memory initData) internal returns (address) {
@@ -244,9 +238,9 @@ contract DeployManager is Script {
             string memory contractJson = vm.readFile(contractJsonPath);
             if (bytes(contractJson).length == 0) continue;
 
-            string memory jsonPath = string.concat(".deployments.", environment, ".", vm.toString(chainId));
+            string memory addressPath = string.concat(".deployments.", environment, ".", vm.toString(chainId));
 
-            try vm.parseJsonAddress(contractJson, jsonPath) returns (address addr) {
+            try vm.parseJsonAddress(contractJson, addressPath) returns (address addr) {
                 if (addr != address(0)) {
                     deployedAddress = addr;
                     deployedVersion = version;
@@ -409,40 +403,32 @@ contract DeployManager is Script {
         string memory contractName = vm.envString("CONTRACT");
         string memory version = vm.envString("VERSION");
 
-        // Create temp directory and environment subdirectory if they don't exist
+        // Create directory structure if it doesn't exist
         string memory tempDir = "temp";
         string memory tempEnvDir = string.concat(tempDir, "/", environment);
+        string memory tempChainDir = string.concat(tempEnvDir, "/", vm.toString(chainId));
+
         if (!vm.exists(tempDir)) {
             vm.createDir(tempDir, true);
         }
         if (!vm.exists(tempEnvDir)) {
             vm.createDir(tempEnvDir, true);
         }
-
-        // Update temp deployment file for this chain under environment directory
-        string memory tempPath = string.concat(tempEnvDir, "/", vm.toString(chainId), ".json");
-        string memory tempJson;
-
-        // Read or create temp JSON for this chain
-        if (vm.exists(tempPath)) {
-            tempJson = vm.readFile(tempPath);
-        } else {
-            tempJson = "{}";
-            // Create the initial file
-            vm.writeFile(tempPath, tempJson);
+        if (!vm.exists(tempChainDir)) {
+            vm.createDir(tempChainDir, true);
         }
 
-        // Create JSON object with the new deployment
-        string memory newTempJson = vm.serializeAddress(
-            tempJson,
-            contractName, // Use contract name as the key
-            deployedAddress // The deployed address as value
-        );
+        // Create contract-specific JSON file
+        string memory tempContractPath = string.concat(tempChainDir, "/", contractName, ".json");
 
-        // Write the updated JSON back to file
-        vm.writeFile(tempPath, newTempJson);
+        // Simple JSON with just this contract's address
+        string memory tempJson =
+            string(abi.encodePacked("{\"", contractName, "\": \"", vm.toString(deployedAddress), "\"}"));
 
-        // Also update release tracking
+        // Write to contract-specific file
+        vm.writeFile(tempContractPath, tempJson);
+
+        // Update release tracking
         if (bytes(json).length == 0) {
             json = _getInitialJson(contractName, version);
         }
@@ -458,10 +444,16 @@ contract DeployManager is Script {
         try vm.parseJson(json, string.concat(".deployments.", environment, ".", vm.toString(chainId))) returns (
             bytes memory existingDeployment
         ) {
-            if (existingDeployment.length > 0) {
+            string memory existingAddr = string(existingDeployment);
+            if (bytes(existingAddr).length == 42 && bytes(existingAddr)[0] == "0" && bytes(existingAddr)[1] == "x") {
                 revert(
                     string.concat(
-                        "Version ", version, " already has deployment recorded for chain ", vm.toString(chainId)
+                        "Version ",
+                        version,
+                        " already has deployment recorded for chain ",
+                        vm.toString(chainId),
+                        " at address ",
+                        existingAddr
                     )
                 );
             }
@@ -477,7 +469,15 @@ contract DeployManager is Script {
 
         console2.log(
             string.concat(
-                "Updated deployment for chain ", vm.toString(chainId), " in temp/", environment, " and release tracking"
+                "Updated deployment for chain ",
+                vm.toString(chainId),
+                " in temp/",
+                environment,
+                "/",
+                vm.toString(chainId),
+                "/",
+                contractName,
+                ".json"
             )
         );
     }
@@ -485,17 +485,26 @@ contract DeployManager is Script {
     function _getInitialJson(string memory contractName, string memory version) internal pure returns (string memory) {
         return string(
             abi.encodePacked(
-                '{"name":"', contractName, '","version":"', version, '","deployments":', _initDeployments(), "}"
+                "{",
+                '"name":"',
+                contractName,
+                '",',
+                '"version":"',
+                version,
+                '",',
+                '"deployments":',
+                _initDeployments(),
+                "}"
             )
         );
     }
 
     function _initDeployments() internal pure returns (string memory) {
-        return string(abi.encodePacked('{"production":', _initChainIds(), ',"staging":', _initChainIds(), "}"));
+        return string(abi.encodePacked("{", '"production":', _initChainIds(), ",", '"staging":', _initChainIds(), "}"));
     }
 
     function _initChainIds() internal pure returns (string memory) {
-        return
-        '{"1":"","11155111":"","42161":"","421614":"","8453":"","84532":"","81457":"","168587773":"","7887":"","161221135":"","98865":"","98864":""}';
+        return "{" '"1":"","11155111":"","42161":"","421614":"",' '"8453":"","84532":"","81457":"","168587773":"",'
+        '"7887":"","161221135":"","98865":"","98864":""' "}";
     }
 }
