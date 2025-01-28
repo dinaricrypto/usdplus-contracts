@@ -408,35 +408,78 @@ contract DeployManager is Script {
     {
         string memory contractName = vm.envString("CONTRACT");
         string memory version = vm.envString("VERSION");
-        string memory jsonPath = string.concat("releases/", version, "/", contractName, ".json");
 
-        // If no JSON exists, create initial one
+        // Create temp directory and environment subdirectory if they don't exist
+        string memory tempDir = "temp";
+        string memory tempEnvDir = string.concat(tempDir, "/", environment);
+        if (!vm.exists(tempDir)) {
+            vm.createDir(tempDir, true);
+        }
+        if (!vm.exists(tempEnvDir)) {
+            vm.createDir(tempEnvDir, true);
+        }
+
+        // Update temp deployment file for this chain under environment directory
+        string memory tempPath = string.concat(tempEnvDir, "/", vm.toString(chainId), ".json");
+        string memory tempJson;
+
+        // Read or create temp JSON for this chain
+        if (vm.exists(tempPath)) {
+            tempJson = vm.readFile(tempPath);
+        } else {
+            tempJson = "{}";
+            // Create the initial file
+            vm.writeFile(tempPath, tempJson);
+        }
+
+        // Create JSON object with the new deployment
+        string memory newTempJson = vm.serializeAddress(
+            tempJson,
+            contractName, // Use contract name as the key
+            deployedAddress // The deployed address as value
+        );
+
+        // Write the updated JSON back to file
+        vm.writeFile(tempPath, newTempJson);
+
+        // Also update release tracking
         if (bytes(json).length == 0) {
             json = _getInitialJson(contractName, version);
         }
 
-        // Parse existing deployments to verify structure
-        bytes32 envHash = keccak256(bytes(environment));
-        bytes32 stagingHash = keccak256(bytes("staging"));
-        bytes32 productionHash = keccak256(bytes("production"));
-
-        // Verify deployments structure exists
-        try vm.parseJson(json, ".deployments") returns (bytes memory) {
-            // Structure exists, continue
-        } catch {
-            // Initialize deployments structure if it doesn't exist
-            vm.writeJson(json, ".deployments", '{"staging":{},"production":{}}');
+        string memory releasePath = string.concat("releases/", version);
+        if (!vm.exists(releasePath)) {
+            vm.createDir(releasePath, true);
         }
 
-        // Update only the specific chain address in the environment
-        string memory targetEnv = envHash == stagingHash ? "staging" : "production";
+        string memory releaseJsonPath = string.concat(releasePath, "/", contractName, ".json");
+
+        // Check if version already has deployment for this chain
+        try vm.parseJson(json, string.concat(".deployments.", environment, ".", vm.toString(chainId))) returns (
+            bytes memory existingDeployment
+        ) {
+            if (existingDeployment.length > 0) {
+                revert(
+                    string.concat(
+                        "Version ", version, " already has deployment recorded for chain ", vm.toString(chainId)
+                    )
+                );
+            }
+        } catch {}
+
+        // Update version tracking
+        string memory targetEnv =
+            keccak256(bytes(environment)) == keccak256(bytes("staging")) ? "staging" : "production";
         string memory targetPath = string.concat(".deployments.", targetEnv, ".", vm.toString(chainId));
 
-        // Create updated JSON preserving structure
-        vm.writeJson(json, targetPath, vm.toString(deployedAddress));
+        json = vm.serializeAddress(json, targetPath, deployedAddress);
+        vm.writeFile(releaseJsonPath, json);
 
-        // Write final JSON to file
-        vm.writeFile(jsonPath, json);
+        console2.log(
+            string.concat(
+                "Updated deployment for chain ", vm.toString(chainId), " in temp/", environment, " and release tracking"
+            )
+        );
     }
 
     function _getInitialJson(string memory contractName, string memory version) internal pure returns (string memory) {
