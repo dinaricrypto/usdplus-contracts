@@ -208,7 +208,7 @@ contract DeployManager is Script {
         // Get all release directories
         VmSafe.DirEntry[] memory dirEntries = vm.readDir("releases");
 
-        // Filter and collect valid versions that have our contract
+        // Filter and collect valid versions
         string[] memory versions = new string[](dirEntries.length);
         uint256 validCount = 0;
         for (uint256 i = 0; i < dirEntries.length; i++) {
@@ -231,7 +231,7 @@ contract DeployManager is Script {
         // Sort versions in descending order
         filteredVersions = _sortVersionsDescending(filteredVersions);
 
-        // Look through versions from newest to oldest to find latest deployment
+        // Look for deployments
         address deployedAddress = address(0);
         string memory deployedVersion;
 
@@ -239,34 +239,72 @@ contract DeployManager is Script {
             string memory version = filteredVersions[i];
             string memory contractJsonPath = string.concat("releases/", version, "/", contractName, ".json");
 
-            // Skip if contract doesn't exist in this version
             if (!vm.exists(contractJsonPath)) continue;
 
-            // Read and parse contract JSON
             string memory contractJson = vm.readFile(contractJsonPath);
             if (bytes(contractJson).length == 0) continue;
 
-            // Try to get deployment address for environment and chain
             string memory jsonPath = string.concat(".deployments.", environment, ".", vm.toString(chainId));
 
             try vm.parseJsonAddress(contractJson, jsonPath) returns (address addr) {
                 if (addr != address(0)) {
                     deployedAddress = addr;
                     deployedVersion = version;
-                    break; // Found the latest deployed version
+                    break;
                 }
             } catch {
-                continue; // No deployment in this version, try older version
+                continue;
             }
         }
 
+        string memory jsonPath = string.concat("releases/", currentVersion, "/", contractName, ".json");
+        string memory json;
+        try vm.readFile(jsonPath) returns (string memory content) {
+            json = content;
+        } catch {
+            json = ""; // Empty if file doesn't exist
+        }
+
         if (deployedAddress != address(0)) {
-            console.log("Found existing deployment of", contractName, "version", deployedVersion);
+            // Parse versions
+            (uint256 currentMajor, uint256 currentMinor, uint256 currentPatch) = _parseVersion(currentVersion);
+            (uint256 deployedMajor, uint256 deployedMinor, uint256 deployedPatch) = _parseVersion(deployedVersion);
+
+            // If trying to deploy older major version
+            if (currentMajor < deployedMajor) {
+                revert(
+                    string.concat(
+                        "Cannot deploy older version ", currentVersion, " when version ", deployedVersion, " exists"
+                    )
+                );
+            }
+
+            // If exact same version, use existing deployment
+            if (currentMajor == deployedMajor && currentMinor == deployedMinor && currentPatch == deployedPatch) {
+                // console2.log("Using existing deployment for version", currentVersion);
+                // return deployedAddress;
+                try vm.parseJson(json, string.concat(".deployments.", environment, ".", vm.toString(chainId))) returns (
+                    bytes memory existingDeployment
+                ) {
+                    if (existingDeployment.length > 0) {
+                        revert("Deployment already exists for this chain");
+                    }
+                } catch {
+                    return address(0);
+                }
+            }
+
+            // Deploy new if:
+            // 1. Going from 0.x.x to 1.x.x or higher
+            // 2. Major version jump is more than 1
+            if ((deployedMajor == 0 && currentMajor > 0) || currentMajor > deployedMajor + 1) {
+                return address(0);
+            }
+
             return deployedAddress;
         }
 
         console2.log("No existing version found for", contractName, "in environment", environment);
-
         return address(0);
     }
 
@@ -370,99 +408,35 @@ contract DeployManager is Script {
     {
         string memory contractName = vm.envString("CONTRACT");
         string memory version = vm.envString("VERSION");
+        string memory jsonPath = string.concat("releases/", version, "/", contractName, ".json");
 
+        // If no JSON exists, create initial one
         if (bytes(json).length == 0) {
             json = _getInitialJson(contractName, version);
         }
 
-        // Parse base chains JSON to get the template
-        string memory baseChains = _initChainIds();
-
-        // Update the specific chain in the template
-        string memory updatedChains = _updateChainAddress(baseChains, chainId, deployedAddress);
-
+        // Parse existing deployments to verify structure
         bytes32 envHash = keccak256(bytes(environment));
         bytes32 stagingHash = keccak256(bytes("staging"));
         bytes32 productionHash = keccak256(bytes("production"));
 
-        // Construct the final JSON with the current environment having the updated chains
-        string memory updatedJson = string(
-            abi.encodePacked(
-                "{",
-                '"name":"',
-                contractName,
-                '",',
-                '"version":"',
-                version,
-                '",',
-                '"deployments":{',
-                '"production":',
-                envHash == productionHash ? updatedChains : _initChainIds(),
-                ",",
-                '"staging":',
-                envHash == stagingHash ? updatedChains : _initChainIds(),
-                "}}"
-            )
-        );
-
-        string memory jsonPath = string.concat("releases/", version, "/", contractName, ".json");
-        vm.writeFile(jsonPath, updatedJson);
-    }
-
-    function _updateChainAddress(string memory baseChains, uint256 chainId, address deployedAddress)
-        internal
-        view
-        returns (string memory)
-    {
-        // Find the position of the chainId in the template
-        string memory chainIdStr = vm.toString(chainId);
-        string memory searchStr = string.concat('"', chainIdStr, '":"');
-
-        // If we can't find the chain ID, return base unchanged
-        bytes memory baseBytes = bytes(baseChains);
-        bytes memory searchBytes = bytes(searchStr);
-        uint256 pos = _findSubstring(baseBytes, searchBytes);
-        if (pos == type(uint256).max) return baseChains;
-
-        // Find the end of the current address (next quote)
-        uint256 endPos = pos + searchBytes.length;
-        while (endPos < baseBytes.length && baseBytes[endPos] != '"') {
-            endPos++;
+        // Verify deployments structure exists
+        try vm.parseJson(json, ".deployments") returns (bytes memory) {
+            // Structure exists, continue
+        } catch {
+            // Initialize deployments structure if it doesn't exist
+            vm.writeJson(json, ".deployments", '{"staging":{},"production":{}}');
         }
 
-        // Construct the updated JSON with the new address
-        return string(
-            abi.encodePacked(
-                _sliceBytes(baseBytes, 0, pos + searchBytes.length),
-                vm.toString(deployedAddress),
-                _sliceBytes(baseBytes, endPos, baseBytes.length)
-            )
-        );
-    }
+        // Update only the specific chain address in the environment
+        string memory targetEnv = envHash == stagingHash ? "staging" : "production";
+        string memory targetPath = string.concat(".deployments.", targetEnv, ".", vm.toString(chainId));
 
-    function _findSubstring(bytes memory str, bytes memory substr) internal pure returns (uint256) {
-        if (substr.length == 0) return 0;
-        if (str.length < substr.length) return type(uint256).max;
+        // Create updated JSON preserving structure
+        vm.writeJson(json, targetPath, vm.toString(deployedAddress));
 
-        for (uint256 i = 0; i <= str.length - substr.length; i++) {
-            bool found = true;
-            for (uint256 j = 0; j < substr.length; j++) {
-                if (str[i + j] != substr[j]) {
-                    found = false;
-                    break;
-                }
-            }
-            if (found) return i;
-        }
-        return type(uint256).max;
-    }
-
-    function _sliceBytes(bytes memory data, uint256 start, uint256 end) internal pure returns (bytes memory) {
-        bytes memory result = new bytes(end - start);
-        for (uint256 i = start; i < end; i++) {
-            result[i - start] = data[i];
-        }
-        return result;
+        // Write final JSON to file
+        vm.writeFile(jsonPath, json);
     }
 
     function _getInitialJson(string memory contractName, string memory version) internal pure returns (string memory) {
