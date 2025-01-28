@@ -113,24 +113,24 @@ contract DeployManager is Script {
         bytes32 nameHash = keccak256(bytes(contractName));
 
         if (nameHash == keccak256(bytes("UsdPlus"))) {
-            return _handleUsdPlus(params, isUpgrade);
+            return _getInitDataForUsdPlus(params, isUpgrade);
         }
         if (nameHash == keccak256(bytes("TransferRestrictor"))) {
-            return _handleTransferRestrictor(params, isUpgrade);
+            return _getInitDataForTransferRestrictor(params, isUpgrade);
         }
         if (nameHash == keccak256(bytes("CCIPWaypoint"))) {
-            return _handleCCIPWaypoint(params, isUpgrade);
+            return _getInitDataForCCIPWaypoint(params, isUpgrade);
         }
         if (nameHash == keccak256(bytes("UsdPlusMinter"))) {
-            return _handleUsdPlusMinter(params, isUpgrade);
+            return _getInitDataForUsdPlusMinter(params, isUpgrade);
         }
         if (nameHash == keccak256(bytes("UsdPlusRedeemer"))) {
-            return _handleUsdPlusRedeemer(params, isUpgrade);
+            return _getInitDataForUsdPlusRedeemer(params, isUpgrade);
         }
         revert(string.concat("Unsupported contract: ", contractName));
     }
 
-    function _handleUsdPlus(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+    function _getInitDataForUsdPlus(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
         if (isUpgrade) {
             address upgrader = abi.decode(params, (address));
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
@@ -143,14 +143,18 @@ contract DeployManager is Script {
         );
     }
 
-    function _handleTransferRestrictor(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+    function _getInitDataForTransferRestrictor(bytes memory params, bool isUpgrade)
+        private
+        pure
+        returns (bytes memory)
+    {
         if (isUpgrade) return bytes(""); // No reinitialization needed
 
         (address owner, address upgrader) = abi.decode(params, (address, address));
         return abi.encodeWithSignature("initialize(address,address)", owner, upgrader);
     }
 
-    function _handleCCIPWaypoint(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+    function _getInitDataForCCIPWaypoint(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
         if (isUpgrade) {
             address upgrader = abi.decode(params, (address));
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
@@ -162,7 +166,7 @@ contract DeployManager is Script {
             abi.encodeWithSignature("initialize(address,address,address,address)", _usdPlus, _router, _owner, _upgrader);
     }
 
-    function _handleUsdPlusMinter(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+    function _getInitDataForUsdPlusMinter(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
         if (isUpgrade) {
             address upgrader = abi.decode(params, (address));
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
@@ -175,7 +179,7 @@ contract DeployManager is Script {
         );
     }
 
-    function _handleUsdPlusRedeemer(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+    function _getInitDataForUsdPlusRedeemer(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
         if (isUpgrade) {
             address upgrader = abi.decode(params, (address));
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
