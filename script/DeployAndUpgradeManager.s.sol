@@ -9,54 +9,34 @@ import {console} from "forge-std/console.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {VmSafe} from "forge-std/Vm.sol";
+import {VersionUtils} from "./VersionUtils.sol";
 
 contract DeployManager is Script {
     using stdJson for string;
+    using VersionUtils for string;
+
+    struct DeploymentParams {
+        string contractName;
+        string version;
+        string environment;
+        uint256 chainId;
+    }
 
     function run() external {
-        // Get environment variables
-        string memory contractName = vm.envString("CONTRACT");
-        string memory version = vm.envString("VERSION");
-        string memory environment = vm.envString("ENVIRONMENT");
-        uint256 chainId = block.chainid;
-
-        // Validate inputs
-        require(bytes(contractName).length > 0, "CONTRACT_NAME not set");
-        require(bytes(version).length > 0, "VERSION not set");
-        require(bytes(environment).length > 0, "ENVIRONMENT not set");
-        require(_isValidVersion(version), "Invalid VERSION format");
-
-        // Setup paths
-        // Setup paths
-        string memory configPath = string.concat("release_config/", environment, "/", vm.toString(chainId), ".json");
-        string memory releasePath = string.concat("releases/", version);
-        string memory jsonPath = string.concat(releasePath, "/", contractName, ".json");
-
+        DeploymentParams memory params = _getAndValidateParams();
+        // setup path
+        (string memory configPath, string memory releasePath, string memory jsonPath) = _setupPaths(params);
         // Read config first to ensure it exists
         string memory configJson = vm.readFile(configPath);
-        bytes memory initParams = configJson.parseRaw(string.concat(".", contractName));
+        bytes memory initParams = configJson.parseRaw(string.concat(".", params.contractName));
 
         // Check for existing deployment from previous version
-        address existingAddr = _getExistingDeployment(contractName, version, environment, chainId);
+        address existingAddr =
+            _getExistingDeployment(params.contractName, params.version, params.environment, params.chainId);
         address proxyAddress;
 
         // Create or read current version's release JSON file
-        string memory releaseJson;
-        if (!vm.exists(releasePath)) {
-            vm.createDir(releasePath, true);
-        }
-
-        if (!vm.exists(jsonPath)) {
-            releaseJson = _getInitialJson(contractName, version);
-            vm.writeFile(jsonPath, releaseJson);
-        } else {
-            try vm.readFile(jsonPath) returns (string memory content) {
-                releaseJson = content;
-            } catch {
-                releaseJson = _getInitialJson(contractName, version);
-                vm.writeFile(jsonPath, releaseJson);
-            }
-        }
+        string memory releaseJson = _getReleaseJson(jsonPath, releasePath, params);
 
         console2.log("Release JSON:", releaseJson);
 
@@ -64,19 +44,65 @@ contract DeployManager is Script {
         vm.startBroadcast();
         if (existingAddr != address(0)) {
             console2.log("Upgrading existing deployment at:", existingAddr);
-            bytes memory upgradeData = _getInitData(contractName, initParams, true);
-            proxyAddress = _upgradeContract(contractName, existingAddr, upgradeData);
+            bytes memory upgradeData = _getInitData(params.contractName, initParams, true);
+            proxyAddress = _upgradeContract(params.contractName, existingAddr, upgradeData);
         } else {
             console2.log("Deploying new contract");
-            bytes memory initData = _getInitData(contractName, initParams, false);
-            proxyAddress = _deployNewContract(contractName, initData);
+            bytes memory initData = _getInitData(params.contractName, initParams, false);
+            proxyAddress = _deployNewContract(params.contractName, initData);
         }
         vm.stopBroadcast();
 
         // Update deployments in current version's JSON
-        _updateDeployments(releaseJson, environment, chainId, proxyAddress);
+        _updateDeployments(params.environment, params.chainId, proxyAddress);
 
         console2.log("Deployment completed. Proxy address:", proxyAddress);
+    }
+
+    function _setupPaths(DeploymentParams memory params)
+        internal
+        pure
+        returns (string memory configPath, string memory releasePath, string memory jsonPath)
+    {
+        configPath = string.concat("release_config/", params.environment, "/", vm.toString(params.chainId), ".json");
+        releasePath = string.concat("releases/", params.version);
+        jsonPath = string.concat(releasePath, "/", params.contractName, ".json");
+    }
+
+    function _getReleaseJson(string memory jsonPath, string memory releasePath, DeploymentParams memory params)
+        internal
+        returns (string memory releaseJson)
+    {
+        if (!vm.exists(releasePath)) {
+            vm.createDir(releasePath, true);
+        }
+
+        if (!vm.exists(jsonPath)) {
+            releaseJson = _getInitialJson(params.contractName, params.version);
+            vm.writeFile(jsonPath, releaseJson);
+        } else {
+            try vm.readFile(jsonPath) returns (string memory content) {
+                releaseJson = content;
+            } catch {
+                releaseJson = _getInitialJson(params.contractName, params.version);
+                vm.writeFile(jsonPath, releaseJson);
+            }
+        }
+        return releaseJson;
+    }
+
+    function _getAndValidateParams() internal view returns (DeploymentParams memory) {
+        string memory contractName = vm.envString("CONTRACT");
+        string memory version = vm.envString("VERSION");
+        string memory environment = vm.envString("ENVIRONMENT");
+        uint256 chainId = block.chainid;
+
+        require(bytes(contractName).length > 0, "CONTRACT_NAME not set");
+        require(bytes(version).length > 0, "VERSION not set");
+        require(bytes(environment).length > 0, "ENVIRONMENT not set");
+        require(VersionUtils.isValidVersion(version), "Invalid VERSION format");
+
+        return DeploymentParams(contractName, version, environment, chainId);
     }
 
     function _getInitData(string memory contractName, bytes memory params, bool isUpgrade)
@@ -206,8 +232,8 @@ contract DeployManager is Script {
         string[] memory versions = new string[](dirEntries.length);
         uint256 validCount = 0;
         for (uint256 i = 0; i < dirEntries.length; i++) {
-            string memory dirName = _getDirectoryName(dirEntries[i].path);
-            if (_isValidVersion(dirName)) {
+            string memory dirName = VersionUtils.getDirectoryName(dirEntries[i].path);
+            if (VersionUtils.isValidVersion(dirName)) {
                 versions[validCount] = dirName;
                 validCount++;
             }
@@ -223,7 +249,7 @@ contract DeployManager is Script {
         }
 
         // Sort versions in descending order
-        filteredVersions = _sortVersionsDescending(filteredVersions);
+        filteredVersions = VersionUtils.sortVersionsDescending(filteredVersions);
 
         // Look for deployments
         address deployedAddress = address(0);
@@ -252,6 +278,7 @@ contract DeployManager is Script {
         }
 
         string memory jsonPath = string.concat("releases/", currentVersion, "/", contractName, ".json");
+        string memory workPath = string.concat(".deployments.", environment, ".", vm.toString(chainId));
         string memory json;
         try vm.readFile(jsonPath) returns (string memory content) {
             json = content;
@@ -261,11 +288,11 @@ contract DeployManager is Script {
 
         if (deployedAddress != address(0)) {
             // Parse versions
-            (uint256 currentMajor, uint256 currentMinor, uint256 currentPatch) = _parseVersion(currentVersion);
-            (uint256 deployedMajor, uint256 deployedMinor, uint256 deployedPatch) = _parseVersion(deployedVersion);
+            VersionUtils.Version memory currentVersionParsed = currentVersion.parseVersion();
+            VersionUtils.Version memory deployedVersionParsed = deployedVersion.parseVersion();
 
             // If trying to deploy older major version
-            if (currentMajor < deployedMajor) {
+            if (currentVersionParsed.major < deployedVersionParsed.major) {
                 revert(
                     string.concat(
                         "Cannot deploy older version ", currentVersion, " when version ", deployedVersion, " exists"
@@ -274,12 +301,12 @@ contract DeployManager is Script {
             }
 
             // If exact same version, use existing deployment
-            if (currentMajor == deployedMajor && currentMinor == deployedMinor && currentPatch == deployedPatch) {
-                // console2.log("Using existing deployment for version", currentVersion);
-                // return deployedAddress;
-                try vm.parseJson(json, string.concat(".deployments.", environment, ".", vm.toString(chainId))) returns (
-                    bytes memory existingDeployment
-                ) {
+            if (
+                currentVersionParsed.major == deployedVersionParsed.major
+                    && currentVersionParsed.minor == deployedVersionParsed.minor
+                    && currentVersionParsed.patch == deployedVersionParsed.patch
+            ) {
+                try vm.parseJson(json, workPath) returns (bytes memory existingDeployment) {
                     if (existingDeployment.length > 0) {
                         revert("Deployment already exists for this chain");
                     }
@@ -291,7 +318,10 @@ contract DeployManager is Script {
             // Deploy new if:
             // 1. Going from 0.x.x to 1.x.x or higher
             // 2. Major version jump is more than 1
-            if ((deployedMajor == 0 && currentMajor > 0) || currentMajor > deployedMajor + 1) {
+            if (
+                (deployedVersionParsed.major == 0 && currentVersionParsed.major > 0)
+                    || currentVersionParsed.major > deployedVersionParsed.major + 1
+            ) {
                 return address(0);
             }
 
@@ -302,184 +332,58 @@ contract DeployManager is Script {
         return address(0);
     }
 
-    // Helper function to get directory name from path
-    function _getDirectoryName(string memory path) internal pure returns (string memory) {
-        bytes memory pathBytes = bytes(path);
-        uint256 lastSlash = pathBytes.length;
-
-        for (uint256 i = pathBytes.length - 1; i > 0; i--) {
-            if (pathBytes[i] == 0x2f) {
-                // '/'
-                lastSlash = i + 1;
-                break;
-            }
-        }
-
-        bytes memory dirName = new bytes(pathBytes.length - lastSlash);
-        for (uint256 i = 0; i < dirName.length; i++) {
-            dirName[i] = pathBytes[lastSlash + i];
-        }
-
-        return string(dirName);
-    }
-
-    function _isValidVersion(string memory version) internal pure returns (bool) {
-        bytes memory v = bytes(version);
-        if (v.length < 5 || v[0] != "v") return false;
-        uint256 dotCount = 0;
-        for (uint256 i = 1; i < v.length; i++) {
-            if (v[i] == ".") dotCount++;
-        }
-        return dotCount == 2;
-    }
-
-    function _sortVersionsDescending(string[] memory versions) internal pure returns (string[] memory) {
-        string[] memory sorted = versions;
-        for (uint256 i = 1; i < sorted.length; i++) {
-            string memory key = sorted[i];
-            uint256 j = i;
-            while (j > 0 && _compareVersions(sorted[j - 1], key) < 0) {
-                sorted[j] = sorted[j - 1];
-                j--;
-            }
-            sorted[j] = key;
-        }
-        return sorted;
-    }
-
-    function _compareVersions(string memory a, string memory b) internal pure returns (int256) {
-        (uint256 aMajor, uint256 aMinor, uint256 aPatch) = _parseVersion(a);
-        (uint256 bMajor, uint256 bMinor, uint256 bPatch) = _parseVersion(b);
-
-        // Explicit int256 casting
-        if (aMajor != bMajor) {
-            return aMajor > bMajor ? int256(1) : int256(-1);
-        }
-        if (aMinor != bMinor) {
-            return aMinor > bMinor ? int256(1) : int256(-1);
-        }
-        if (aPatch != bPatch) {
-            return aPatch > bPatch ? int256(1) : int256(-1);
-        }
-        return 0;
-    }
-
-    function _parseVersion(string memory version) internal pure returns (uint256 major, uint256 minor, uint256 patch) {
-        bytes memory v = bytes(version);
-        uint256[3] memory parts;
-        uint256 partIndex = 0;
-        uint256 start = 1; // Skip 'v' prefix
-
-        for (uint256 i = start; i < v.length; i++) {
-            if (v[i] == ".") {
-                parts[partIndex] = _parseNumber(v, start, i);
-                start = i + 1;
-                partIndex++;
-                if (partIndex > 2) break;
-            }
-        }
-
-        // Parse last part
-        if (partIndex < 3) {
-            parts[partIndex] = _parseNumber(v, start, v.length);
-        }
-
-        return (parts[0], parts[1], parts[2]);
-    }
-
-    function _parseNumber(bytes memory version, uint256 start, uint256 end) internal pure returns (uint256) {
-        uint256 result = 0;
-        for (uint256 i = start; i < end; i++) {
-            if (version[i] >= "0" && version[i] <= "9") {
-                result = result * 10 + (uint256(uint8(version[i])) - 48);
-            }
-        }
-        return result;
-    }
-
-    function _updateDeployments(string memory json, string memory environment, uint256 chainId, address deployedAddress)
-        internal
-    {
+    function _updateDeployments(string memory environment, uint256 chainId, address deployedAddress) internal {
         string memory contractName = vm.envString("CONTRACT");
         string memory version = vm.envString("VERSION");
 
-        // Create directory structure if it doesn't exist
+        // 1. Update temp file
+        _updateTempDeployment(environment, chainId, contractName, deployedAddress);
+
+        // 2. Validate and prepare release
+        _prepareReleaseJson(contractName, version);
+    }
+
+    function _updateTempDeployment(
+        string memory environment,
+        uint256 chainId,
+        string memory contractName,
+        address deployedAddress
+    ) internal {
+        // Create temp dirs
         string memory tempDir = "temp";
         string memory tempEnvDir = string.concat(tempDir, "/", environment);
         string memory tempChainDir = string.concat(tempEnvDir, "/", vm.toString(chainId));
 
-        if (!vm.exists(tempDir)) {
-            vm.createDir(tempDir, true);
-        }
-        if (!vm.exists(tempEnvDir)) {
-            vm.createDir(tempEnvDir, true);
-        }
-        if (!vm.exists(tempChainDir)) {
-            vm.createDir(tempChainDir, true);
-        }
+        if (!vm.exists(tempDir)) vm.createDir(tempDir, true);
+        if (!vm.exists(tempEnvDir)) vm.createDir(tempEnvDir, true);
+        if (!vm.exists(tempChainDir)) vm.createDir(tempChainDir, true);
 
-        // Create contract-specific JSON file
+        // Write temp file
         string memory tempContractPath = string.concat(tempChainDir, "/", contractName, ".json");
-
-        // Simple JSON with just this contract's address
         string memory tempJson =
             string(abi.encodePacked("{\"", contractName, "\": \"", vm.toString(deployedAddress), "\"}"));
-
-        // Write to contract-specific file
         vm.writeFile(tempContractPath, tempJson);
+    }
 
-        // Update release tracking
-        if (bytes(json).length == 0) {
-            json = _getInitialJson(contractName, version);
+    function _prepareReleaseJson(string memory contractName, string memory version) internal returns (bool) {
+        string memory releasePath = string.concat("releases/", version);
+        string memory releaseJsonPath = string.concat(releasePath, "/", contractName, ".json");
+
+        // Return if file already exists
+        if (vm.exists(releaseJsonPath)) {
+            return false;
         }
 
-        string memory releasePath = string.concat("releases/", version);
+        // Create release directory if needed
         if (!vm.exists(releasePath)) {
             vm.createDir(releasePath, true);
         }
 
-        string memory releaseJsonPath = string.concat(releasePath, "/", contractName, ".json");
-
-        // Check if version already has deployment for this chain
-        try vm.parseJson(json, string.concat(".deployments.", environment, ".", vm.toString(chainId))) returns (
-            bytes memory existingDeployment
-        ) {
-            string memory existingAddr = string(existingDeployment);
-            if (bytes(existingAddr).length == 42 && bytes(existingAddr)[0] == "0" && bytes(existingAddr)[1] == "x") {
-                revert(
-                    string.concat(
-                        "Version ",
-                        version,
-                        " already has deployment recorded for chain ",
-                        vm.toString(chainId),
-                        " at address ",
-                        existingAddr
-                    )
-                );
-            }
-        } catch {}
-
-        // Update version tracking
-        string memory targetEnv =
-            keccak256(bytes(environment)) == keccak256(bytes("staging")) ? "staging" : "production";
-        string memory targetPath = string.concat(".deployments.", targetEnv, ".", vm.toString(chainId));
-
-        json = vm.serializeAddress(json, targetPath, deployedAddress);
+        // Create standard JSON with empty addresses
+        string memory json = _getInitialJson(contractName, version);
         vm.writeFile(releaseJsonPath, json);
-
-        console2.log(
-            string.concat(
-                "Updated deployment for chain ",
-                vm.toString(chainId),
-                " in temp/",
-                environment,
-                "/",
-                vm.toString(chainId),
-                "/",
-                contractName,
-                ".json"
-            )
-        );
+        console2.log("Created standard release file at: releases/", string.concat(version, "/", contractName, ".json"));
+        return true;
     }
 
     function _getInitialJson(string memory contractName, string memory version) internal pure returns (string memory) {
