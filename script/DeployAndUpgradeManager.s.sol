@@ -15,13 +15,6 @@ contract DeployManager is Script {
     using stdJson for string;
     using VersionUtils for string;
 
-    struct DeploymentParams {
-        string contractName;
-        string version;
-        string environment;
-        uint256 chainId;
-    }
-
     function run() external {
         // Get params
         string memory contractName = vm.envString("CONTRACT");
