@@ -1,0 +1,29 @@
+{
+  "UsdPlus": {
+      "treasury": "",
+      "transferRestrictor": "",
+      "owner": "",
+      "upgrader": ""
+  },
+  "TransferRestrictor": {
+      "owner": "",
+      "upgrader": ""
+  },
+  "CCIPWaypoint": {
+      "usdPlus": "",
+      "router": "",
+      "owner": "",
+      "upgrader": ""
+  },
+  "UsdPlusMinter": {
+      "usdPlus": "",
+      "paymentRecipient": "",
+      "owner": "",
+      "upgrader": ""
+  },
+  "UsdPlusRedeemer": {
+      "usdPlus": "",
+      "owner": "",
+      "upgrader": ""
+  }
+}
