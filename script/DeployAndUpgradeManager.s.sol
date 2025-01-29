@@ -190,10 +190,6 @@ contract DeployManager is Script {
         VersionUtils.Version memory deployedV = deployedVersion.parseVersion();
         console2.log("Deployed version:", deployedV.major, deployedV.minor, deployedV.patch);
 
-        if (currentV.major > deployedV.major) {
-            return address(0); // New deployment if version jump too big
-        }
-
         string memory deployedPath = string.concat("releases/", deployedVersion, "/", contractName, ".json");
         if (!vm.exists(deployedPath)) return address(0);
 
