@@ -17,37 +17,42 @@ contract DeployManager is Script {
 
     function run() external {
         // Get params
+        address proxyAddress;
+        string memory deployedVersion;
         string memory contractName = vm.envString("CONTRACT");
         string memory currentVersion = vm.envString("VERSION");
-        string memory deployedVersion = vm.envString("DEPLOYED_VERSION");
         string memory environment = vm.envString("ENVIRONMENT");
-        uint256 chainId = block.chainid;
-
-        // Get config
-        string memory configPath = string.concat("release_config/", environment, "/", vm.toString(chainId), ".json");
+        string memory configPath =
+            string.concat("release_config/", environment, "/", vm.toString(block.chainid), ".json");
         string memory configJson = vm.readFile(configPath);
         bytes memory initParams = configJson.parseRaw(string.concat(".", contractName));
 
-        // Check for upgrade vs new deployment
-        address proxyAddress;
-        address existingAddr =
-            _checkExistingDeployment(contractName, currentVersion, deployedVersion, environment, chainId);
-
-        // Deploy or upgrade
-        vm.startBroadcast();
-        if (existingAddr != address(0)) {
-            console2.log("Upgrading existing deployment at:", existingAddr);
-            bytes memory upgradeData = _getInitData(contractName, initParams, true);
-            proxyAddress = _upgradeContract(contractName, existingAddr, upgradeData);
-        } else {
-            console2.log("Deploying new contract");
-            bytes memory initData = _getInitData(contractName, initParams, false);
-            proxyAddress = _deployNewContract(contractName, initData);
+        try vm.envString("DEPLOYED_VERSION") returns (string memory v) {
+            deployedVersion = v;
+        } catch {
+            deployedVersion = "";
         }
+
+        vm.startBroadcast();
+
+        bool isNewDeployment = (keccak256(bytes(deployedVersion)) == 0);
+        address existingAddr =
+            _checkExistingDeployment(contractName, currentVersion, deployedVersion, environment, block.chainid);
+
+        console2.log(
+            isNewDeployment
+                ? "Deploying new contract"
+                : existingAddr != address(0) ? "Upgrading existing deployment at:" : "Deploying new contract",
+            existingAddr
+        );
+
+        proxyAddress = (isNewDeployment || existingAddr == address(0))
+            ? _deployNewContract(contractName, _getInitData(contractName, initParams, false))
+            : _upgradeContract(contractName, existingAddr, _getInitData(contractName, initParams, true));
         vm.stopBroadcast();
 
         // Write result to chain-specific file
-        _writeDeployment(environment, chainId, contractName, proxyAddress);
+        _writeDeployment(environment, block.chainid, contractName, proxyAddress);
 
         // Prepare release JSON if new version
         _prepareReleaseJson(contractName, currentVersion);
@@ -181,9 +186,11 @@ contract DeployManager is Script {
         if (bytes(deployedVersion).length == 0) return address(0);
 
         VersionUtils.Version memory currentV = currentVersion.parseVersion();
+        console2.log("Current version:", currentV.major, currentV.minor, currentV.patch);
         VersionUtils.Version memory deployedV = deployedVersion.parseVersion();
+        console2.log("Deployed version:", deployedV.major, deployedV.minor, deployedV.patch);
 
-        if (currentV.major > deployedV.major + 1) {
+        if (currentV.major > deployedV.major) {
             return address(0); // New deployment if version jump too big
         }
 
