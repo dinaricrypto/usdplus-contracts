@@ -5,15 +5,12 @@ import {Script} from "forge-std/Script.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
-import {console} from "forge-std/console.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {VmSafe} from "forge-std/Vm.sol";
-import {VersionUtils} from "./VersionUtils.sol";
 
 contract DeployManager is Script {
     using stdJson for string;
-    using VersionUtils for string;
 
     function run() external {
         // Get params
@@ -35,27 +32,22 @@ contract DeployManager is Script {
 
         vm.startBroadcast();
 
-        bool isNewDeployment = (keccak256(bytes(deployedVersion)) == 0);
-        address existingAddr =
-            _checkExistingDeployment(contractName, currentVersion, deployedVersion, environment, block.chainid);
+        (address previousDeploymentAddress, string memory previousVersion) =
+            _getPreviousDeploymentInfo(contractName, deployedVersion, environment, block.chainid);
 
-        console2.log(
-            isNewDeployment
-                ? "Deploying new contract"
-                : existingAddr != address(0) ? "Upgrading existing deployment at:" : "Deploying new contract",
-            existingAddr
-        );
+        if (previousDeploymentAddress == address(0)) {
+            proxyAddress = _deployContract(contractName, _getInitData(contractName, initParams, false));
+        } else if (
+            keccak256(bytes(previousVersion)) != keccak256(bytes(currentVersion)) || bytes(previousVersion).length == 0
+        ) {
+            proxyAddress =
+                _upgradeContract(contractName, previousDeploymentAddress, _getInitData(contractName, initParams, true));
+        }
 
-        proxyAddress = (isNewDeployment || existingAddr == address(0))
-            ? _deployNewContract(contractName, _getInitData(contractName, initParams, false))
-            : _upgradeContract(contractName, existingAddr, _getInitData(contractName, initParams, true));
         vm.stopBroadcast();
 
         // Write result to chain-specific file
         _writeDeployment(environment, block.chainid, contractName, proxyAddress);
-
-        // Prepare release JSON if new version
-        _prepareReleaseJson(contractName, currentVersion);
     }
 
     function _getInitData(string memory contractName, bytes memory params, bool isUpgrade)
@@ -142,10 +134,10 @@ contract DeployManager is Script {
         return abi.encodeWithSignature("initialize(address,address,address)", _usdPlus, _owner, _upgrader);
     }
 
-    function _deployNewContract(string memory contractName, bytes memory initData) internal returns (address) {
+    function _deployContract(string memory contractName, bytes memory initData) internal returns (address) {
         address implementation = _deployImplementation(contractName);
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, initData);
-        console.log("Deployed %s at %s", contractName, address(proxy));
+        console2.log("Deployed %s at %s", contractName, address(proxy));
         return address(proxy);
     }
 
@@ -159,7 +151,7 @@ contract DeployManager is Script {
         } else {
             revert("Upgrade data not provided");
         }
-        console.log("Upgraded %s at %s", contractName, proxyAddress);
+        console2.log("Upgraded %s at %s", contractName, proxyAddress);
         return proxyAddress;
     }
 
@@ -176,29 +168,27 @@ contract DeployManager is Script {
         return implementation;
     }
 
-    function _checkExistingDeployment(
+    function _getPreviousDeploymentInfo(
         string memory contractName,
-        string memory currentVersion,
         string memory deployedVersion,
         string memory environment,
         uint256 chainId
-    ) internal returns (address) {
-        if (bytes(deployedVersion).length == 0) return address(0);
-
-        VersionUtils.Version memory currentV = currentVersion.parseVersion();
-        console2.log("Current version:", currentV.major, currentV.minor, currentV.patch);
-        VersionUtils.Version memory deployedV = deployedVersion.parseVersion();
-        console2.log("Deployed version:", deployedV.major, deployedV.minor, deployedV.patch);
+    ) internal returns (address, string memory) {
+        if (bytes(deployedVersion).length == 0) return (address(0), "");
 
         string memory deployedPath = string.concat("releases/", deployedVersion, "/", contractName, ".json");
-        if (!vm.exists(deployedPath)) return address(0);
+        if (!vm.exists(deployedPath)) return (address(0), "");
 
         try vm.parseJsonAddress(
             vm.readFile(deployedPath), string.concat(".deployments.", environment, ".", vm.toString(chainId))
         ) returns (address addr) {
-            return addr;
+            try vm.parseJsonString(vm.readFile(deployedPath), ".version") returns (string memory version) {
+                return (addr, version);
+            } catch {
+                return (addr, ""); // Address exists, but version retrieval failed
+            }
         } catch {
-            return address(0);
+            return (address(0), "");
         }
     }
 
@@ -227,45 +217,5 @@ contract DeployManager is Script {
         vm.writeFile(deploymentPath, json);
 
         console2.log("Deployment written to:", deploymentPath);
-    }
-
-    function _prepareReleaseJson(string memory contractName, string memory version) internal {
-        // Setup release directory
-        string memory releasePath = string.concat("releases/", version);
-        string memory releaseJsonPath = string.concat(releasePath, "/", contractName, ".json");
-
-        // Only create if doesn't exist
-        if (!vm.exists(releaseJsonPath)) {
-            if (!vm.exists(releasePath)) {
-                vm.createDir(releasePath, true);
-            }
-
-            // Create standard JSON structure with empty addresses
-            string memory json = string(
-                abi.encodePacked(
-                    "{",
-                    '"name":"',
-                    contractName,
-                    '",',
-                    '"version":"',
-                    version,
-                    '",',
-                    '"deployments":',
-                    _initDeployments(),
-                    "}"
-                )
-            );
-            vm.writeFile(releaseJsonPath, json);
-            console2.log("Created standard release file at:", releaseJsonPath);
-        }
-    }
-
-    function _initDeployments() internal pure returns (string memory) {
-        return string(abi.encodePacked("{", '"production":', _initChainIds(), ",", '"staging":', _initChainIds(), "}"));
-    }
-
-    function _initChainIds() internal pure returns (string memory) {
-        return "{" '"1":"","11155111":"","42161":"","421614":"",' '"8453":"","84532":"","81457":"","168587773":"",'
-        '"7887":"","161221135":"","98865":"","98864":""' "}";
     }
 }
