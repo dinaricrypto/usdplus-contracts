@@ -9,6 +9,11 @@ import {console2} from "forge-std/console2.sol";
 
 import {VmSafe} from "forge-std/Vm.sol";
 
+interface IVersioned {
+    // The version function that must be implemented by the inheriting contract
+    function publicVersion() external view returns (string memory);
+}
+
 contract DeployManager is Script {
     using stdJson for string;
 
@@ -32,16 +37,27 @@ contract DeployManager is Script {
 
         vm.startBroadcast();
 
-        (address previousDeploymentAddress, string memory previousVersion) =
-            _getPreviousDeploymentInfo(contractName, deployedVersion, environment, block.chainid);
+        address previousDeploymentAddress =
+            _getPreviousDeploymentAddress(contractName, deployedVersion, environment, block.chainid);
 
         if (previousDeploymentAddress == address(0)) {
+            // Deploy new contract
             proxyAddress = _deployContract(contractName, _getInitData(contractName, initParams, false));
-        } else if (
-            keccak256(bytes(previousVersion)) != keccak256(bytes(currentVersion)) || bytes(previousVersion).length == 0
-        ) {
-            proxyAddress =
-                _upgradeContract(contractName, previousDeploymentAddress, _getInitData(contractName, initParams, true));
+        } else {
+            string memory previousVersion;
+            // Get the previous version of the contract
+            try IVersioned(previousDeploymentAddress).publicVersion() returns (string memory v) {
+                previousVersion = v;
+            } catch {}
+            if (
+                keccak256(bytes(previousVersion)) != keccak256(bytes(currentVersion))
+                    || bytes(previousVersion).length == 0
+            ) {
+                // Upgrade existing contract
+                proxyAddress = _upgradeContract(
+                    contractName, previousDeploymentAddress, _getInitData(contractName, initParams, true)
+                );
+            }
         }
 
         vm.stopBroadcast();
@@ -168,27 +184,23 @@ contract DeployManager is Script {
         return implementation;
     }
 
-    function _getPreviousDeploymentInfo(
+    function _getPreviousDeploymentAddress(
         string memory contractName,
         string memory deployedVersion,
         string memory environment,
         uint256 chainId
-    ) internal returns (address, string memory) {
-        if (bytes(deployedVersion).length == 0) return (address(0), "");
+    ) internal returns (address) {
+        if (bytes(deployedVersion).length == 0) return address(0);
 
         string memory deployedPath = string.concat("releases/", deployedVersion, "/", contractName, ".json");
-        if (!vm.exists(deployedPath)) return (address(0), "");
+        if (!vm.exists(deployedPath)) return address(0);
 
         try vm.parseJsonAddress(
             vm.readFile(deployedPath), string.concat(".deployments.", environment, ".", vm.toString(chainId))
         ) returns (address addr) {
-            try vm.parseJsonString(vm.readFile(deployedPath), ".version") returns (string memory version) {
-                return (addr, version);
-            } catch {
-                return (addr, ""); // Address exists, but version retrieval failed
-            }
+            return addr;
         } catch {
-            return (address(0), "");
+            return address(0);
         }
     }
 
