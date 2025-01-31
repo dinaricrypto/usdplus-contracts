@@ -1,8 +1,18 @@
-#!/bin/bash
+#!/bin/sh
+RPC_URL=""
+VERIFY_URL=""
+PRIVATE_KEY=""
+ETHERSCAN_API_KEY=""
 
-# Load environment variables
-cp .env-local .env
-source .env
+export VERSION="" # 1.0.0
+export CONTRACT="" # transfer_restrictor
+export ENVIRONMENT="" #staging, production
+export DEPLOYED_VERSION=""
 
-# Deploy contracts
-forge script script/Release.s.sol --rpc-url $RPC_URL -vvv
+forge script script/Release.s.sol \
+   --rpc-url $RPC_URL \
+   --etherscan-api-key $ETHERSCAN_API_KEY \
+   --private-key $PRIVATE_KEY \
+    --verify \
+   --broadcast \
+   -vvv

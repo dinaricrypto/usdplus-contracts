@@ -17,17 +17,40 @@ interface IVersioned {
 contract Release is Script {
     using stdJson for string;
 
+    /**
+     * @notice Main deployment script for handling new deployments and upgrades
+     * @dev Prerequisites:
+     *      1. Environment Variables:
+     *         - CONTRACT: Name of contract to deploy
+     *         - VERSION: Current version being deployed
+     *         - ENVIRONMENT: Target environment (e.g., production, staging)
+     *         - DEPLOYED_VERSION: (Optional) Previous version for upgrades
+     *
+     *      2. Required Files:
+     *         - release_config/{environment}/{chainId}.json: Contract initialization params
+     *
+     * @dev Workflow:
+     *      1. Loads configuration and parameters from environment and JSON files
+     *      2. Checks for previous deployment address
+     *      3. If no previous deployment (address(0)):
+     *         - Deploys new implementation and proxy
+     *      4. If previous deployment exists:
+     *         - Checks version difference
+     *         - Upgrades if version changed or previous version not available
+     *      5. Writes deployment result to temp/{environment}/{chainId}.{contractName}.json
+     */
     function run() external {
         // Get params
         address proxyAddress;
         string memory deployedVersion;
         string memory contractName = vm.envString("CONTRACT");
+        string memory normalizeContractName = _normalizeContractName(contractName);
         string memory currentVersion = vm.envString("VERSION");
         string memory environment = vm.envString("ENVIRONMENT");
         string memory configPath =
             string.concat("release_config/", environment, "/", vm.toString(block.chainid), ".json");
         string memory configJson = vm.readFile(configPath);
-        bytes memory initParams = configJson.parseRaw(string.concat(".", contractName));
+        bytes memory initParams = configJson.parseRaw(string.concat(".", normalizeContractName));
 
         try vm.envString("DEPLOYED_VERSION") returns (string memory v) {
             deployedVersion = v;
@@ -41,8 +64,10 @@ contract Release is Script {
             _getPreviousDeploymentAddress(contractName, deployedVersion, environment, block.chainid);
 
         if (previousDeploymentAddress == address(0)) {
+            console2.log("No previous deployment found for %s", normalizeContractName);
             // Deploy new contract
-            proxyAddress = _deployContract(contractName, _getInitData(contractName, initParams, false));
+            proxyAddress =
+                _deployContract(normalizeContractName, _getInitData(normalizeContractName, initParams, false));
         } else {
             string memory previousVersion;
             // Get the previous version of the contract
@@ -55,7 +80,9 @@ contract Release is Script {
             ) {
                 // Upgrade existing contract
                 proxyAddress = _upgradeContract(
-                    contractName, previousDeploymentAddress, _getInitData(contractName, initParams, true)
+                    normalizeContractName,
+                    previousDeploymentAddress,
+                    _getInitData(normalizeContractName, initParams, true)
                 );
             }
         }
@@ -109,7 +136,7 @@ contract Release is Script {
         pure
         returns (bytes memory)
     {
-        if (isUpgrade) return bytes(""); // No reinitialization needed
+        if (isUpgrade) return bytes("0x"); // No reinitialization needed
 
         (address owner, address upgrader) = abi.decode(params, (address, address));
         return abi.encodeWithSignature("initialize(address,address)", owner, upgrader);
@@ -151,6 +178,7 @@ contract Release is Script {
     }
 
     function _deployContract(string memory contractName, bytes memory initData) internal returns (address) {
+        console2.log("Deploying %s", contractName);
         address implementation = _deployImplementation(contractName);
         ERC1967Proxy proxy = new ERC1967Proxy(implementation, initData);
         console2.log("Deployed %s at %s", contractName, address(proxy));
@@ -229,5 +257,17 @@ contract Release is Script {
         vm.writeFile(deploymentPath, json);
 
         console2.log("Deployment written to:", deploymentPath);
+    }
+
+    function _normalizeContractName(string memory input) private pure returns (string memory) {
+        bytes32 inputHash = keccak256(bytes(input));
+
+        if (inputHash == keccak256(bytes("transfer_restrictor"))) return "TransferRestrictor";
+        if (inputHash == keccak256(bytes("usdplus_minter"))) return "UsdPlusMinter";
+        if (inputHash == keccak256(bytes("ccip_waypoint"))) return "CCIPWaypoint";
+        if (inputHash == keccak256(bytes("usdplus_redeemer"))) return "UsdPlusRedeemer";
+        if (inputHash == keccak256(bytes("usdplus"))) return "UsdPlus";
+
+        revert(string.concat("Unknown contract name: ", input));
     }
 }
