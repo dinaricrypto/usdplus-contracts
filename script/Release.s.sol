@@ -14,7 +14,7 @@ interface IVersioned {
     function publicVersion() external view returns (string memory);
 }
 
-contract DeployManager is Script {
+contract Release is Script {
     using stdJson for string;
 
     function run() external {
