@@ -21,7 +21,8 @@ contract Release is Script {
      * @notice Main deployment script for handling new deployments and upgrades
      * @dev Prerequisites:
      *      1. Environment Variables:
-     *         - CONTRACT: Name of contract to deploy
+     *         - PRIVATE_KEY: (for signing transactions)
+     *         - RPC_URL: (for connecting to the network)
      *         - VERSION: Current version being deployed
      *         - ENVIRONMENT: Target environment (e.g., production, staging)
      *         - DEPLOYED_VERSION: (Optional) Previous version for upgrades
@@ -37,7 +38,9 @@ contract Release is Script {
      *      4. If previous deployment exists:
      *         - Checks version difference
      *         - Upgrades if version changed or previous version not available
-     *      5. Writes deployment result to temp/{environment}/{chainId}.{contractName}.json
+     *      5. Writes deployment result to artifact/{environment}/{chainId}.{contractName}.json
+     * @dev Run:
+     *      ./script/release_sh
      */
     function run() external {
         // Get params
@@ -239,7 +242,7 @@ contract Release is Script {
         address deployedAddress
     ) internal {
         // Create temp directory structure
-        string memory tempDir = "temp";
+        string memory tempDir = "artifact";
         string memory tempEnvDir = string.concat(tempDir, "/", environment);
 
         if (!vm.exists(tempDir)) {
@@ -249,7 +252,7 @@ contract Release is Script {
             vm.createDir(tempEnvDir, true);
         }
 
-        // Create deployment file under temp/environment/chainId.contractName.json
+        // Create deployment file under artifact/environment/chainId.contractName.json
         string memory deploymentPath =
             string.concat(tempDir, "/", environment, "/", vm.toString(chainId), ".", contractName, ".json");
 
