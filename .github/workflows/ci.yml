@@ -30,9 +30,23 @@ jobs:
           version: nightly
 
       - name: Sol Fmt
+        run: forge fmt --check
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+            
+      - name: Enable Corepack
         run: |
-          forge fmt --check
+          corepack enable
   
+      - name: Install dependencies
+        run: yarn install
+  
+      - name: Validate JSON Schema
+        run: yarn lint:json
+
   analyze:
     strategy:
       matrix:
@@ -113,4 +127,4 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./lcov.info        
+          files: ./lcov.info

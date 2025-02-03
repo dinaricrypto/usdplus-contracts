@@ -17,7 +17,6 @@ import {SelfPermit} from "./SelfPermit.sol";
 
 /// @notice manages requests for USD+ burning
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Redeemer.sol)
-// TODO: remove owner from redeem request calls
 contract UsdPlusRedeemer is
     IUsdPlusRedeemer,
     UUPSUpgradeable,
@@ -37,6 +36,7 @@ contract UsdPlusRedeemer is
     error SequencerGracePeriodNotOver();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
+    bytes32 public constant PROXY_ROLE = keccak256("PROXY_ROLE");
 
     /// ------------------ Storage ------------------
 
@@ -244,7 +244,7 @@ contract UsdPlusRedeemer is
         address receiver,
         address owner
     ) internal returns (uint256 ticket) {
-        if (msg.sender != owner) {
+        if (msg.sender != owner && !hasRole(PROXY_ROLE, msg.sender)) {
             revert UnauthorizedRedeemer();
         }
 
@@ -255,7 +255,7 @@ contract UsdPlusRedeemer is
         }
 
         $._requests[ticket] = Request({
-            owner: msg.sender,
+            owner: owner,
             receiver: receiver,
             paymentToken: paymentToken,
             paymentTokenAmount: paymentTokenAmount,
@@ -264,7 +264,8 @@ contract UsdPlusRedeemer is
 
         emit RequestCreated(ticket, receiver, paymentToken, paymentTokenAmount, usdplusAmount);
 
-        IERC20($._usdplus).safeTransferFrom(msg.sender, address(this), usdplusAmount);
+        // slither-disable-next-line arbitrary-send-erc20
+        IERC20($._usdplus).safeTransferFrom(owner, address(this), usdplusAmount);
 
         UsdPlus($._usdplus).burn(address(this), usdplusAmount);
     }

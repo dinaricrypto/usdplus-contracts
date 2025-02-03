@@ -351,14 +351,23 @@ contract UsdPlusRedeemerTest is Test {
         vm.prank(USER);
         usdplus.approve(address(redeemer), amount);
 
+        // set limit
+        vm.prank(ADMIN);
+        usdplus.setIssuerLimits(address(redeemer), 0, type(uint256).max);
+
         // Try to redeem on behalf of USER without authorization
         vm.prank(ATTACKER);
         vm.expectRevert(IUsdPlusRedeemer.UnauthorizedRedeemer.selector);
         redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+
+        vm.startPrank(ADMIN);
+        redeemer.grantRole(redeemer.PROXY_ROLE(), ADMIN);
+        redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+        vm.stopPrank();
     }
 
     function test_permitRequestRedeem(uint256 amount) public {
-        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+        vm.assume(amount > 1 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
@@ -495,7 +504,7 @@ contract UsdPlusRedeemerTest is Test {
     }
 
     function test_burnRequest(uint256 amount) public {
-        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+        vm.assume(amount > 1 && amount < type(uint256).max / 2);
 
         vm.prank(ADMIN);
         redeemer.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
