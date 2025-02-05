@@ -3,6 +3,10 @@
   "version": "0.2.9",
   "deployments": {
     "production": {
+      "1": "0x95B77A0659887053075579a6FA274Bfc15a486B0",
+      "42161": "0xD8d541427ad7CE0f4C6dE2b21C8a8596CBb90A44",
+      "8453": "0x0BFE520dccAB40BE814e8dC9EAB9f1db6305FdEA",
+      "7887": "0x931C5dC9eA13b0F6B4768a98AFfEA773b888e978",
       "11155111": "0xB41Df2e0F6610C7b0f8Cf0b5bdC355D78F4750EF"
     },
     "staging": {
