@@ -233,14 +233,14 @@ contract UsdPlusRedeemerTest is Test {
         // reverts if withdrawal amount is 0
         if (usdplusAmount == 0) {
             vm.expectRevert(UsdPlusRedeemer.ZeroAmount.selector);
-            redeemer.requestWithdraw(paymentToken, amount, USER, USER, amount);
+            redeemer.requestWithdraw(paymentToken, amount, USER, USER, type(uint256).max);
             return;
         }
 
         vm.expectEmit(true, true, true, true);
         emit RequestCreated(0, USER, paymentToken, amount, usdplusAmount);
         vm.prank(USER);
-        uint256 ticket = redeemer.requestWithdraw(paymentToken, amount, USER, USER, amount);
+        uint256 ticket = redeemer.requestWithdraw(paymentToken, amount, USER, USER, type(uint256).max);
 
         IUsdPlusRedeemer.Request memory request = redeemer.requests(ticket);
         assertEq(request.paymentTokenAmount, amount);
@@ -249,7 +249,7 @@ contract UsdPlusRedeemerTest is Test {
 
     function test_requestToZeroAddressReverts(uint256 amount) public {
         vm.expectRevert(UsdPlusRedeemer.ZeroAddress.selector);
-        redeemer.requestRedeem(paymentToken, amount, address(0), USER, amount);
+        redeemer.requestRedeem(paymentToken, amount, address(0), USER, 0);
     }
 
     function test_requestZeroAmountReverts() public {
@@ -317,7 +317,7 @@ contract UsdPlusRedeemerTest is Test {
         // reverts if redemption amount is 0
         if (redemptionEstimate == 0) {
             vm.expectRevert(UsdPlusRedeemer.ZeroAmount.selector);
-            redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+            redeemer.requestRedeem(paymentToken, amount, USER, USER, 0);
             return;
         }
 
@@ -325,13 +325,13 @@ contract UsdPlusRedeemerTest is Test {
         address ATTACKER = address(0xdead);
         vm.prank(ATTACKER);
         vm.expectRevert(IUsdPlusRedeemer.UnauthorizedRedeemer.selector);
-        redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+        redeemer.requestRedeem(paymentToken, amount, USER, USER, 0);
 
         // Test successful case
         vm.expectEmit(true, true, true, true);
         emit RequestCreated(0, USER, paymentToken, redemptionEstimate, amount);
         vm.prank(USER);
-        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER, 0);
 
         assertEq(usdplus.balanceOf(address(redeemer)), 0);
         assertEq(balanceBefore - amount, usdplus.balanceOf(USER));
@@ -358,11 +358,11 @@ contract UsdPlusRedeemerTest is Test {
         // Try to redeem on behalf of USER without authorization
         vm.prank(ATTACKER);
         vm.expectRevert(IUsdPlusRedeemer.UnauthorizedRedeemer.selector);
-        redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+        redeemer.requestRedeem(paymentToken, amount, USER, USER, 0);
 
         vm.startPrank(ADMIN);
         redeemer.grantRole(redeemer.PROXY_ROLE(), ADMIN);
-        redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+        redeemer.requestRedeem(paymentToken, amount, USER, USER, 0);
         vm.stopPrank();
     }
 
@@ -394,7 +394,7 @@ contract UsdPlusRedeemerTest is Test {
         calls[0] = abi.encodeCall(
             redeemer.selfPermit, (address(usdplus), permit.owner, permit.value, permit.deadline, v + 1, r, s)
         );
-        calls[1] = abi.encodeCall(redeemer.requestRedeem, (paymentToken, amount, USER, USER, amount));
+        calls[1] = abi.encodeCall(redeemer.requestRedeem, (paymentToken, amount, USER, USER, 0));
 
         // Test invalid signature reverts
         vm.prank(USER);
@@ -437,7 +437,7 @@ contract UsdPlusRedeemerTest is Test {
 
         vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
-        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER, 0);
         vm.stopPrank();
 
         // not fulfiller
@@ -481,7 +481,7 @@ contract UsdPlusRedeemerTest is Test {
 
         vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
-        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER, 0);
         vm.stopPrank();
 
         assertEq(balanceBefore - amount, usdplus.balanceOf(USER));
@@ -511,7 +511,7 @@ contract UsdPlusRedeemerTest is Test {
 
         vm.startPrank(USER);
         usdplus.approve(address(redeemer), amount);
-        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER, amount);
+        uint256 ticket = redeemer.requestRedeem(paymentToken, amount, USER, USER, 0);
         vm.stopPrank();
 
         // not fulfiller
