@@ -127,7 +127,6 @@ contract Release is Script {
         revert(string.concat("Unsupported contract: ", contractName));
     }
 
-    // Rest of the initialization functions remain the same
     function _getInitDataForUsdPlus(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
         if (isUpgrade) {
             address upgrader = abi.decode(params, (address));
