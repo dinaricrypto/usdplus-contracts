@@ -15,19 +15,31 @@ interface IVersioned {
 contract Release is Script {
     using stdJson for string;
 
-    // Mapping of PascalCase contract names to their underscore versions
-    function _getConfigName(string memory contractName) internal pure returns (string memory) {
-        bytes32 inputHash = keccak256(bytes(contractName));
-
-        if (inputHash == keccak256(bytes("TransferRestrictor"))) return "transfer_restrictor";
-        if (inputHash == keccak256(bytes("UsdPlusMinter"))) return "usdplus_minter";
-        if (inputHash == keccak256(bytes("CCIPWaypoint"))) return "ccip_waypoint";
-        if (inputHash == keccak256(bytes("UsdPlusRedeemer"))) return "usdplus_redeemer";
-        if (inputHash == keccak256(bytes("UsdPlus"))) return "usdplus";
-
-        revert(string.concat("Unknown contract name: ", contractName));
-    }
-
+    /**
+     * @notice Main deployment script for handling new deployments and upgrades
+     * @dev Prerequisites:
+     *      1. Environment Variables:
+     *         - PRIVATE_KEY: (for signing transactions)
+     *         - RPC_URL: (for connecting to the network)
+     *         - VERSION: Current version being deployed
+     *         - ENVIRONMENT: Target environment (e.g., production, staging)
+     *         - DEPLOYED_VERSION: (Optional) Previous version for upgrades
+     *
+     *      2. Required Files:
+     *         - release_config/{environment}/{chainId}.json: Contract initialization params
+     *
+     * @dev Workflow:
+     *      1. Loads configuration and parameters from environment and JSON files
+     *      2. Checks for previous deployment address
+     *      3. If no previous deployment (address(0)):
+     *         - Deploys new implementation and proxy
+     *      4. If previous deployment exists:
+     *         - Checks version difference
+     *         - Upgrades if version changed or previous version not available
+     *      5. Writes deployment result to artifact/{environment}/{chainId}.{contractName}.json
+     * @dev Run:
+     *      ./script/release_sh
+     */
     function run() external {
         // Get params
         address proxyAddress;
@@ -75,6 +87,19 @@ contract Release is Script {
 
         // Write result using underscore format for file naming
         _writeDeployment(environment, block.chainid, configName, proxyAddress);
+    }
+
+    // Mapping of PascalCase contract names to their underscore versions
+    function _getConfigName(string memory contractName) internal pure returns (string memory) {
+        bytes32 inputHash = keccak256(bytes(contractName));
+
+        if (inputHash == keccak256(bytes("TransferRestrictor"))) return "transfer_restrictor";
+        if (inputHash == keccak256(bytes("UsdPlusMinter"))) return "usdplus_minter";
+        if (inputHash == keccak256(bytes("CCIPWaypoint"))) return "ccip_waypoint";
+        if (inputHash == keccak256(bytes("UsdPlusRedeemer"))) return "usdplus_redeemer";
+        if (inputHash == keccak256(bytes("UsdPlus"))) return "usdplus";
+
+        revert(string.concat("Unknown contract name: ", contractName));
     }
 
     function _getInitData(string memory contractName, bytes memory params, bool isUpgrade)
