@@ -33,10 +33,6 @@ gas-report:
 sizes:
 	forge build --sizes > sizes.txt
 
-# Deploy all contracts
-deploy-all:
-	forge script script/DeployAll.s.sol:DeployAllScript --rpc-url $(RPC_URL) --broadcast --verify -vvv
-
 # Format code
 format:
 	forge fmt
@@ -51,5 +47,4 @@ help:
 	@echo "  coverage     - Generate test coverage report"
 	@echo "  gas-report   - Generate gas usage report"
 	@echo "  sizes        - Check contract sizes"
-	@echo "  deploy-all   - Deploy all contracts"
 	@echo "  format       - Format code"
