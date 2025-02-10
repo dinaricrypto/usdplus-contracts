@@ -44,8 +44,8 @@ contract Release is Script {
         // Get params
         address proxyAddress;
         string memory deployedVersion;
-        string memory contractName = vm.envString("CONTRACT"); // Now expects PascalCase (e.g., "TransferRestrictor")
-        string memory configName = _getConfigName(contractName); // Convert to underscore format for config
+        string memory contractName = vm.envString("CONTRACT");
+        string memory configName = _getConfigName(contractName);
         string memory currentVersion = vm.envString("VERSION");
         string memory environment = vm.envString("ENVIRONMENT");
         string memory configPath =
