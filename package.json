@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "packageManager": "yarn@3.6.4",
   "scripts": {
-    "metrics": "solidity-code-metrics ./src/**/*.sol --html > metrics.html",
     "errors": "npx ts-node script/errors_parse_ast.ts",
     "anvil:kinto": "anvil -f https://rpc.kinto-rpc.com/",
     "lint:json": "ajv validate -s releases/schema.json -d \"releases/v*/*.json\" --strict=true",

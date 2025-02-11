@@ -1,5 +1,3 @@
-# Include .env file if it exists
--include .env
 .PHONY: all test clean build coverage gas-report sizes help
 
 # Default target
@@ -33,10 +31,6 @@ gas-report:
 sizes:
 	forge build --sizes > sizes.txt
 
-# Format code
-format:
-	forge fmt
-
 # Help target
 help:
 	@echo "Available forge commands:"
@@ -47,4 +41,3 @@ help:
 	@echo "  coverage     - Generate test coverage report"
 	@echo "  gas-report   - Generate gas usage report"
 	@echo "  sizes        - Check contract sizes"
-	@echo "  format       - Format code"
