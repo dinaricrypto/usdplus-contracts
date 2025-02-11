@@ -12,7 +12,7 @@
 
 export VERSION="1.0.0" # Version of current deployment
 
-CONTRACTS=("usdplus" "transfer_restrictor" "usdplus_minter" "usdplus_redeemer" "ccip_waypoint")
+CONTRACTS=("UsdPlus" "TransferRestrictor" "UsdPlusMinter" "UsdPlusRedeemer" "CCIPWaypoint")
 
 for i in "${CONTRACTS[@]}"; do
    echo "Deploying $i"
