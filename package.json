@@ -5,6 +5,8 @@
   "description": "Scripts for deploying USD+",
   "scripts": {
     "prettier": "prettier --loglevel warn script/typescript --write",
+    "prettier:releases": "prettier --loglevel warn releases --write",
+    "lint:releases": "ajv validate -s releases/schema.json -d \"releases/v*/*.json\" --strict=true",
     "check": "./node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "build": "./node_modules/.bin/tsc",
     "sizes": "forge build --sizes > sizes.txt",
@@ -13,18 +15,21 @@
     "gas": "forge test -f $(grep RPC_URL .env-test | cut -d '=' -f2) --gas-report --fuzz-seed 1 | grep '^|' > .gas-report",
     "metrics": "solidity-code-metrics ./src/**/*.sol --html > metrics.html",
     "deploy:all": "forge script script/DeployAll.s.sol:DeployAllScript --rpc-url $(grep RPC_URL .env | cut -d '=' -f2) --broadcast --verify -vvv",
-    "anvil:kinto": "anvil -f https://rpc.kinto-rpc.com/",
-    "lint:json": "ajv validate -s releases/schema.json -d \"releases/v*/*.json\" --strict=true",
-    "lint:json:debug": "echo \"Files to validate:\" && ls releases/v*/*.json && yarn lint:json"
+    "anvil:kinto": "anvil -f https://rpc.kinto-rpc.com/"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.15",
     "@types/node": "^20.10.4",
+    "@types/semver": "^7.5.8",
     "prettier": "^2.8.8",
     "typescript": "^5.7.3"
   },
   "dependencies": {
     "ajv-cli": "^5.0.0",
     "commander": "^13.0.0",
-    "solidity-code-metrics": "^0.0.25"
+    "lodash": "^4.17.21",
+    "semver": "^7.7.1",
+    "solidity-code-metrics": "^0.0.25",
+    "web3-utils": "^4.3.3"
   }
 }
