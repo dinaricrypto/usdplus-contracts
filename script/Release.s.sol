@@ -51,7 +51,7 @@ contract Release is Script {
         string memory configPath =
             string.concat("release_config/", environment, "/", vm.toString(block.chainid), ".json");
         string memory configJson = vm.readFile(configPath);
-        bytes memory initParams = configJson.parseRaw(string.concat(".", configName));
+        bytes memory initParams = configJson.parseRaw(string.concat(".", contractName));
 
         try vm.envString("DEPLOYED_VERSION") returns (string memory v) {
             deployedVersion = v;
