@@ -86,7 +86,7 @@ contract Release is Script {
         vm.stopBroadcast();
 
         // Write result using underscore format for file naming
-        _writeDeployment(environment, block.chainid, configName, proxyAddress);
+        _writeDeployment(environment, block.chainid, contractName, proxyAddress);
     }
 
     // Mapping of PascalCase contract names to their underscore versions
