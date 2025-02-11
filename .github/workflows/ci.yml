@@ -36,16 +36,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
-            
+
       - name: Enable Corepack
         run: |
           corepack enable
-  
+
       - name: Install dependencies
         run: yarn install
-  
+
       - name: Validate JSON Schema
-        run: yarn lint:json
+        run: yarn lint:releases
 
   analyze:
     strategy:
@@ -102,7 +102,7 @@ jobs:
         run: |
           forge test -f $RPC_ARBITRUM -vvv
         id: test
-        env: 
+        env:
           RPC_ARBITRUM: ${{ secrets.RPC_ARBITRUM }}
 
   coverage:
@@ -120,7 +120,7 @@ jobs:
 
       - name: Run Forge coverage
         run: forge coverage -f $RPC_ARBITRUM  --report lcov
-        env: 
+        env:
           RPC_ARBITRUM: ${{ secrets.RPC_ARBITRUM }}
 
       - name: Report Coverage
