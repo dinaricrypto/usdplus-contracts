@@ -52,6 +52,3 @@ dist/
 *.out
 *.synctex.gz
 *.synctex(busy)
-
-# deployment
-artifact/

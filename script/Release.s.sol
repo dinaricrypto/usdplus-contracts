@@ -36,7 +36,7 @@ contract Release is Script {
      *      4. If previous deployment exists:
      *         - Checks version difference
      *         - Upgrades if version changed or previous version not available
-     *      5. Writes deployment result to artifact/{environment}/{chainId}.{contractName}.json
+     *      5. Writes deployment result to artifacts/{environment}/{chainId}.{contractName}.json
      * @dev Run:
      *      ./script/release_sh
      */
@@ -246,7 +246,7 @@ contract Release is Script {
         string memory configName,
         address deployedAddress
     ) internal {
-        string memory tempDir = "artifact";
+        string memory tempDir = "artifacts";
         string memory tempEnvDir = string.concat(tempDir, "/", environment);
 
         if (!vm.exists(tempDir)) {
