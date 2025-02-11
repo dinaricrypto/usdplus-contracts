@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "packageManager": "yarn@3.6.4",
   "scripts": {
-    "errors": "npx ts-node script/errors_parse_ast.ts",
-    "anvil:kinto": "anvil -f https://rpc.kinto-rpc.com/",
-    "lint:json": "ajv validate -s releases/schema.json -d \"releases/v*/*.json\" --strict=true",
-    "lint:json:debug": "echo \"Files to validate:\" && ls releases/v*/*.json && yarn lint:json"
+    "prettier": "prettier script/typescript --write",
+    "prettier:releases": "prettier releases --write",
+    "lint:releases": "ajv validate -s releases/schema.json -d \"releases/v*/*.json\" --strict=true",
+    "check": "./node_modules/.bin/tsc -p tsconfig.json --noEmit",
+    "build": "./node_modules/.bin/tsc",
+    "build:releases": "node dist/index.js bundle artifacts",
+    "anvil:kinto": "anvil -f https://rpc.kinto-rpc.com/"
   },
   "devDependencies": {
     "@types/node": "^20.10.4",

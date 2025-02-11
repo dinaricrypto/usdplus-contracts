@@ -21,6 +21,7 @@ test:
 # Run coverage
 coverage:
 	forge coverage -f $(RPC_URL) --report lcov
+	genhtml --branch-coverage --dark-mode -o ./coverage/ lcov.info
 
 # Generate gas report
 gas-report:
