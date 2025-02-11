@@ -5,7 +5,7 @@ services:
         platform: "linux/amd64"
         image: ghcr.io/foundry-rs/foundry:latest
         entrypoint: /usr/local/bin/anvil
-        command: -f https://1rpc.io/sepolia --chain-id 31337 -b 1
+        command: -f https://1rpc.io/sepolia -b 1
         ports:
             - "8545:8545"
         environment:
