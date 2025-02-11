@@ -9,6 +9,7 @@
     "lint:releases": "ajv validate -s releases/schema.json -d \"releases/v*/*.json\" --strict=true",
     "check": "./node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "build": "./node_modules/.bin/tsc",
+    "build:releases": "node dist/index.js bundle artifacts",
     "sizes": "forge build --sizes > sizes.txt",
     "test": "forge test -f $(grep RPC_URL .env-test | cut -d '=' -f2) -vvv",
     "coverage": "forge coverage -f $(grep RPC_URL .env-test | cut -d '=' -f2) --report lcov && genhtml --branch-coverage --dark-mode -o ./coverage/ lcov.info",

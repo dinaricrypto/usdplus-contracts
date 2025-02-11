@@ -111,10 +111,9 @@ program
       );
 
       // Write files
+      console.log(`Writing to ${releaseFilepath}`);
       fs.writeFileSync(releaseFilepath, JSON.stringify(release));
     }
-
-    console.log(contractToDeployment);
   });
 
 async function main() {

@@ -31,7 +31,9 @@ $ forge snapshot
 
 ## Deployment
 
-### Testing
+The following is an example for testing purposes. Update the environment variables as appropriate to properly deploy.
+
+### Releasing to Blockchain
 
 ```shell
 docker-compose up -d
@@ -39,6 +41,14 @@ export ENVIRONMENT="staging"
 export RPC_URL="http://localhost:8545"
 export PRIVATE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 ./script/release.sh
+```
+
+### Updating Releases Director
+```shell
+corepack enable
+yarn install
+yarn build
+yarn build:releases {environment} {version}
 ```
 
 ## Internal Audit
