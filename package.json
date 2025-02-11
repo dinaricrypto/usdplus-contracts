@@ -4,8 +4,8 @@
   "packageManager": "yarn@3.6.4",
   "description": "Scripts for deploying USD+",
   "scripts": {
-    "prettier": "prettier --loglevel warn script/typescript --write",
-    "prettier:releases": "prettier --loglevel warn releases --write",
+    "prettier": "prettier script/typescript --write",
+    "prettier:releases": "prettier releases --write",
     "lint:releases": "ajv validate -s releases/schema.json -d \"releases/v*/*.json\" --strict=true",
     "check": "./node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "build": "./node_modules/.bin/tsc",
@@ -19,10 +19,11 @@
     "anvil:kinto": "anvil -f https://rpc.kinto-rpc.com/"
   },
   "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "^5.2.2",
     "@types/lodash": "^4.17.15",
     "@types/node": "^20.10.4",
     "@types/semver": "^7.5.8",
-    "prettier": "^2.8.8",
+    "prettier": "^3.5.0",
     "typescript": "^5.7.3"
   },
   "dependencies": {

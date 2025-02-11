@@ -49,6 +49,7 @@ corepack enable
 yarn install
 yarn build
 yarn build:releases {environment} {version}
+yarn prettier:releases
 ```
 
 ## Internal Audit
