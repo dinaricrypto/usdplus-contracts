@@ -30,14 +30,3 @@ gas-report:
 # Check contract sizes
 sizes:
 	forge build --sizes > sizes.txt
-
-# Help target
-help:
-	@echo "Available forge commands:"
-	@echo "  all          - Clean, build, and test"
-	@echo "  clean        - Remove build artifacts and coverage reports"
-	@echo "  build        - Build the project"
-	@echo "  test         - Run tests"
-	@echo "  coverage     - Generate test coverage report"
-	@echo "  gas-report   - Generate gas usage report"
-	@echo "  sizes        - Check contract sizes"
