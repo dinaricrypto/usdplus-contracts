@@ -10,12 +10,6 @@
     "check": "./node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "build": "./node_modules/.bin/tsc",
     "build:releases": "node dist/index.js bundle artifacts",
-    "sizes": "forge build --sizes > sizes.txt",
-    "test": "forge test -f $(grep RPC_URL .env-test | cut -d '=' -f2) -vvv",
-    "coverage": "forge coverage -f $(grep RPC_URL .env-test | cut -d '=' -f2) --report lcov && genhtml --branch-coverage --dark-mode -o ./coverage/ lcov.info",
-    "gas": "forge test -f $(grep RPC_URL .env-test | cut -d '=' -f2) --gas-report --fuzz-seed 1 | grep '^|' > .gas-report",
-    "metrics": "solidity-code-metrics ./src/**/*.sol --html > metrics.html",
-    "deploy:all": "forge script script/DeployAll.s.sol:DeployAllScript --rpc-url $(grep RPC_URL .env | cut -d '=' -f2) --broadcast --verify -vvv",
     "anvil:kinto": "anvil -f https://rpc.kinto-rpc.com/"
   },
   "devDependencies": {
