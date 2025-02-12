@@ -15,6 +15,7 @@ program.name('scripts').description('Complementary CLI for smart contract deploy
 program
   .command('bundle')
   .argument('<artifactDirectory>', 'Directory of artifacts')
+  .argument('<outputDirectory>', 'Directory for output')
   .addArgument(new Argument('<environment>', 'Environment of deployment').choices(['staging', 'production']))
   .argument('<version>', 'Version of release artifact', (value: string, _previous: any) => {
     if (!semver.valid(value)) {
@@ -23,7 +24,7 @@ program
     return value;
   })
   .description('Bundles artifacts into release files')
-  .action(function (artifactDirectory: string, environment: string, version: string) {
+  .action(function (artifactDirectory: string, outputDirectory: string, environment: string, version: string) {
     const contractToDeployment: Record<string, Record<string, Address>> = {};
 
     // Populate contractToDeployment from artifacts
@@ -50,20 +51,14 @@ program
     }
 
     // Create releases directory
-    if (!fs.existsSync('releases')) {
-      fs.mkdirSync('releases');
-    }
-
-    // Create version directory
-    const versionDir = path.join('releases', `v${version}`);
-    if (!fs.existsSync(versionDir)) {
-      fs.mkdirSync(versionDir);
+    if (!fs.existsSync(outputDirectory)) {
+      fs.mkdirSync(outputDirectory);
     }
 
     // Generate release file from existing release files
     for (const contractName in contractToDeployment) {
       const releaseFilename = `${_.snakeCase(contractName.replace('UsdPlus', 'Usdplus'))}.json`,
-        releaseFilepath = path.join(versionDir, releaseFilename),
+        releaseFilepath = path.join(outputDirectory, releaseFilename),
         abiFilename = path.join('out', `${contractName}.sol`, `${contractName}.json`);
 
       // Create new release or load from existing
