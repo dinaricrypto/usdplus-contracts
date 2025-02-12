@@ -4,8 +4,8 @@
   "packageManager": "yarn@3.6.4",
   "description": "Scripts for deploying USD+",
   "scripts": {
-    "prettier": "prettier script/typescript --write",
-    "prettier:releases": "prettier releases --write",
+    "prettier": "prettier script/typescript --write --log-level warn",
+    "prettier:releases": "prettier releases --write --log-level warn",
     "lint:releases": "ajv validate -s releases/schema.json -d \"releases/v*/*.json\" --strict=true",
     "check": "./node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "build": "./node_modules/.bin/tsc",

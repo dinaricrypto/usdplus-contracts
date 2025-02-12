@@ -1,0 +1,40 @@
+name: deploy-staging
+
+on:
+  release:
+    types: [ prereleased ]
+
+jobs:
+  build:
+    environment: staging
+    runs-on: ubuntu-latest-m
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install packages
+        run: yarn install
+
+      - name: Build node scripts
+        run: yarn build
+
+      - name: Build contracts
+        run: forge build
+
+      - name: Deploy contracts
+        run: ./script/deploy.sh
