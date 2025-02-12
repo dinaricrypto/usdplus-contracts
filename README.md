@@ -5,6 +5,13 @@ USD+ contracts
 
 ## Development
 
+### Prerequisites
+
+For coverage report generation:
+```shell
+brew install lcov
+```
+
 ### Build
 
 ```shell
