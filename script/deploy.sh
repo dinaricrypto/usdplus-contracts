@@ -5,7 +5,7 @@
 # ENVIRONMENT        - Target environment ["staging", "production"]
 # AWS_SECRET_ID      - ARN of AWS secret to use
 
-source .VERSION
+. ./.VERSION
 
 CHAIN_IDS=("11155111") # Chains to release to
 
