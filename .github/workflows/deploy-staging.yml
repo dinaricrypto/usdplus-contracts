@@ -17,9 +17,9 @@ env:
   REGION: us-west-2
 
 jobs:
-  build:
+  deploy:
     environment: stage
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
