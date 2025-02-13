@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Deploys to multiple blockchains using release.sh
 #
 # Required environment variables:

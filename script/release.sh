@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Releases set of contracts to specified RPC url
 #
 # Required environment variables:
