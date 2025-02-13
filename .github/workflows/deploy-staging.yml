@@ -4,9 +4,16 @@ on:
   release:
     types: [ prereleased ]
 
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  REGION: us-west-2
+
 jobs:
   build:
-    environment: staging
+    environment: stage
     runs-on: ubuntu-latest-m
 
     steps:
@@ -36,8 +43,14 @@ jobs:
       - name: Build contracts
         run: forge build
 
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.REGION }}
+          role-to-assume: ${{ vars.OIDC_ROLE_ARN }}
+          role-session-name: ${{ github.actor }}
+
       - name: Deploy contracts
-        run: ./script/deploy.sh
+        run: ENVIRONMENT=staging AWS_SECRET_ID=${{ vars.WEB3_DEPLOYMENTS_SECRETS_ID}} ./script/deploy.sh
 
       - uses: actions/upload-artifact@v4
         with:
