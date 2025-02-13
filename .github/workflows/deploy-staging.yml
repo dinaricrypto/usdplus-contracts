@@ -1,8 +1,13 @@
 name: deploy-staging
 
+#on:
+#  release:
+#    types: [ prereleased ]
+
 on:
-  release:
-    types: [ prereleased ]
+  push:
+    branches:
+      - subtask/DSHARE-976-create-release-trigger-workflow
 
 permissions:
   id-token: write
@@ -43,6 +48,9 @@ jobs:
       - name: Build contracts
         run: forge build
 
+      - name: Spin up Docker compose for testing
+        run: docker compose up -d
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.REGION }}
@@ -61,3 +69,7 @@ jobs:
         with:
           name: release
           path: release
+
+      - name: Clean up Docker compose
+        if: always()
+        run: docker compose down
