@@ -12,17 +12,18 @@ import {
 } from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
+import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 
 /// @notice wrapped rebasing stablecoin
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/WrappedUsdPlus.sol)
-contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, Ownable2StepUpgradeable {
+contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgradeable, ControlledUpgradeable {
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdplus, address initialOwner) public initializer {
+    function initialize(address usdplus, address initialOwner, address upgrader) public reinitializer(version()) {
         __ERC4626_init(IERC20(usdplus));
         __ERC20Permit_init("wUSD+");
         __ERC20_init("wUSD+", "wUSD+");
-        __Ownable_init_unchained(initialOwner);
+        __ControlledUpgradeable_init(initialOwner, upgrader);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -30,12 +31,22 @@ contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgra
         _disableInitializers();
     }
 
-    function _authorizeUpgrade(address) internal override onlyOwner {}
-
     /// ------------------ Getters ------------------
 
     function decimals() public view virtual override(ERC4626Upgradeable, ERC20Upgradeable) returns (uint8) {
         return ERC4626Upgradeable.decimals();
+    }
+
+    function version() public pure override returns (uint8) {
+        return 1;
+    }
+
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
+    }
+
+    function isBlacklisted(address account) external view returns (bool) {
+        return UsdPlus(asset()).isBlacklisted(account);
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
@@ -43,9 +54,5 @@ contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgra
         UsdPlus(asset()).checkTransferRestricted(from, to);
 
         super._update(from, to, value);
-    }
-
-    function isBlacklisted(address account) external view returns (bool) {
-        return UsdPlus(asset()).isBlacklisted(account);
     }
 }

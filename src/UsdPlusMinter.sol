@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.23;
 
-import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
-import {AccessControlDefaultAdminRulesUpgradeable} from
-    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
@@ -11,6 +8,7 @@ import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/Agg
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
 import {SelfPermit} from "./SelfPermit.sol";
@@ -18,13 +16,7 @@ import {SelfPermit} from "./SelfPermit.sol";
 /// @notice USD+ minter
 /// @dev If the payment token is USD+, the amount is forwarded to the receiver.
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/Minter.sol)
-contract UsdPlusMinter is
-    IUsdPlusMinter,
-    UUPSUpgradeable,
-    AccessControlDefaultAdminRulesUpgradeable,
-    PausableUpgradeable,
-    SelfPermit
-{
+contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, PausableUpgradeable, SelfPermit {
     /// ------------------ Types ------------------
     using SafeERC20 for IERC20;
 
@@ -63,9 +55,11 @@ contract UsdPlusMinter is
 
     /// ------------------ Initialization ------------------
 
-    function initialize(address usdPlus, address initialPaymentRecipient, address initialOwner) public initializer {
-        __AccessControlDefaultAdminRules_init_unchained(0, initialOwner);
-
+    function initialize(address usdPlus, address initialPaymentRecipient, address initialOwner, address upgrader)
+        public
+        reinitializer(version())
+    {
+        __ControlledUpgradeable_init(initialOwner, upgrader);
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         $._usdplus = usdPlus;
         $._paymentRecipient = initialPaymentRecipient;
@@ -73,12 +67,14 @@ contract UsdPlusMinter is
         $._sequencerGracePeriod = 3600;
     }
 
+    function reinitialize(address upgrader) public reinitializer(version()) {
+        grantRole(UPGRADER_ROLE, upgrader);
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
-
-    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     /// ------------------ Getters ------------------
 
@@ -98,6 +94,14 @@ contract UsdPlusMinter is
     function paymentTokenOracle(IERC20 paymentToken) external view returns (PaymentTokenOracleInfo memory) {
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         return $._paymentTokenOracle[paymentToken];
+    }
+
+    function version() public pure override returns (uint8) {
+        return 1;
+    }
+
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
     }
 
     /// ------------------ Admin ------------------
