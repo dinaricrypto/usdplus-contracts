@@ -1,8 +1,12 @@
 name: deploy-staging
 
+#on:
+#  release:
+#    types: [ prereleased ]
 on:
-  release:
-    types: [ prereleased ]
+  push:
+    branches:
+      - subtask/DSHARE-1268-deploy-transfer-restrictor
 
 permissions:
   id-token: write
