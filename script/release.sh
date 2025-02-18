@@ -12,7 +12,8 @@
 # ETHERSCAN_API_KEY  - Etherscan API key
 # DEPLOYED_VERSION   - Version of the previous deployment
 
-CONTRACTS=("UsdPlus" "TransferRestrictor" "UsdPlusMinter" "UsdPlusRedeemer" "CCIPWaypoint")
+#CONTRACTS=("TransferRestrictor" "UsdPlus" "UsdPlusMinter" "UsdPlusRedeemer" "CCIPWaypoint")
+CONTRACTS=("TransferRestrictor")
 
 for i in "${CONTRACTS[@]}"; do
   echo "$i: Releasing"
