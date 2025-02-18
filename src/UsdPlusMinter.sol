@@ -211,6 +211,15 @@ contract UsdPlusMinter is
     }
 
     /// @inheritdoc IUsdPlusMinter
+    function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver)
+        public
+        whenNotPaused
+        returns (uint256 usdPlusAmount)
+    {
+        usdPlusAmount = deposit(paymentToken, paymentTokenAmount, receiver, 0);
+    }
+
+    /// @inheritdoc IUsdPlusMinter
     function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, uint256 minUsdPlusAmount)
         public
         whenNotPaused
@@ -264,6 +273,15 @@ contract UsdPlusMinter is
         return Math.mulDiv(
             usdPlusAmount, 10 ** (oracleDecimals + paymentDecimals), price * 10 ** usdPlusDecimals, Math.Rounding.Ceil
         );
+    }
+
+    /// @inheritdoc IUsdPlusMinter
+    function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver)
+        public
+        whenNotPaused
+        returns (uint256 paymentTokenAmount)
+    {
+        paymentTokenAmount = mint(paymentToken, usdPlusAmount, receiver, type(uint256).max);
     }
 
     /// @inheritdoc IUsdPlusMinter

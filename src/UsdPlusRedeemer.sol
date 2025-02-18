@@ -213,6 +213,15 @@ contract UsdPlusRedeemer is
     }
 
     /// @inheritdoc IUsdPlusRedeemer
+    function requestWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, address owner)
+        public
+        whenNotPaused
+        returns (uint256 ticket)
+    {
+        return requestWithdraw(paymentToken, paymentTokenAmount, receiver, owner, type(uint256).max);
+    }
+
+    /// @inheritdoc IUsdPlusRedeemer
     function requestWithdraw(
         IERC20 paymentToken,
         uint256 paymentTokenAmount,
@@ -288,6 +297,15 @@ contract UsdPlusRedeemer is
         return Math.mulDiv(
             usdplusAmount, 10 ** (oracleDecimals + paymentDecimals), price * 10 ** usdPlusDecimals, Math.Rounding.Floor
         );
+    }
+
+    /// @inheritdoc IUsdPlusRedeemer
+    function requestRedeem(IERC20 paymentToken, uint256 usdplusAmount, address receiver, address owner)
+        public
+        whenNotPaused
+        returns (uint256 ticket)
+    {
+        return requestRedeem(paymentToken, usdplusAmount, receiver, owner, 0);
     }
 
     /// @inheritdoc IUsdPlusRedeemer

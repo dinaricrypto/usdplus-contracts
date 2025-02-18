@@ -75,6 +75,17 @@ interface IUsdPlusRedeemer {
     /// @param paymentTokenAmount amount of payment token
     /// @param receiver recipient
     /// @param owner USD+ owner
+    /// @return ticket request ticket number
+    /// @dev exchange rate fixed at time of request creation
+    function requestWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, address owner)
+        external
+        returns (uint256 ticket);
+
+    /// @notice create a request to burn USD+ for payment
+    /// @param paymentToken payment token
+    /// @param paymentTokenAmount amount of payment token
+    /// @param receiver recipient
+    /// @param owner USD+ owner
     /// @param maxUsdplusAmount maximum amount of USD+ to burn
     /// @return ticket request ticket number
     /// @dev exchange rate fixed at time of request creation
@@ -93,6 +104,17 @@ interface IUsdPlusRedeemer {
         external
         view
         returns (uint256 paymentTokenAmount);
+
+    /// @notice create a request to burn USD+ for payment
+    /// @param paymentToken payment token
+    /// @param usdplusAmount amount of USD+ to burn
+    /// @param receiver recipient
+    /// @param owner USD+ owner
+    /// @return ticket request ticket number
+    /// @dev exchange rate fixed at time of request creation
+    function requestRedeem(IERC20 paymentToken, uint256 usdplusAmount, address receiver, address owner)
+        external
+        returns (uint256 ticket);
 
     /// @notice create a request to burn USD+ for payment
     /// @param paymentToken payment token

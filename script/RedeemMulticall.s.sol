@@ -60,7 +60,9 @@ contract RedeemMulticall is Script {
         calls[0] = abi.encodeCall(
             redeemer.selfPermit, (address(usdplus), permit.owner, permit.value, permit.deadline, v, r, s)
         );
-        calls[1] = abi.encodeCall(redeemer.requestRedeem, (usdc, amount, user, user, amount));
+        calls[1] = abi.encodeWithSignature(
+            "requestRedeem(address,uint256,address,address,uint256)", usdc, amount, user, user, amount
+        );
 
         redeemer.multicall(calls);
 

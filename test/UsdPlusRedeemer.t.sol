@@ -394,7 +394,9 @@ contract UsdPlusRedeemerTest is Test {
         calls[0] = abi.encodeCall(
             redeemer.selfPermit, (address(usdplus), permit.owner, permit.value, permit.deadline, v + 1, r, s)
         );
-        calls[1] = abi.encodeCall(redeemer.requestRedeem, (paymentToken, amount, USER, USER, 0));
+        calls[1] = abi.encodeWithSignature(
+            "requestRedeem(address,uint256,address,address,uint256)", paymentToken, amount, USER, USER, 0
+        );
 
         // Test invalid signature reverts
         vm.prank(USER);
