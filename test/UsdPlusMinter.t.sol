@@ -29,6 +29,7 @@ contract UsdPlusMinterTest is Test {
 
     address public constant ADMIN = address(0x1234);
     address public constant TREASURY = address(0x1235);
+    address public constant UPGRADER = address(0x1236);
     address public USER;
     address constant usdcPriceOracle = 0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3;
 
@@ -38,12 +39,20 @@ contract UsdPlusMinterTest is Test {
     function setUp() public {
         userPrivateKey = 0x1236;
         USER = vm.addr(userPrivateKey);
-        transferRestrictor = new TransferRestrictor(ADMIN);
+        TransferRestrictor transferRestrictorImpl = new TransferRestrictor();
+        transferRestrictor = TransferRestrictor(
+            address(
+                new ERC1967Proxy(
+                    address(transferRestrictorImpl), abi.encodeCall(TransferRestrictor.initialize, (ADMIN, UPGRADER))
+                )
+            )
+        );
         UsdPlus usdplusImpl = new UsdPlus();
         usdplus = UsdPlus(
             address(
                 new ERC1967Proxy(
-                    address(usdplusImpl), abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN))
+                    address(usdplusImpl),
+                    abi.encodeCall(UsdPlus.initialize, (TREASURY, transferRestrictor, ADMIN, UPGRADER))
                 )
             )
         );
@@ -51,7 +60,8 @@ contract UsdPlusMinterTest is Test {
         minter = UsdPlusMinter(
             address(
                 new ERC1967Proxy(
-                    address(minterImpl), abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), TREASURY, ADMIN))
+                    address(minterImpl),
+                    abi.encodeCall(UsdPlusMinter.initialize, (address(usdplus), TREASURY, ADMIN, UPGRADER))
                 )
             )
         );
@@ -66,6 +76,11 @@ contract UsdPlusMinterTest is Test {
 
     function test_initialization() public {
         assertEq(minter.usdplus(), address(usdplus));
+    }
+
+    function test_version() public {
+        assertEq(minter.version(), 1);
+        assertEq(minter.publicVersion(), "1.0.0");
     }
 
     function test_setPaymentRecipient(address recipient) public {

@@ -4,11 +4,13 @@ pragma solidity ^0.8.0;
 import {IAny2EVMMessageReceiver} from "ccip/contracts/src/v0.8/ccip/interfaces/IAny2EVMMessageReceiver.sol";
 import {Client} from "ccip/contracts/src/v0.8/ccip/libraries/Client.sol";
 import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
+import {AccessControlDefaultAdminRulesUpgradeable} from
+    "openzeppelin-contracts-upgradeable/contracts/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 
 /// @title CCIPReceiver - Base contract for CCIP applications that can receive messages.
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/bridge/CCIPReceiver.sol)
 /// @author Modified from Chainlink (https://github.com/smartcontractkit/ccip/blob/ccip-develop/contracts/src/v0.8/ccip/applications/CCIPReceiver.sol)
-abstract contract CCIPReceiver is IAny2EVMMessageReceiver, IERC165 {
+abstract contract CCIPReceiver is IERC165, IAny2EVMMessageReceiver {
     /// ------------------ Types ------------------
 
     event RouterSet(address indexed router);
@@ -44,20 +46,6 @@ abstract contract CCIPReceiver is IAny2EVMMessageReceiver, IERC165 {
         CCIPReceiverStorage storage $ = _getCCIPReceiverStorage();
         $._router = router;
         emit RouterSet(router);
-    }
-
-    /// @notice IERC165 supports an interfaceId
-    /// @param interfaceId The interfaceId to check
-    /// @return true if the interfaceId is supported
-    /// @dev Should indicate whether the contract implements IAny2EVMMessageReceiver
-    /// e.g. return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId
-    /// This allows CCIP to check if ccipReceive is available before calling it.
-    /// If this returns false or reverts, only tokens are transferred to the receiver.
-    /// If this returns true, tokens are transferred and ccipReceive is called atomically.
-    /// Additionally, if the receiver address does not have code associated with
-    /// it at the time of execution (EXTCODESIZE returns 0), only tokens will be transferred.
-    function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
-        return interfaceId == type(IAny2EVMMessageReceiver).interfaceId || interfaceId == type(IERC165).interfaceId;
     }
 
     /// @inheritdoc IAny2EVMMessageReceiver

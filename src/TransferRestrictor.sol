@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.23;
 
-import {AccessControlDefaultAdminRules} from
-    "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
+import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 import {ITransferRestrictor} from "./ITransferRestrictor.sol";
 
 /// @notice Enforces transfer restrictions
 /// @author Dinari (https://github.com/dinaricrypto/sbt-contracts/blob/main/src/TransferRestrictor.sol)
 /// Maintains a single `owner` who can add or remove accounts from `isBlacklisted`
-contract TransferRestrictor is AccessControlDefaultAdminRules, ITransferRestrictor {
+contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
     /// ------------------ Types ------------------ ///
+
+    struct TransferRestrictorStorage {
+        mapping(address => bool) isBlacklisted;
+    }
 
     /// @dev Account is restricted
     error AccountRestricted();
@@ -21,18 +24,35 @@ contract TransferRestrictor is AccessControlDefaultAdminRules, ITransferRestrict
 
     /// ------------------ Constants ------------------ ///
 
+    bytes32 private constant TRANSFER_RESTRICTOR_STORAGE_LOCATION =
+        0xbac1ed68b71f55caab6cd9be1e2e97a07e4f1b72103add3e5df1512b4068d902;
+
     /// @notice Role for approved distributors
     bytes32 public constant RESTRICTOR_ROLE = keccak256("RESTRICTOR_ROLE");
 
-    /// ------------------ State ------------------ ///
+    /// ------------------ Storage ------------------ ///
 
-    /// @notice Accounts in `isBlacklisted` cannot send or receive tokens
-    mapping(address => bool) public isBlacklisted;
+    function _getTransferRestrictorStorage() private pure returns (TransferRestrictorStorage storage $) {
+        assembly {
+            $.slot := TRANSFER_RESTRICTOR_STORAGE_LOCATION
+        }
+    }
+
+    /// ------------------ Version ------------------ ///
+
+    function version() public pure override returns (uint8) {
+        return 1;
+    }
+
+    function publicVersion() public pure override returns (string memory) {
+        return "1.0.0";
+    }
 
     /// ------------------ Initialization ------------------ ///
 
-    constructor(address owner) AccessControlDefaultAdminRules(0, owner) {
-        _grantRole(RESTRICTOR_ROLE, owner);
+    function initialize(address initialOwner, address upgrader) public reinitializer(version()) {
+        __ControlledUpgradeable_init(initialOwner, upgrader);
+        _grantRole(RESTRICTOR_ROLE, initialOwner);
     }
 
     /// ------------------ Setters ------------------ ///
@@ -41,7 +61,8 @@ contract TransferRestrictor is AccessControlDefaultAdminRules, ITransferRestrict
     /// @dev Does not check if `account` is restricted
     /// Can only be called by `RESTRICTOR_ROLE`
     function restrict(address account) external onlyRole(RESTRICTOR_ROLE) {
-        isBlacklisted[account] = true;
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        $.isBlacklisted[account] = true;
         emit Restricted(account);
     }
 
@@ -49,7 +70,8 @@ contract TransferRestrictor is AccessControlDefaultAdminRules, ITransferRestrict
     /// @dev Does not check if `account` is restricted
     /// Can only be called by `RESTRICTOR_ROLE`
     function unrestrict(address account) external onlyRole(RESTRICTOR_ROLE) {
-        isBlacklisted[account] = false;
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        $.isBlacklisted[account] = false;
         emit Unrestricted(account);
     }
 
@@ -57,10 +79,16 @@ contract TransferRestrictor is AccessControlDefaultAdminRules, ITransferRestrict
 
     /// @inheritdoc ITransferRestrictor
     function requireNotRestricted(address from, address to) external view virtual {
-        // Check if either account is restricted
-        if (isBlacklisted[from] || isBlacklisted[to]) {
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        if ($.isBlacklisted[from] || $.isBlacklisted[to]) {
             revert AccountRestricted();
         }
-        // Otherwise, do nothing
+    }
+
+    /// ------------------ Getters ------------------ ///
+    /// @notice Accounts in `isBlacklisted` cannot send or receive tokens
+    function isBlacklisted(address account) public view returns (bool) {
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        return $.isBlacklisted[account];
     }
 }
