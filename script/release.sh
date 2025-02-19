@@ -18,7 +18,7 @@ CONTRACTS=("TransferRestrictor")
 for i in "${CONTRACTS[@]}"; do
   echo "$i: Releasing"
 
-  FORGE_CMD="CONTRACT=$i FOUNDRY_DISABLE_NIGHTLY_WARNING=True forge script script/Release.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vvv"
+  FORGE_CMD="CONTRACT=$i FOUNDRY_DISABLE_NIGHTLY_WARNING=True forge script script/Release.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast --slow --skip-simulation -vvv"
 
   if [ ! -z "$ETHERSCAN_API_KEY" ] || [ ! -z "$VERIFIER_URL" ]; then
     FORGE_CMD="$FORGE_CMD --verify"
