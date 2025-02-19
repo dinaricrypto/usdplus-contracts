@@ -26,6 +26,6 @@ for i in "${CONTRACTS[@]}"; do
     FORGE_CMD="$FORGE_CMD --verify"
   fi
 
-  eval $FORGE_CMD || echo "$i: Failed" && rm -f artifacts/${ENVIRONMENT}/${CHAIN_ID}.${i}.json
+  eval $FORGE_CMD || rm -f artifacts/${ENVIRONMENT}/${CHAIN_ID}.${i}.json
   echo "========================"
 done
