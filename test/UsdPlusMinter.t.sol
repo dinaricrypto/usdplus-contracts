@@ -362,4 +362,48 @@ contract UsdPlusMinterTest is Test {
         uint256 issued = minter.mint(paymentToken, amount, USER, paymentEstimate);
         assertEq(issued, paymentEstimate);
     }
+
+    function test_privateMint(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+
+        vm.prank(ADMIN);
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle), 0);
+
+        uint256 issueEstimate = minter.previewDeposit(paymentToken, amount);
+        vm.assume(issueEstimate > 0);
+
+        SigUtils.Permit memory sigPermit = SigUtils.Permit({
+            owner: USER,
+            spender: address(minter),
+            value: amount,
+            nonce: 0,
+            deadline: block.timestamp + 30 days
+        });
+        bytes32 digest = sigUtils.getTypedDataHash(sigPermit);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        assertEq(usdplus.balanceOf(USER), 0);
+        uint256 balanceBefore = paymentToken.balanceOf(USER);
+
+        Permit memory permit = Permit({
+            owner: sigPermit.owner,
+            spender: sigPermit.spender,
+            value: sigPermit.value,
+            nonce: sigPermit.nonce,
+            deadline: sigPermit.deadline
+        });
+
+        bytes memory wrongSignature = abi.encodePacked(r, v, s);
+        vm.expectRevert(SelfPermit.PermitFailure.selector);
+        minter.privateMint(paymentToken, permit, wrongSignature);
+
+        uint256 issued = minter.privateMint(paymentToken, permit, signature);
+        vm.stopPrank();
+
+        assertEq(issued, issueEstimate);
+        assertEq(usdplus.balanceOf(USER), issued);
+        assertEq(paymentToken.balanceOf(USER), balanceBefore - amount);
+    }
 }

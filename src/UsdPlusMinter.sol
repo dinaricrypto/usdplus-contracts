@@ -7,11 +7,12 @@ import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 
 import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 import {IUsdPlusMinter} from "./IUsdPlusMinter.sol";
 import {UsdPlus} from "./UsdPlus.sol";
-import {SelfPermit} from "./SelfPermit.sol";
+import {SelfPermit, Permit} from "./SelfPermit.sol";
 
 /// @notice USD+ minter
 /// @dev If the payment token is USD+, the amount is forwarded to the receiver.
@@ -302,5 +303,39 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, PausableUpgrade
         if (paymentTokenAmount > maxPaymentTokenAmount) revert SlippageViolation();
 
         _issue(paymentToken, paymentTokenAmount, usdPlusAmount, msg.sender, receiver);
+    }
+
+    /// @notice Mint USD+ using a permit
+    /// @param paymentToken The token to be spent
+    /// @param permit The permit data
+    /// @param signature The signature of the permit
+    /// Misnomer: Behaves like deposit.
+    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes memory signature)
+        external
+        returns (uint256 usdPlusAmount)
+    {
+        if (permit.value == 0) revert ZeroAmount();
+
+        usdPlusAmount = previewDeposit(paymentToken, permit.value);
+        if (usdPlusAmount == 0) revert ZeroAmount();
+
+        if (signature.length != 65) revert ECDSA.ECDSAInvalidSignatureLength(signature.length);
+
+        // Get v, r, s from signature
+        // From OpenZeppelin's ECDSA.sol
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        // ecrecover takes the signature parameters, and the only way to get them
+        // currently is to use assembly.
+        assembly ("memory-safe") {
+            r := mload(add(signature, 0x20))
+            s := mload(add(signature, 0x40))
+            v := byte(0, mload(add(signature, 0x60)))
+        }
+
+        selfPermit(address(paymentToken), permit.owner, permit.value, permit.deadline, v, r, s);
+
+        _issue(paymentToken, permit.value, usdPlusAmount, permit.owner, permit.owner);
     }
 }
