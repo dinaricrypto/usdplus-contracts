@@ -15,6 +15,7 @@ program.name('scripts').description('Complementary CLI for smart contract deploy
 program
   .command('bundle')
   .argument('<artifactDirectory>', 'Directory of artifacts')
+  .argument('<releaseDirectory>', 'Directory of artifacts')
   .argument('<outputDirectory>', 'Directory for output')
   .addArgument(new Argument('<environment>', 'Environment of deployment').choices(['staging', 'production']))
   .argument('<version>', 'Version of release artifact', (value: string, _previous: any) => {
@@ -24,7 +25,13 @@ program
     return value;
   })
   .description('Bundles artifacts into release files')
-  .action(function (artifactDirectory: string, outputDirectory: string, environment: string, version: string) {
+  .action(function (
+    artifactDirectory: string,
+    releaseDirectory: string,
+    outputDirectory: string,
+    environment: string,
+    version: string
+  ) {
     const contractToDeployment: Record<string, Record<string, Address>> = {};
 
     // Populate contractToDeployment from artifacts
@@ -60,7 +67,7 @@ program
     // Generate release file from existing release files
     for (const contractName in contractToDeployment) {
       const releaseFilename = `${_.snakeCase(contractName.replace('UsdPlus', 'Usdplus'))}.json`,
-        releaseFilepath = path.join(outputDirectory, releaseFilename),
+        releaseFilepath = path.join(releaseDirectory, `v${version}`, releaseFilename),
         abiFilename = path.join('out', `${contractName}.sol`, `${contractName}.json`);
 
       // Create new release or load from existing
