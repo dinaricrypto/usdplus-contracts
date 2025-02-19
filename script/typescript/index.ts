@@ -28,26 +28,28 @@ program
     const contractToDeployment: Record<string, Record<string, Address>> = {};
 
     // Populate contractToDeployment from artifacts
-    const artifacts = fs.readdirSync(path.join(artifactDirectory, environment));
-    for (const artifact of artifacts) {
-      const m = /(\d+)\.(.+)\.json$/gm.exec(artifact);
-      // Skip if no matches found
-      if (m === null) {
-        continue;
+    if (fs.existsSync(path.join(artifactDirectory, environment))) {
+      const artifacts = fs.readdirSync(path.join(artifactDirectory, environment));
+      for (const artifact of artifacts) {
+        const m = /(\d+)\.(.+)\.json$/gm.exec(artifact);
+        // Skip if no matches found
+        if (m === null) {
+          continue;
+        }
+
+        // Read file
+        const fp = path.join(artifactDirectory, environment, artifact),
+          deploymentAddress: DeploymentAddress = JSON.parse(fs.readFileSync(fp, 'utf-8'));
+
+        const chainId = m[1],
+          contractName = m[2],
+          address = Web3Utils.toChecksumAddress(deploymentAddress.address);
+
+        if (!(contractName in contractToDeployment)) {
+          contractToDeployment[contractName] = {};
+        }
+        contractToDeployment[contractName][chainId] = address;
       }
-
-      // Read file
-      const fp = path.join(artifactDirectory, environment, artifact),
-        deploymentAddress: DeploymentAddress = JSON.parse(fs.readFileSync(fp, 'utf-8'));
-
-      const chainId = m[1],
-        contractName = m[2],
-        address = Web3Utils.toChecksumAddress(deploymentAddress.address);
-
-      if (!(contractName in contractToDeployment)) {
-        contractToDeployment[contractName] = {};
-      }
-      contractToDeployment[contractName][chainId] = address;
     }
 
     // Create releases directory
