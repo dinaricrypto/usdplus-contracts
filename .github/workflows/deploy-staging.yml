@@ -28,7 +28,7 @@ jobs:
       - name: Set up Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: v1.0.0
 
       - name: Set up Node
         uses: actions/setup-node@v4
