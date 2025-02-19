@@ -29,6 +29,9 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, PausableUpgrade
     error SequencerDown();
     error SequencerGracePeriodNotOver();
 
+    // Define the role identifier for the private minter role
+    bytes32 public constant PRIVATE_MINTER_ROLE = keccak256("PRIVATE_MINTER_ROLE");
+
     /// ------------------ Storage ------------------
 
     struct UsdPlusMinterStorage {
@@ -312,6 +315,7 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, PausableUpgrade
     /// Misnomer: Behaves like deposit.
     function privateMint(IERC20 paymentToken, Permit calldata permit, bytes memory signature)
         external
+        onlyRole(PRIVATE_MINTER_ROLE)
         returns (uint256 usdPlusAmount)
     {
         if (permit.value == 0) revert ZeroAmount();

@@ -395,9 +395,22 @@ contract UsdPlusMinterTest is Test {
             deadline: sigPermit.deadline
         });
 
+        vm.startPrank(ADMIN);
+        minter.grantRole(minter.PRIVATE_MINTER_ROLE(), address(this));
+        vm.stopPrank();
+
         bytes memory wrongSignature = abi.encodePacked(r, v, s);
         vm.expectRevert(SelfPermit.PermitFailure.selector);
         minter.privateMint(paymentToken, permit, wrongSignature);
+
+        vm.startPrank(ADMIN);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, ADMIN, minter.PRIVATE_MINTER_ROLE()
+            )
+        );
+        minter.privateMint(paymentToken, permit, signature);
+        vm.stopPrank();
 
         uint256 issued = minter.privateMint(paymentToken, permit, signature);
         vm.stopPrank();
