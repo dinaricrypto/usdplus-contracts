@@ -230,7 +230,7 @@ contract Release is Script {
     ) internal returns (address) {
         if (bytes(deployedVersion).length == 0) return address(0);
 
-        string memory deployedPath = string.concat("releases/", deployedVersion, "/", configName, ".json");
+        string memory deployedPath = string.concat("releases/v", deployedVersion, "/", configName, ".json");
         if (!vm.exists(deployedPath)) return address(0);
 
         try vm.parseJsonAddress(

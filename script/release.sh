@@ -23,7 +23,7 @@ for i in "${CONTRACTS[@]}"; do
   FORGE_CMD="CONTRACT=$i FOUNDRY_DISABLE_NIGHTLY_WARNING=True forge script script/Release.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vvv"
 
   if [ ! -z "$ETHERSCAN_API_KEY" ] || [ ! -z "$VERIFIER_URL" ]; then
-    FORGE_CMD="$FORGE_CMD --verify"
+    FORGE_CMD="$FORGE_CMD --verify --delay 10 --retries 30"
   fi
 
   eval $FORGE_CMD || rm -f artifacts/${ENVIRONMENT}/${CHAIN_ID}.${i}.json
