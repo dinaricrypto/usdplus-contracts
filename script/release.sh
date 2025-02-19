@@ -5,6 +5,7 @@
 # VERSION            - Version of deployment
 # ENVIRONMENT        - Target environment ["staging", "production"]
 # RPC_URL            - RPC endpoint URL
+# CHAIN_ID           - Chain Id of RPC
 # PRIVATE_KEY        - Deploy private key
 #
 # Optional:
@@ -16,13 +17,15 @@
 CONTRACTS=("TransferRestrictor")
 
 for i in "${CONTRACTS[@]}"; do
+  echo "========================"
   echo "$i: Releasing"
 
-  FORGE_CMD="CONTRACT=$i FOUNDRY_DISABLE_NIGHTLY_WARNING=True forge script script/Release.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast --slow --skip-simulation -vvv"
+  FORGE_CMD="CONTRACT=$i FOUNDRY_DISABLE_NIGHTLY_WARNING=True forge script script/Release.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast -vvv"
 
   if [ ! -z "$ETHERSCAN_API_KEY" ] || [ ! -z "$VERIFIER_URL" ]; then
     FORGE_CMD="$FORGE_CMD --verify"
   fi
 
-  eval $FORGE_CMD || echo "$i: Failed"
+  eval $FORGE_CMD || echo "$i: Failed" && rm -f artifacts/${ENVIRONMENT}/${CHAIN_ID}.${i}.json
+  echo "========================"
 done
