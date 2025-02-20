@@ -20,18 +20,21 @@ for i in "${CONTRACTS[@]}"; do
   echo "========================"
   echo "$i: Releasing"
 
-  FORGE_CMD="CONTRACT=$i FOUNDRY_DISABLE_NIGHTLY_WARNING=True forge script script/Release.s.sol --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast --slow -vvv"
+  FORGE_CMD="CONTRACT=$i FOUNDRY_DISABLE_NIGHTLY_WARNING=True forge script script/Release.s.sol -vvv --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast --slow"
 
+  # Append chain-specific modifications
+  if [ "$CHAIN_ID" == "98864" ] || [ "$CHAIN_ID" == "98865" ]; then
+    FORGE_CMD="$FORGE_CMD --legacy --skip-simulation"
+  fi
+
+  # Append verifier commands if available
   if [ ! -z "$ETHERSCAN_API_KEY" ] || [ ! -z "$VERIFIER_URL" ]; then
     FORGE_CMD="$FORGE_CMD --verify --delay 10 --retries 30"
 
-    if [ "$CHAIN_ID" == "98864" ]; then
+    # Append chain-specific modifications
+    if [ "$CHAIN_ID" == "98864" ] || [ "$CHAIN_ID" == "98865" ]; then
       FORGE_CMD="$FORGE_CMD --verifier blockscout"
     fi
-  fi
-
-  if [ "$CHAIN_ID" == "98864" ]; then
-    FORGE_CMD="$FORGE_CMD --legacy --skip-simulation"
   fi
 
   eval $FORGE_CMD || rm -f artifacts/${ENVIRONMENT}/${CHAIN_ID}.${i}.json
