@@ -24,6 +24,10 @@ for i in "${CONTRACTS[@]}"; do
 
   if [ ! -z "$ETHERSCAN_API_KEY" ] || [ ! -z "$VERIFIER_URL" ]; then
     FORGE_CMD="$FORGE_CMD --verify --delay 10 --retries 30"
+
+    if [ "$CHAIN_ID" == "98864" ]; then
+      FORGE_CMD="$FORGE_CMD --verifier blockscout"
+    fi
   fi
 
   if [ "$CHAIN_ID" == "98864" ]; then
