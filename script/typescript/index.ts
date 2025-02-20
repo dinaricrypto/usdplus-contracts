@@ -88,6 +88,14 @@ program
       // Update deployments
       release.deployments[environment] = _.merge(release.deployments[environment], contractToDeployment[contractName]);
 
+      // Sort deployments
+      release.deployments[environment] = Object.keys(release.deployments[environment])
+        .sort()
+        .reduce((obj: Record<string, Address>, key: string) => {
+          obj[key] = release.deployments[environment][key];
+          return obj;
+        }, {});
+
       // Write files
       console.log(`Writing to ${releaseFilepath}`);
       fs.writeFileSync(releaseFilepath, JSON.stringify(release));
