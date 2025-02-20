@@ -25,6 +25,8 @@ for i in "${CONTRACTS[@]}"; do
   # Append chain-specific modifications
   if [ "$CHAIN_ID" == "98864" ] || [ "$CHAIN_ID" == "98865" ]; then
     FORGE_CMD="$FORGE_CMD --legacy --skip-simulation"
+  elif [ "$CHAIN_ID" == "7887" ]; then
+    FORGE_CMD="$FORGE_CMD --skip-simulation"
   fi
 
   # Append verifier commands if available
@@ -32,7 +34,7 @@ for i in "${CONTRACTS[@]}"; do
     FORGE_CMD="$FORGE_CMD --verify --delay 10 --retries 30"
 
     # Append chain-specific modifications
-    if [ "$CHAIN_ID" == "98864" ] || [ "$CHAIN_ID" == "98865" ]; then
+    if [ "$CHAIN_ID" == "98864" ] || [ "$CHAIN_ID" == "98865" ] || [ "$CHAIN_ID" == "7887" ]; then
       FORGE_CMD="$FORGE_CMD --verifier blockscout"
     fi
   fi
