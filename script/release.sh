@@ -26,6 +26,10 @@ for i in "${CONTRACTS[@]}"; do
     FORGE_CMD="$FORGE_CMD --verify --delay 10 --retries 30"
   fi
 
+  if ["$CHAIN_ID" == "98864"]; then
+    FORGE_CMD="$FORGE_CMD --legacy --skip-simulation"
+  fi
+
   eval $FORGE_CMD || rm -f artifacts/${ENVIRONMENT}/${CHAIN_ID}.${i}.json
   echo "========================"
 done
