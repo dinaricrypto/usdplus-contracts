@@ -9,7 +9,7 @@
     "lint:releases": "ajv validate -s releases/schema.json -d \"releases/v*/*.json\" --strict=true",
     "check": "./node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "build": "./node_modules/.bin/tsc",
-    "build:releases": "node dist/index.js bundle artifacts",
+    "build:releases": "node dist/index.js bundle artifacts releases",
     "anvil:kinto": "anvil -f https://rpc.kinto-rpc.com/"
   },
   "devDependencies": {

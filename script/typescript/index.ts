@@ -15,6 +15,7 @@ program.name('scripts').description('Complementary CLI for smart contract deploy
 program
   .command('bundle')
   .argument('<artifactDirectory>', 'Directory of artifacts')
+  .argument('<releaseDirectory>', 'Directory of artifacts')
   .argument('<outputDirectory>', 'Directory for output')
   .addArgument(new Argument('<environment>', 'Environment of deployment').choices(['staging', 'production']))
   .argument('<version>', 'Version of release artifact', (value: string, _previous: any) => {
@@ -24,30 +25,38 @@ program
     return value;
   })
   .description('Bundles artifacts into release files')
-  .action(function (artifactDirectory: string, outputDirectory: string, environment: string, version: string) {
+  .action(function (
+    artifactDirectory: string,
+    releaseDirectory: string,
+    outputDirectory: string,
+    environment: string,
+    version: string
+  ) {
     const contractToDeployment: Record<string, Record<string, Address>> = {};
 
     // Populate contractToDeployment from artifacts
-    const artifacts = fs.readdirSync(path.join(artifactDirectory, environment));
-    for (const artifact of artifacts) {
-      const m = /(\d+)\.(.+)\.json$/gm.exec(artifact);
-      // Skip if no matches found
-      if (m === null) {
-        continue;
+    if (fs.existsSync(path.join(artifactDirectory, environment))) {
+      const artifacts = fs.readdirSync(path.join(artifactDirectory, environment));
+      for (const artifact of artifacts) {
+        const m = /(\d+)\.(.+)\.json$/gm.exec(artifact);
+        // Skip if no matches found
+        if (m === null) {
+          continue;
+        }
+
+        // Read file
+        const fp = path.join(artifactDirectory, environment, artifact),
+          deploymentAddress: DeploymentAddress = JSON.parse(fs.readFileSync(fp, 'utf-8'));
+
+        const chainId = m[1],
+          contractName = m[2],
+          address = Web3Utils.toChecksumAddress(deploymentAddress.address);
+
+        if (!(contractName in contractToDeployment)) {
+          contractToDeployment[contractName] = {};
+        }
+        contractToDeployment[contractName][chainId] = address;
       }
-
-      // Read file
-      const fp = path.join(artifactDirectory, environment, artifact),
-        deploymentAddress: DeploymentAddress = JSON.parse(fs.readFileSync(fp, 'utf-8'));
-
-      const chainId = m[1],
-        contractName = m[2],
-        address = Web3Utils.toChecksumAddress(deploymentAddress.address);
-
-      if (!(contractName in contractToDeployment)) {
-        contractToDeployment[contractName] = {};
-      }
-      contractToDeployment[contractName][chainId] = address;
     }
 
     // Create releases directory
@@ -58,7 +67,7 @@ program
     // Generate release file from existing release files
     for (const contractName in contractToDeployment) {
       const releaseFilename = `${_.snakeCase(contractName.replace('UsdPlus', 'Usdplus'))}.json`,
-        releaseFilepath = path.join(outputDirectory, releaseFilename),
+        releaseFilepath = path.join(releaseDirectory, `v${version}`, releaseFilename),
         abiFilename = path.join('out', `${contractName}.sol`, `${contractName}.json`);
 
       // Create new release or load from existing
@@ -79,9 +88,18 @@ program
       // Update deployments
       release.deployments[environment] = _.merge(release.deployments[environment], contractToDeployment[contractName]);
 
+      // Sort deployments
+      release.deployments[environment] = Object.keys(release.deployments[environment])
+        .sort()
+        .reduce((obj: Record<string, Address>, key: string) => {
+          obj[key] = release.deployments[environment][key];
+          return obj;
+        }, {});
+
       // Write files
-      console.log(`Writing to ${releaseFilepath}`);
-      fs.writeFileSync(releaseFilepath, JSON.stringify(release));
+      const outputFilePath = path.join(outputDirectory, releaseFilename);
+      console.log(`Writing to ${outputFilePath}`);
+      fs.writeFileSync(outputFilePath, JSON.stringify(release));
     }
   });
 

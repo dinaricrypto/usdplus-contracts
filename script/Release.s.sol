@@ -64,8 +64,12 @@ contract Release is Script {
         address previousDeploymentAddress =
             _getPreviousDeploymentAddress(configName, deployedVersion, environment, block.chainid);
 
+        if (previousDeploymentAddress != address(0)) {
+            console2.log("Previous deployment found at %s", previousDeploymentAddress);
+        }
+
         if (previousDeploymentAddress == address(0)) {
-            console2.log("No previous deployment found for %s", contractName);
+            console2.log("Deploying contract");
             proxyAddress = _deployContract(contractName, _getInitData(contractName, initParams, false));
         } else {
             string memory previousVersion;
@@ -77,6 +81,7 @@ contract Release is Script {
                 keccak256(bytes(previousVersion)) != keccak256(bytes(currentVersion))
                     || bytes(previousVersion).length == 0
             ) {
+                console2.log("Upgrading contract");
                 proxyAddress = _upgradeContract(
                     contractName, previousDeploymentAddress, _getInitData(contractName, initParams, true)
                 );
@@ -86,7 +91,9 @@ contract Release is Script {
         vm.stopBroadcast();
 
         // Write result using underscore format for file naming
-        _writeDeployment(environment, block.chainid, contractName, proxyAddress);
+        if (proxyAddress != address(0)) {
+            _writeDeployment(environment, block.chainid, contractName, proxyAddress);
+        }
     }
 
     // Mapping of PascalCase contract names to their underscore versions
@@ -228,7 +235,7 @@ contract Release is Script {
     ) internal returns (address) {
         if (bytes(deployedVersion).length == 0) return address(0);
 
-        string memory deployedPath = string.concat("releases/", deployedVersion, "/", configName, ".json");
+        string memory deployedPath = string.concat("releases/v", deployedVersion, "/", configName, ".json");
         if (!vm.exists(deployedPath)) return address(0);
 
         try vm.parseJsonAddress(
