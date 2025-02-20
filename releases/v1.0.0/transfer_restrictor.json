@@ -4,9 +4,12 @@
   "deployments": {
     "production": {},
     "staging": {
-      "11155111": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8",
+      "1": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8",
+      "8453": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8",
+      "42161": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8",
       "84532": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8",
-      "421614": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8"
+      "421614": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8",
+      "11155111": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8"
     }
   },
   "abi": [

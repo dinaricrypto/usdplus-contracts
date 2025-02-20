@@ -97,8 +97,9 @@ program
         }, {});
 
       // Write files
-      console.log(`Writing to ${releaseFilepath}`);
-      fs.writeFileSync(releaseFilepath, JSON.stringify(release));
+      const outputFilePath = path.join(outputDirectory, releaseFilename);
+      console.log(`Writing to ${outputFilePath}`);
+      fs.writeFileSync(outputFilePath, JSON.stringify(release));
     }
   });
 
