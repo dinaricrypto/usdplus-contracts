@@ -108,17 +108,21 @@ contract Release is Script {
         revert(string.concat("Unknown contract name: ", contractName));
     }
 
-    function _getAddressParamFromJson(string memory json, string memory contractName, string memory paramName)
+    function _getAddressFromJson(string memory json, string memory selector) internal pure returns (address) {
+        try vm.parseJsonAddress(json, selector) returns (address addr) {
+            return addr;
+        } catch {
+            revert(string.concat("Missing or invalid address at path: ", selector));
+        }
+    }
+
+    function _getAddressFromInitData(string memory json, string memory contractName, string memory paramName)
         internal
         pure
         returns (address)
     {
-        string memory paramPath = string.concat(".", contractName, ".", paramName);
-        try vm.parseJsonAddress(json, paramPath) returns (address addr) {
-            return addr;
-        } catch {
-            revert(string.concat("Missing required parameter: ", paramPath));
-        }
+        string memory selector = string.concat(".", contractName, ".", paramName);
+        return _getAddressFromJson(json, selector);
     }
 
     function _getInitData(string memory configJson, string memory contractName, bool isUpgrade)
@@ -151,13 +155,13 @@ contract Release is Script {
         pure
         returns (bytes memory)
     {
-        address upgrader = _getAddressParamFromJson(configJson, contractName, "upgrader");
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         if (isUpgrade) {
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
-        address treasury = _getAddressParamFromJson(configJson, contractName, "treasury");
-        address transferRestrictor = _getAddressParamFromJson(configJson, contractName, "transferRestrictor");
-        address owner = _getAddressParamFromJson(configJson, contractName, "owner");
+        address treasury = _getAddressFromInitData(configJson, contractName, "treasury");
+        address transferRestrictor = _getAddressFromInitData(configJson, contractName, "transferRestrictor");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
 
         return abi.encodeWithSignature(
             "initialize(address,address,address,address)", treasury, transferRestrictor, owner, upgrader
@@ -171,11 +175,8 @@ contract Release is Script {
     {
         if (isUpgrade) return bytes("0x");
 
-        address owner = _getAddressParamFromJson(configJson, contractName, "owner");
-        address upgrader = _getAddressParamFromJson(configJson, contractName, "upgrader");
-
-        console2.log("Owner:", owner);
-        console2.log("Upgrader:", upgrader);
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
 
         return abi.encodeWithSignature("initialize(address,address)", owner, upgrader);
     }
@@ -185,14 +186,14 @@ contract Release is Script {
         pure
         returns (bytes memory)
     {
-        address upgrader = _getAddressParamFromJson(configJson, contractName, "upgrader");
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         if (isUpgrade) {
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        address usdPlus = _getAddressParamFromJson(configJson, contractName, "usdPlus");
-        address router = _getAddressParamFromJson(configJson, contractName, "router");
-        address owner = _getAddressParamFromJson(configJson, contractName, "owner");
+        address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
+        address router = _getAddressFromInitData(configJson, contractName, "router");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
 
         return abi.encodeWithSignature("initialize(address,address,address,address)", usdPlus, router, owner, upgrader);
     }
@@ -202,14 +203,14 @@ contract Release is Script {
         pure
         returns (bytes memory)
     {
-        address upgrader = _getAddressParamFromJson(configJson, contractName, "upgrader");
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         if (isUpgrade) {
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        address usdPlus = _getAddressParamFromJson(configJson, contractName, "usdPlus");
-        address paymentRecipient = _getAddressParamFromJson(configJson, contractName, "paymentRecipient");
-        address owner = _getAddressParamFromJson(configJson, contractName, "owner");
+        address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
+        address paymentRecipient = _getAddressFromInitData(configJson, contractName, "paymentRecipient");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
         return abi.encodeWithSignature(
             "initialize(address,address,address,address)", usdPlus, paymentRecipient, owner, upgrader
         );
@@ -220,13 +221,13 @@ contract Release is Script {
         pure
         returns (bytes memory)
     {
-        address upgrader = _getAddressParamFromJson(configJson, contractName, "upgrader");
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         if (isUpgrade) {
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        address usdPlus = _getAddressParamFromJson(configJson, contractName, "usdPlus");
-        address owner = _getAddressParamFromJson(configJson, contractName, "owner");
+        address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
 
         return abi.encodeWithSignature("initialize(address,address,address)", usdPlus, owner, upgrader);
     }
