@@ -51,7 +51,6 @@ contract Release is Script {
         string memory configPath =
             string.concat("release_config/", environment, "/", vm.toString(block.chainid), ".json");
         string memory configJson = vm.readFile(configPath);
-        bytes memory initParams = configJson.parseRaw(string.concat(".", contractName));
 
         try vm.envString("DEPLOYED_VERSION") returns (string memory v) {
             deployedVersion = v;
@@ -70,7 +69,7 @@ contract Release is Script {
 
         if (previousDeploymentAddress == address(0)) {
             console2.log("Deploying contract");
-            proxyAddress = _deployContract(contractName, _getInitData(contractName, initParams, false));
+            proxyAddress = _deployContract(contractName, _getInitData(configJson, contractName, false));
         } else {
             string memory previousVersion;
             try IVersioned(previousDeploymentAddress).publicVersion() returns (string memory v) {
@@ -83,7 +82,7 @@ contract Release is Script {
             ) {
                 console2.log("Upgrading contract");
                 proxyAddress = _upgradeContract(
-                    contractName, previousDeploymentAddress, _getInitData(contractName, initParams, true)
+                    contractName, previousDeploymentAddress, _getInitData(configJson, contractName, true)
                 );
             }
         }
@@ -109,7 +108,24 @@ contract Release is Script {
         revert(string.concat("Unknown contract name: ", contractName));
     }
 
-    function _getInitData(string memory contractName, bytes memory params, bool isUpgrade)
+    function _getAddressFromJson(string memory json, string memory selector) internal pure returns (address) {
+        try vm.parseJsonAddress(json, selector) returns (address addr) {
+            return addr;
+        } catch {
+            revert(string.concat("Missing or invalid address at path: ", selector));
+        }
+    }
+
+    function _getAddressFromInitData(string memory json, string memory contractName, string memory paramName)
+        internal
+        pure
+        returns (address)
+    {
+        string memory selector = string.concat(".", contractName, ".", paramName);
+        return _getAddressFromJson(json, selector);
+    }
+
+    function _getInitData(string memory configJson, string memory contractName, bool isUpgrade)
         internal
         pure
         returns (bytes memory)
@@ -117,80 +133,103 @@ contract Release is Script {
         bytes32 nameHash = keccak256(bytes(contractName));
 
         if (nameHash == keccak256(bytes("UsdPlus"))) {
-            return _getInitDataForUsdPlus(params, isUpgrade);
+            return _getInitDataForUsdPlus(configJson, contractName, isUpgrade);
         }
         if (nameHash == keccak256(bytes("TransferRestrictor"))) {
-            return _getInitDataForTransferRestrictor(params, isUpgrade);
+            return _getInitDataForTransferRestrictor(configJson, contractName, isUpgrade);
         }
         if (nameHash == keccak256(bytes("CCIPWaypoint"))) {
-            return _getInitDataForCCIPWaypoint(params, isUpgrade);
+            return _getInitDataForCCIPWaypoint(configJson, contractName, isUpgrade);
         }
         if (nameHash == keccak256(bytes("UsdPlusMinter"))) {
-            return _getInitDataForUsdPlusMinter(params, isUpgrade);
+            return _getInitDataForUsdPlusMinter(configJson, contractName, isUpgrade);
         }
         if (nameHash == keccak256(bytes("UsdPlusRedeemer"))) {
-            return _getInitDataForUsdPlusRedeemer(params, isUpgrade);
+            return _getInitDataForUsdPlusRedeemer(configJson, contractName, isUpgrade);
         }
         revert(string.concat("Unsupported contract: ", contractName));
     }
 
-    function _getInitDataForUsdPlus(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+    function _getInitDataForUsdPlus(string memory configJson, string memory contractName, bool isUpgrade)
+        private
+        pure
+        returns (bytes memory)
+    {
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         if (isUpgrade) {
-            address upgrader = abi.decode(params, (address));
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
+        address treasury = _getAddressFromInitData(configJson, contractName, "treasury");
+        address transferRestrictor = _getAddressFromInitData(configJson, contractName, "transferRestrictor");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
 
-        (address _treasury, address _restrictor, address _owner, address _upgrader) =
-            abi.decode(params, (address, address, address, address));
         return abi.encodeWithSignature(
-            "initialize(address,address,address,address)", _treasury, _restrictor, _owner, _upgrader
+            "initialize(address,address,address,address)", treasury, transferRestrictor, owner, upgrader
         );
     }
 
-    function _getInitDataForTransferRestrictor(bytes memory params, bool isUpgrade)
+    function _getInitDataForTransferRestrictor(string memory configJson, string memory contractName, bool isUpgrade)
         private
         pure
         returns (bytes memory)
     {
         if (isUpgrade) return bytes("0x");
 
-        (address owner, address upgrader) = abi.decode(params, (address, address));
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
+
         return abi.encodeWithSignature("initialize(address,address)", owner, upgrader);
     }
 
-    function _getInitDataForCCIPWaypoint(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+    function _getInitDataForCCIPWaypoint(string memory configJson, string memory contractName, bool isUpgrade)
+        private
+        pure
+        returns (bytes memory)
+    {
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         if (isUpgrade) {
-            address upgrader = abi.decode(params, (address));
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        (address _usdPlus, address _router, address _owner, address _upgrader) =
-            abi.decode(params, (address, address, address, address));
-        return
-            abi.encodeWithSignature("initialize(address,address,address,address)", _usdPlus, _router, _owner, _upgrader);
+        address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
+        address router = _getAddressFromInitData(configJson, contractName, "router");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
+
+        return abi.encodeWithSignature("initialize(address,address,address,address)", usdPlus, router, owner, upgrader);
     }
 
-    function _getInitDataForUsdPlusMinter(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+    function _getInitDataForUsdPlusMinter(string memory configJson, string memory contractName, bool isUpgrade)
+        private
+        pure
+        returns (bytes memory)
+    {
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         if (isUpgrade) {
-            address upgrader = abi.decode(params, (address));
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        (address _usdPlus, address _paymentRecipient, address _owner, address _upgrader) =
-            abi.decode(params, (address, address, address, address));
+        address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
+        address paymentRecipient = _getAddressFromInitData(configJson, contractName, "paymentRecipient");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
         return abi.encodeWithSignature(
-            "initialize(address,address,address,address)", _usdPlus, _paymentRecipient, _owner, _upgrader
+            "initialize(address,address,address,address)", usdPlus, paymentRecipient, owner, upgrader
         );
     }
 
-    function _getInitDataForUsdPlusRedeemer(bytes memory params, bool isUpgrade) private pure returns (bytes memory) {
+    function _getInitDataForUsdPlusRedeemer(string memory configJson, string memory contractName, bool isUpgrade)
+        private
+        pure
+        returns (bytes memory)
+    {
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         if (isUpgrade) {
-            address upgrader = abi.decode(params, (address));
             return abi.encodeWithSignature("reinitialize(address)", upgrader);
         }
 
-        (address _usdPlus, address _owner, address _upgrader) = abi.decode(params, (address, address, address));
-        return abi.encodeWithSignature("initialize(address,address,address)", _usdPlus, _owner, _upgrader);
+        address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
+
+        return abi.encodeWithSignature("initialize(address,address,address)", usdPlus, owner, upgrader);
     }
 
     function _deployContract(string memory contractName, bytes memory initData) internal returns (address) {
