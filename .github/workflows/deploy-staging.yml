@@ -1,8 +1,12 @@
 name: deploy-staging
 
+#on:
+#  release:
+#    types: [ prereleased ]
 on:
-  release:
-    types: [ prereleased ]
+  push:
+    branches:
+      - subtask/DSHARE-1269-deploy-usd
 
 permissions:
   id-token: write
