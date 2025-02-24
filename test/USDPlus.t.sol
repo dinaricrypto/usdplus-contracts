@@ -214,6 +214,26 @@ contract UsdPlusTest is Test {
         // transfer succeeds
         vm.prank(USER);
         usdplus.transfer(to, amount);
+
+        // set restrictor for batch restrict test
+        vm.prank(ADMIN);
+        usdplus.setTransferRestrictor(transferRestrictor);
+
+        // test batch restrict
+        address[] memory blacklistedAccounts = generateTestAddresses(10);
+        vm.prank(ADMIN);
+        transferRestrictor.restrict(blacklistedAccounts);
+        vm.stopPrank();
+
+        for (uint256 i = 0; i < blacklistedAccounts.length; i++) {
+            assertEq(usdplus.isBlacklisted(blacklistedAccounts[i]), true);
+        }
+
+        // test error list
+        address[] memory tooManyBlacklistedAccounts = generateTestAddresses(11);
+        vm.prank(ADMIN);
+        vm.expectRevert(TransferRestrictor.TooManyRestrictedAccounts.selector);
+        transferRestrictor.restrict(tooManyBlacklistedAccounts);
     }
 
     function test_rebaseAdd(uint128 initialAmount, uint128 rebaseAmount) public {
@@ -303,5 +323,13 @@ contract UsdPlusTest is Test {
             assertEq(usdplus.mintingCurrentLimitOf(BRIDGE), 200 ether - amount);
             assertEq(usdplus.burningCurrentLimitOf(BRIDGE), amount > 50 ether ? 0 : 50 ether - amount);
         }
+    }
+
+    function generateTestAddresses(uint256 count) internal pure returns (address[] memory) {
+        address[] memory addresses = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            addresses[i] = address(uint160(i + 100)); // Unique deterministic addresses
+        }
+        return addresses;
     }
 }

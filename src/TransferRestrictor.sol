@@ -16,6 +16,8 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
 
     /// @dev Account is restricted
     error AccountRestricted();
+    /// @dev Too many accounts to restrict
+    error TooManyRestrictedAccounts();
 
     /// @dev Emitted when `account` is added to `isBlacklisted`
     event Restricted(address indexed account);
@@ -23,6 +25,8 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
     event Unrestricted(address indexed account);
 
     /// ------------------ Constants ------------------ ///
+
+    uint8 private constant MAX_RESTRICTED_ACCOUNTS = 10;
 
     bytes32 private constant TRANSFER_RESTRICTOR_STORAGE_LOCATION =
         0xbac1ed68b71f55caab6cd9be1e2e97a07e4f1b72103add3e5df1512b4068d902;
@@ -64,6 +68,19 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
         TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
         $.isBlacklisted[account] = true;
         emit Restricted(account);
+    }
+
+    /// @notice Restrict multiple accounts from sending or receiving tokens
+    /// @dev Does not check if `account` is restricted
+    /// Can only be called by `RESTRICTOR_ROLE`
+    function restrict(address[] memory accounts) external onlyRole(RESTRICTOR_ROLE) {
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        if (accounts.length > MAX_RESTRICTED_ACCOUNTS) revert TooManyRestrictedAccounts();
+
+        for (uint256 i = 0; i < accounts.length; i++) {
+            $.isBlacklisted[accounts[i]] = true;
+            emit Restricted(accounts[i]);
+        }
     }
 
     /// @notice Unrestrict `account` from sending or receiving tokens
