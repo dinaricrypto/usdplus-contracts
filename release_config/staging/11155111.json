@@ -10,19 +10,19 @@
     "upgrader": "0xB388565bE24cb10a19f56b2fB81480164C080F42"
   },
   "CCIPWaypoint": {
-    "usdPlus": "",
+    "usdPlus": "0xb5E7b87E7A84276B13da3f07495E18f3e229d3A0",
     "router": "0x0BF3dE8c5D3e8A2B34D2BEeB17ABfCeBaf363A59",
     "owner": "0x4181803232280371E02a875F51515BE57B215231",
     "upgrader": "0xB388565bE24cb10a19f56b2fB81480164C080F42"
   },
   "UsdPlusMinter": {
-    "usdPlus": "",
+    "usdPlus": "0xb5E7b87E7A84276B13da3f07495E18f3e229d3A0",
     "paymentRecipient": "0x09E365aCDB0d936DD250351aD0E7de3Dad8706E5",
     "owner": "0x4181803232280371E02a875F51515BE57B215231",
     "upgrader": "0xB388565bE24cb10a19f56b2fB81480164C080F42"
   },
   "UsdPlusRedeemer": {
-    "usdPlus": "",
+    "usdPlus": "0xb5E7b87E7A84276B13da3f07495E18f3e229d3A0",
     "owner": "0x4181803232280371E02a875F51515BE57B215231",
     "upgrader": "0xB388565bE24cb10a19f56b2fB81480164C080F42"
   },
