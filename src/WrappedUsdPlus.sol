@@ -10,7 +10,6 @@ import {
     ERC20PermitUpgradeable,
     ERC20Upgradeable
 } from "openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
-import {Ownable2StepUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/access/Ownable2StepUpgradeable.sol";
 import {UsdPlus, ITransferRestrictor} from "./UsdPlus.sol";
 import {ControlledUpgradeable} from "./deployment/ControlledUpgradeable.sol";
 
@@ -24,6 +23,10 @@ contract WrappedUsdPlus is UUPSUpgradeable, ERC4626Upgradeable, ERC20PermitUpgra
         __ERC20Permit_init("wUSD+");
         __ERC20_init("wUSD+", "wUSD+");
         __ControlledUpgradeable_init(initialOwner, upgrader);
+    }
+
+    function reinitialize(address owner, address upgrader) public reinitializer(version()) {
+        __ControlledUpgradeable_init(owner, upgrader);
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
