@@ -104,6 +104,7 @@ contract Release is Script {
         if (inputHash == keccak256(bytes("CCIPWaypoint"))) return "ccip_waypoint";
         if (inputHash == keccak256(bytes("UsdPlusRedeemer"))) return "usdplus_redeemer";
         if (inputHash == keccak256(bytes("UsdPlus"))) return "usdplus";
+        if (inputHash == keccak256(bytes("WrappedUsdPlus"))) return "wrapped_usdplus";
 
         revert(string.concat("Unknown contract name: ", contractName));
     }
@@ -146,6 +147,9 @@ contract Release is Script {
         }
         if (nameHash == keccak256(bytes("UsdPlusRedeemer"))) {
             return _getInitDataForUsdPlusRedeemer(configJson, contractName, isUpgrade);
+        }
+        if (nameHash == keccak256(bytes("WrappedUsdPlus"))) {
+            return _getInitDataForWrappedUsdPlus(configJson, contractName, isUpgrade);
         }
         revert(string.concat("Unsupported contract: ", contractName));
     }
@@ -228,6 +232,22 @@ contract Release is Script {
 
         address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
         address owner = _getAddressFromInitData(configJson, contractName, "owner");
+
+        return abi.encodeWithSignature("initialize(address,address,address)", usdPlus, owner, upgrader);
+    }
+
+    function _getInitDataForWrappedUsdPlus(string memory configJson, string memory contractName, bool isUpgrade)
+        private
+        pure
+        returns (bytes memory)
+    {
+        address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
+        if (isUpgrade) {
+            return abi.encodeWithSignature("reinitialize(address, address)", owner, upgrader);
+        }
+
+        address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
 
         return abi.encodeWithSignature("initialize(address,address,address)", usdPlus, owner, upgrader);
     }
