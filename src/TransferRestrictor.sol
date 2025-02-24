@@ -16,8 +16,6 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
 
     /// @dev Account is restricted
     error AccountRestricted();
-    /// @dev Too many accounts to restrict
-    error TooManyRestrictedAccounts();
 
     /// @dev Emitted when `account` is added to `isBlacklisted`
     event Restricted(address indexed account);
