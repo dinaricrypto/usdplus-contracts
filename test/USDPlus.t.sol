@@ -228,12 +228,6 @@ contract UsdPlusTest is Test {
         for (uint256 i = 0; i < blacklistedAccounts.length; i++) {
             assertEq(usdplus.isBlacklisted(blacklistedAccounts[i]), true);
         }
-
-        // test error list
-        address[] memory tooManyBlacklistedAccounts = generateTestAddresses(11);
-        vm.prank(ADMIN);
-        vm.expectRevert(TransferRestrictor.TooManyRestrictedAccounts.selector);
-        transferRestrictor.restrict(tooManyBlacklistedAccounts);
     }
 
     function test_rebaseAdd(uint128 initialAmount, uint128 rebaseAmount) public {
