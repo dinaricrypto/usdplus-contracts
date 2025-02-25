@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import {PausableUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/PausableUpgradeable.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -20,6 +21,11 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
 
     error ZeroAddress();
     error ZeroAmount();
+    error SlippageViolation();
+    error InvalidPrice();
+    error StalePrice();
+    error SequencerDown();
+    error SequencerGracePeriodNotOver();
 
     bytes32 public constant FULFILLER_ROLE = keccak256("FULFILLER_ROLE");
     bytes32 public constant PROXY_ROLE = keccak256("PROXY_ROLE");
@@ -30,11 +36,15 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         // USD+
         address _usdplus;
         // is this payment token accepted?
-        mapping(IERC20 => AggregatorV3Interface) _paymentTokenOracle;
+        mapping(IERC20 => PaymentTokenOracleInfo) _paymentTokenOracle;
         // request ticket => request
         mapping(uint256 => Request) _requests;
         // next request ticket number
         uint256 _nextTicket;
+        // L2 sequencer oracle
+        address _l2SequencerOracle;
+        // grace period for the L2 sequencer startup
+        uint256 _sequencerGracePeriod;
     }
 
     // keccak256(abi.encode(uint256(keccak256("dinaricrypto.storage.UsdPlusRedeemer")) - 1)) & ~bytes32(uint256(0xff))
@@ -56,6 +66,8 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         $._usdplus = usdPlus;
         $._nextTicket = 0;
+        $._l2SequencerOracle = address(0);
+        $._sequencerGracePeriod = 3600;
     }
 
     function reinitialize(address upgrader) public reinitializer(version()) {
@@ -76,7 +88,7 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
     }
 
     /// @inheritdoc IUsdPlusRedeemer
-    function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface) {
+    function paymentTokenOracle(IERC20 paymentToken) external view returns (PaymentTokenOracleInfo memory) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
         return $._paymentTokenOracle[paymentToken];
     }
@@ -105,14 +117,31 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
 
     /// @notice set payment token oracle
     /// @param payment payment token
-    /// @param oracle oracle
-    function setPaymentTokenOracle(IERC20 payment, AggregatorV3Interface oracle)
+    /// @param oracle oracle address
+    /// @param heartbeat heartbeat in seconds
+    function setPaymentTokenOracle(IERC20 payment, AggregatorV3Interface oracle, uint256 heartbeat)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        $._paymentTokenOracle[payment] = oracle;
-        emit PaymentTokenOracleSet(payment, oracle);
+        $._paymentTokenOracle[payment] = PaymentTokenOracleInfo(oracle, heartbeat);
+        emit PaymentTokenOracleSet(payment, oracle, heartbeat);
+    }
+
+    /// @notice set L2 sequencer oracle
+    /// @param l2SequencerOracle Chainlink L2 sequencer oracle
+    function setL2SequencerOracle(address l2SequencerOracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        $._l2SequencerOracle = l2SequencerOracle;
+        emit L2SequencerOracleSet(l2SequencerOracle);
+    }
+
+    /// @notice set grace period for the L2 sequencer startup
+    /// @param sequencerGracePeriod grace period in seconds
+    function setSequencerGracePeriod(uint256 sequencerGracePeriod) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+        $._sequencerGracePeriod = sequencerGracePeriod;
+        emit SequencerGracePeriodSet(sequencerGracePeriod);
     }
 
     /// @notice pause contract
@@ -130,12 +159,34 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
     /// @inheritdoc IUsdPlusRedeemer
     function getOraclePrice(IERC20 paymentToken) public view returns (uint256, uint8) {
         UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
-        AggregatorV3Interface oracle = $._paymentTokenOracle[paymentToken];
-        if (address(oracle) == address(0)) revert PaymentTokenNotAccepted();
+        PaymentTokenOracleInfo memory oracle = $._paymentTokenOracle[paymentToken];
+        if (address(oracle.oracle) == address(0)) revert PaymentTokenNotAccepted();
+
+        // Make sure the L2 sequencer is up.
+        address l2SequencerOracle = $._l2SequencerOracle;
+        if (l2SequencerOracle != address(0)) {
+            // slither-disable-next-line unused-return
+            (, int256 isDown, uint256 startedAt,,) = AggregatorV3Interface($._l2SequencerOracle).latestRoundData();
+
+            // isDown == 0: Sequencer is up
+            // isDown == 1: Sequencer is down
+            if (isDown == 1) {
+                revert SequencerDown();
+            }
+
+            // Make sure the grace period has passed after the
+            // sequencer is back up.
+            uint256 timeSinceUp = block.timestamp - startedAt;
+            if (timeSinceUp <= $._sequencerGracePeriod) {
+                revert SequencerGracePeriodNotOver();
+            }
+        }
 
         // slither-disable-next-line unused-return
-        (, int256 price,,,) = oracle.latestRoundData();
-        uint8 oracleDecimals = oracle.decimals();
+        (, int256 price,, uint256 updatedAt,) = oracle.oracle.latestRoundData();
+        if (price == 0) revert InvalidPrice();
+        if (oracle.heartbeat > 0 && block.timestamp - updatedAt > oracle.heartbeat) revert StalePrice();
+        uint8 oracleDecimals = oracle.oracle.decimals();
 
         return (uint256(price), oracleDecimals);
     }
@@ -143,7 +194,24 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
     /// @inheritdoc IUsdPlusRedeemer
     function previewWithdraw(IERC20 paymentToken, uint256 paymentTokenAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(paymentTokenAmount, price, 10 ** uint256(oracleDecimals), Math.Rounding.Ceil);
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+
+        uint8 paymentDecimals = 18;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {}
+
+        uint8 usdPlusDecimals = 6;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {}
+
+        return Math.mulDiv(
+            paymentTokenAmount,
+            price * 10 ** usdPlusDecimals,
+            10 ** (oracleDecimals + paymentDecimals),
+            Math.Rounding.Ceil
+        );
     }
 
     /// @inheritdoc IUsdPlusRedeemer
@@ -152,11 +220,23 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         whenNotPaused
         returns (uint256 ticket)
     {
+        return requestWithdraw(paymentToken, paymentTokenAmount, receiver, owner, type(uint256).max);
+    }
+
+    /// @inheritdoc IUsdPlusRedeemer
+    function requestWithdraw(
+        IERC20 paymentToken,
+        uint256 paymentTokenAmount,
+        address receiver,
+        address owner,
+        uint256 maxUsdPlusAmount
+    ) public whenNotPaused returns (uint256 ticket) {
         if (receiver == address(0)) revert ZeroAddress();
         if (paymentTokenAmount == 0) revert ZeroAmount();
 
         uint256 usdplusAmount = previewWithdraw(paymentToken, paymentTokenAmount);
         if (usdplusAmount == 0) revert ZeroAmount();
+        if (usdplusAmount > maxUsdPlusAmount) revert SlippageViolation();
 
         return _request(paymentToken, paymentTokenAmount, usdplusAmount, receiver, owner);
     }
@@ -204,7 +284,21 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
     /// @inheritdoc IUsdPlusRedeemer
     function previewRedeem(IERC20 paymentToken, uint256 usdplusAmount) public view returns (uint256) {
         (uint256 price, uint8 oracleDecimals) = getOraclePrice(paymentToken);
-        return Math.mulDiv(usdplusAmount, 10 ** uint256(oracleDecimals), price, Math.Rounding.Floor);
+        UsdPlusRedeemerStorage storage $ = _getUsdPlusRedeemerStorage();
+
+        uint8 paymentDecimals = 18;
+        try IERC20Metadata(address(paymentToken)).decimals() returns (uint8 decimals) {
+            paymentDecimals = decimals;
+        } catch {}
+
+        uint8 usdPlusDecimals = 6;
+        try IERC20Metadata($._usdplus).decimals() returns (uint8 decimals) {
+            usdPlusDecimals = decimals;
+        } catch {}
+
+        return Math.mulDiv(
+            usdplusAmount, 10 ** (oracleDecimals + paymentDecimals), price * 10 ** usdPlusDecimals, Math.Rounding.Floor
+        );
     }
 
     /// @inheritdoc IUsdPlusRedeemer
@@ -213,11 +307,23 @@ contract UsdPlusRedeemer is IUsdPlusRedeemer, ControlledUpgradeable, SelfPermit,
         whenNotPaused
         returns (uint256 ticket)
     {
+        return requestRedeem(paymentToken, usdplusAmount, receiver, owner, 0);
+    }
+
+    /// @inheritdoc IUsdPlusRedeemer
+    function requestRedeem(
+        IERC20 paymentToken,
+        uint256 usdplusAmount,
+        address receiver,
+        address owner,
+        uint256 minPaymentTokenAmount
+    ) public whenNotPaused returns (uint256 ticket) {
         if (receiver == address(0)) revert ZeroAddress();
         if (usdplusAmount == 0) revert ZeroAmount();
 
         uint256 paymentTokenAmount = previewRedeem(paymentToken, usdplusAmount);
         if (paymentTokenAmount == 0) revert ZeroAmount();
+        if (paymentTokenAmount < minPaymentTokenAmount) revert SlippageViolation();
 
         return _request(paymentToken, paymentTokenAmount, usdplusAmount, receiver, owner);
     }

@@ -54,7 +54,6 @@ contract ConfigAllOwnerUsdPlus is Script, EntryPointHelper {
 
         // permissions to call
         // - rebaseAdd(uint128 value)
-        // - rebaseMul(uint128 factor)
         // cfg.usdplus.grantRole(cfg.usdplus.OPERATOR_ROLE(), owner);
         _handleOps(
             _entryPoint,

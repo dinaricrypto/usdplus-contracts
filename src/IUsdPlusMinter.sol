@@ -3,11 +3,17 @@ pragma solidity ^0.8.23;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {Permit} from "./SelfPermit.sol";
 
 interface IUsdPlusMinter {
+    struct PaymentTokenOracleInfo {
+        AggregatorV3Interface oracle;
+        uint256 heartbeat;
+    }
+
     event PaymentRecipientSet(address indexed paymentRecipient);
-    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle);
+    event PaymentTokenOracleSet(IERC20 indexed paymentToken, AggregatorV3Interface oracle, uint256 heartbeat);
+    event L2SequencerOracleSet(address indexed l2SequencerOracle);
+    event SequencerGracePeriodSet(uint256 sequencerGracePeriod);
     event Issued(
         address indexed receiver, IERC20 indexed paymentToken, uint256 paymentTokenAmount, uint256 usdPlusAmount
     );
@@ -23,7 +29,7 @@ interface IUsdPlusMinter {
     /// @notice Oracle for payment token
     /// @param paymentToken payment token
     /// @dev address(0) if payment token not accepted
-    function paymentTokenOracle(IERC20 paymentToken) external view returns (AggregatorV3Interface oracle);
+    function paymentTokenOracle(IERC20 paymentToken) external view returns (PaymentTokenOracleInfo memory oracle);
 
     /// @notice get oracle price for payment token
     /// @param paymentToken payment token
@@ -46,12 +52,13 @@ interface IUsdPlusMinter {
         external
         returns (uint256 usdPlusAmount);
 
-    /// @notice mint USD+ for payment with permit
+    /// @notice mint USD+ for payment
     /// @param paymentToken payment token
-    /// @param permit permit
-    /// @param signature permit signature
-    /// @return usdPlusAmount amount of usd+ minted
-    function privateMint(IERC20 paymentToken, Permit calldata permit, bytes calldata signature)
+    /// @param paymentTokenAmount amount of payment token to spend
+    /// @param receiver recipient
+    /// @param minUsdPlusAmount minimum amount of USD+ to mint
+    /// @return usdPlusAmount amount of USD+ minted
+    function deposit(IERC20 paymentToken, uint256 paymentTokenAmount, address receiver, uint256 minUsdPlusAmount)
         external
         returns (uint256 usdPlusAmount);
 
@@ -69,6 +76,16 @@ interface IUsdPlusMinter {
     /// @param receiver recipient
     /// @return paymentTokenAmount amount of payment token spent
     function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver)
+        external
+        returns (uint256 paymentTokenAmount);
+
+    /// @notice mint USD+ for payment
+    /// @param paymentToken payment token
+    /// @param usdPlusAmount amount of USD+ to mint
+    /// @param receiver recipient
+    /// @param maxPaymentTokenAmount maximum amount of payment token to spend
+    /// @return paymentTokenAmount amount of payment token spent
+    function mint(IERC20 paymentToken, uint256 usdPlusAmount, address receiver, uint256 maxPaymentTokenAmount)
         external
         returns (uint256 paymentTokenAmount);
 }
