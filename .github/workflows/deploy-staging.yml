@@ -1,8 +1,9 @@
 name: deploy-staging
 
 on:
-  release:
-    types: [ prereleased ]
+  push:
+    branches:
+      - staging/**
 
 permissions:
   id-token: write
