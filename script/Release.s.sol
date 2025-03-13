@@ -7,6 +7,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
 import {console2} from "forge-std/console2.sol";
 import {VmSafe} from "forge-std/Vm.sol";
+import {JsonUtils} from "./utils/JsonUtils.sol";
 
 interface IVersioned {
     function publicVersion() external view returns (string memory);
@@ -63,23 +64,13 @@ contract Release is Script {
         address previousDeploymentAddress =
             _getPreviousDeploymentAddress(configName, deployedVersion, environment, block.chainid);
 
-        if (previousDeploymentAddress != address(0)) {
-            console2.log("Previous deployment found at %s", previousDeploymentAddress);
-        }
-
         if (previousDeploymentAddress == address(0)) {
             console2.log("Deploying contract");
             proxyAddress = _deployContract(contractName, _getInitData(configJson, contractName, false));
         } else {
-            string memory previousVersion;
-            try IVersioned(previousDeploymentAddress).publicVersion() returns (string memory v) {
-                previousVersion = v;
-            } catch {}
-
-            if (
-                keccak256(bytes(previousVersion)) != keccak256(bytes(currentVersion))
-                    || bytes(previousVersion).length == 0
-            ) {
+            console2.log("Previous deployment found at %s", previousDeploymentAddress);
+            bool shouldUpgrade = _shouldUpgrade(previousDeploymentAddress, currentVersion);
+            if (shouldUpgrade) {
                 console2.log("Upgrading contract");
                 proxyAddress = _upgradeContract(
                     contractName, previousDeploymentAddress, _getInitData(configJson, contractName, true)
@@ -109,12 +100,16 @@ contract Release is Script {
         revert(string.concat("Unknown contract name: ", contractName));
     }
 
-    function _getAddressFromJson(string memory json, string memory selector) internal pure returns (address) {
-        try vm.parseJsonAddress(json, selector) returns (address addr) {
-            return addr;
+    // Helper to determine if an upgrade is needed
+    function _shouldUpgrade(address proxyAddress, string memory currentVersion) internal view returns (bool) {
+        string memory previousVersion;
+        try IVersioned(proxyAddress).publicVersion() returns (string memory v) {
+            previousVersion = v;
         } catch {
-            revert(string.concat("Missing or invalid address at path: ", selector));
+            previousVersion = "";
         }
+        return
+            keccak256(bytes(previousVersion)) != keccak256(bytes(currentVersion)) || bytes(previousVersion).length == 0;
     }
 
     function _getAddressFromInitData(string memory json, string memory contractName, string memory paramName)
@@ -123,7 +118,7 @@ contract Release is Script {
         returns (address)
     {
         string memory selector = string.concat(".", contractName, ".", paramName);
-        return _getAddressFromJson(json, selector);
+        return JsonUtils.getAddressFromJson(vm, json, selector);
     }
 
     function _getInitData(string memory configJson, string memory contractName, bool isUpgrade)
