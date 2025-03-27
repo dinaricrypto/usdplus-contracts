@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.23;
 
-// import "solady/src/tokens/ERC20.sol";
 import {MockERC20PermitVersion} from "./MockERC20PermitVersion.sol";
 import {AccessControl} from "openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -12,6 +11,7 @@ contract MockToken is MockERC20PermitVersion, AccessControl {
 
     string _name;
     string _symbol;
+    uint8 private _decimals;
 
     mapping(address => bool) public isBlacklisted;
     mapping(address => bool) public isBlackListed;
@@ -26,6 +26,7 @@ contract MockToken is MockERC20PermitVersion, AccessControl {
     {
         _name = name_;
         _symbol = symbol_;
+        _decimals = 6; // Default to 6 decimals
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, msg.sender);
@@ -39,8 +40,12 @@ contract MockToken is MockERC20PermitVersion, AccessControl {
         return _symbol;
     }
 
-    function decimals() public pure override returns (uint8) {
-        return 6;
+    function decimals() public view override returns (uint8) {
+        return _decimals;
+    }
+
+    function setDecimals(uint8 decimals_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _decimals = decimals_;
     }
 
     function mint(address account, uint256 amount) public onlyRole(MINTER_ROLE) {
