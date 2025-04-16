@@ -38,8 +38,7 @@ contract UpdateTransferRestrictorForUsdPlus is Script {
      *      forge script script/UpdateTransferRestrictorForUsdPlus.s.sol:UpdateTransferRestrictorForUsdPlus \
      *      --rpc-url $RPC_URL \
      *      --private-key $PRIVATE_KEY \
-     *      --broadcast \
-     *      --env ENVIRONMENT=<environment>
+     *      --broadcast
      */
     function run() external {
         // Get environment variables

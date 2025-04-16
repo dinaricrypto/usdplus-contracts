@@ -1,45 +1,32 @@
 #!/bin/bash
-# Executes the UpdateTransferRestrictorForUsdPlus script for specified chain IDs
+# Executes the UpdateTransferRestrictorForUsdPlus script on the specified RPC URL
 #
 # Required environment variables:
-# ENVIRONMENT        - Target environment ["production"]
+# ENVIRONMENT        - Target environment ["staging", "production"]
 # RPC_URL           - RPC endpoint URL
+# CHAIN_ID          - Chain ID of RPC
 # PRIVATE_KEY       - Deploy private key
-#
-# The script runs for chain IDs: 1, 42161, 8453, 7887, 11155111
 
 echo "========================"
-echo "UpdateTransferRestrictorForUsdPlus: Starting"
+echo "UpdateTransferRestrictorForUsdPlus: Executing"
 
 # Check required environment variables
-if [ -z "$ENVIRONMENT" ] || [ -z "$RPC_URL" ] || [ -z "$PRIVATE_KEY" ]; then
-  echo "Error: ENVIRONMENT, RPC_URL, and PRIVATE_KEY must be set"
+if [ -z "$ENVIRONMENT" ] || [ -z "$RPC_URL" ] || [ -z "$CHAIN_ID" ] || [ -z "$PRIVATE_KEY" ]; then
+  echo "Error: ENVIRONMENT, RPC_URL, CHAIN_ID, and PRIVATE_KEY must be set"
   exit 1
 fi
 
-# Define chain IDs
-CHAIN_IDS=("1" "42161" "8453" "7887" "11155111")
+# Base Forge command
+FORGE_CMD="forge script script/UpdateTransferRestrictorForUsdPlus.s.sol -vvv --rpc-url $RPC_URL --private-key $PRIVATE_KEY --slow --broadcast --env ENVIRONMENT=$ENVIRONMENT"
 
-# Iterate over chain IDs
-for CHAIN_ID in "${CHAIN_IDS[@]}"; do
-  echo "========================"
-  echo "Chain $CHAIN_ID: Updating TransferRestrictor"
+# Append chain-specific modifications
+if [ "$CHAIN_ID" == "98864" ] || [ "$CHAIN_ID" == "98865" ]; then
+  FORGE_CMD="$FORGE_CMD --legacy --skip-simulation"
+elif [ "$CHAIN_ID" == "7887" ]; then
+  FORGE_CMD="$FORGE_CMD --skip-simulation"
+fi
 
-  # Base Forge command
-  FORGE_CMD="forge script script/UpdateTransferRestrictorForUsdPlus.s.sol -vvv --rpc-url $RPC_URL --private-key $PRIVATE_KEY --slow --broadcast"
+# Execute the command
+FOUNDRY_DISABLE_NIGHTLY_WARNING=True $FORGE_CMD
 
-  # Append chain-specific modifications
-  if [ "$CHAIN_ID" == "98864" ] || [ "$CHAIN_ID" == "98865" ]; then
-    FORGE_CMD="$FORGE_CMD --legacy --skip-simulation"
-  elif [ "$CHAIN_ID" == "7887" ]; then
-    FORGE_CMD="$FORGE_CMD --skip-simulation"
-  fi
-
-  # Execute the command
-  FOUNDRY_DISABLE_NIGHTLY_WARNING=True $FORGE_CMD
-
-  echo "========================"
-done
-
-echo "UpdateTransferRestrictorForUsdPlus: Completed"
 echo "========================"
