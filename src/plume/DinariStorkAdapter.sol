@@ -8,8 +8,8 @@ import {IStorkTemporalNumericValueUnsafeGetter, StorkStructs} from "./IStorkTemp
 /// @dev Adapted from Stork's price feed system, used by Dinari to set price feeds via Plume
 
 contract DinariStorkAdapter {
-    bytes32 public priceId;
-    IStorkTemporalNumericValueUnsafeGetter public stork;
+    bytes32 public immutable priceId;
+    IStorkTemporalNumericValueUnsafeGetter public immutable stork;
 
     constructor(address _stork, bytes32 _priceId) {
         priceId = _priceId;
