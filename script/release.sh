@@ -25,7 +25,7 @@ for i in "${CONTRACTS[@]}"; do
   # Append chain-specific modifications
   if [ "$CHAIN_ID" == "98867" ]; then
     FORGE_CMD="$FORGE_CMD --legacy --skip-simulation"
-  elif [ "$CHAIN_ID" == "7887" ] || [ "$CHAIN_ID" == "98866" ]; then
+  elif [ "$CHAIN_ID" == "7887" ]; then
     FORGE_CMD="$FORGE_CMD --skip-simulation"
   fi
 
