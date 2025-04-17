@@ -23,7 +23,7 @@ for i in "${CONTRACTS[@]}"; do
   FORGE_CMD="CONTRACT=$i FOUNDRY_DISABLE_NIGHTLY_WARNING=True forge script script/Release.s.sol -vvv --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast --slow"
 
   # Append chain-specific modifications
-  if [ "$CHAIN_ID" == "98866" ] || [ "$CHAIN_ID" == "98867" ]; then
+  if [ "$CHAIN_ID" == "98867" ]; then
     FORGE_CMD="$FORGE_CMD --legacy --skip-simulation"
   elif [ "$CHAIN_ID" == "7887" ]; then
     FORGE_CMD="$FORGE_CMD --skip-simulation"
