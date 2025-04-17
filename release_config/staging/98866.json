@@ -1,6 +1,6 @@
 {
   "UsdPlus": {
-    "treasury": "",
+    "treasury": "0x09E365aCDB0d936DD250351aD0E7de3Dad8706E5",
     "transferRestrictor": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8",
     "owner": "0x4181803232280371E02a875F51515BE57B215231",
     "upgrader": "0xB388565bE24cb10a19f56b2fB81480164C080F42"
@@ -17,7 +17,7 @@
   },
   "UsdPlusMinter": {
     "usdPlus": "",
-    "paymentRecipient": "",
+    "paymentRecipient": "0x09E365aCDB0d936DD250351aD0E7de3Dad8706E5",
     "owner": "0x4181803232280371E02a875F51515BE57B215231",
     "upgrader": "0xB388565bE24cb10a19f56b2fB81480164C080F42"
   },
