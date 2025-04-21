@@ -1,34 +1,29 @@
 {
   "UsdPlus": {
-    "treasury": "0x400880b800410B2951Afd0503dC457aea8A4bAb5",
-    "transferRestrictor": "0x44fE4c3A9C0c271a85bd3b48A6788E0df9BFdfD8",
-    "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
-    "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
+    "treasury": "",
+    "transferRestrictor": "",
+    "owner": "",
+    "upgrader": ""
   },
   "TransferRestrictor": {
-    "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
-    "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
+    "owner": "",
+    "upgrader": ""
   },
   "CCIPWaypoint": {
     "usdPlus": "",
-    "router": "0x0000000000000000000000000000000000000000",
-    "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
-    "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
+    "router": "",
+    "owner": "",
+    "upgrader": ""
   },
   "UsdPlusMinter": {
     "usdPlus": "",
-    "paymentRecipient": "0x400880b800410B2951Afd0503dC457aea8A4bAb5",
-    "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
-    "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
+    "paymentRecipient": "",
+    "owner": "",
+    "upgrader": ""
   },
   "UsdPlusRedeemer": {
     "usdPlus": "",
-    "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
-    "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
-  },
-  "WrappedUsdPlus": {
-    "usdPlus": "",
-    "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
-    "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
+    "owner": "",
+    "upgrader": ""
   }
 }
