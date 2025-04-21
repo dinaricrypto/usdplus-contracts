@@ -1,7 +1,7 @@
 {
   "UsdPlus": {
-    "treasury": "",
-    "transferRestrictor": "",
+    "treasury": "0x400880b800410B2951Afd0503dC457aea8A4bAb5",
+    "transferRestrictor": "0xfA7f9B3a83fdd692861FEE9E8d995649F3bE1Da0",
     "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
   },
