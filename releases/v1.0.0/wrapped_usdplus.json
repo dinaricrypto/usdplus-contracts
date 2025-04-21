@@ -2,7 +2,10 @@
   "name": "WrappedUsdPlus",
   "version": "1.0.0",
   "deployments": {
-    "production": {},
+    "production": {
+      "98866": "0x6B7e283D5098F3213d01D6cDcc35A217e1a3549f",
+      "98867": "0x6B7e283D5098F3213d01D6cDcc35A217e1a3549f"
+    },
     "staging": {
       "1": "0x525d99205C585AF4F1630c7707CA01f769DaC1Bd",
       "7887": "0x525d99205C585AF4F1630c7707CA01f769DaC1Bd",
