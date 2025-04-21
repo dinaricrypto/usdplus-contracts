@@ -14,7 +14,7 @@
 # DEPLOYED_VERSION   - Version of the previous deployment
 
 #CONTRACTS=("TransferRestrictor" "UsdPlus" "WrappedUsdPlus" "UsdPlusMinter" "UsdPlusRedeemer" "CCIPWaypoint")
-CONTRACTS=("TransferRestrictor" "UsdPlus")
+CONTRACTS=("TransferRestrictor" "UsdPlus" "WrappedUsdPlus" "UsdPlusMinter" "UsdPlusRedeemer")
 
 for i in "${CONTRACTS[@]}"; do
   echo "========================"
