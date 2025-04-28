@@ -10,6 +10,7 @@
 echo "========================"
 echo "UpdateTransferRestrictorForUsdPlus: Executing"
 
+
 # Check required environment variables
 if [ -z "$ENVIRONMENT" ] || [ -z "$RPC_URL" ] || [ -z "$CHAIN_ID" ] || [ -z "$PRIVATE_KEY" ]; then
   echo "Error: ENVIRONMENT, RPC_URL, CHAIN_ID, and PRIVATE_KEY must be set"
@@ -17,7 +18,7 @@ if [ -z "$ENVIRONMENT" ] || [ -z "$RPC_URL" ] || [ -z "$CHAIN_ID" ] || [ -z "$PR
 fi
 
 # Base Forge command
-FORGE_CMD="forge script script/UpdateTransferRestrictorForUsdPlus.s.sol -vvv --rpc-url $RPC_URL --private-key $PRIVATE_KEY --slow --broadcast --env ENVIRONMENT=$ENVIRONMENT"
+FORGE_CMD="forge script script/UpdateTransferRestrictorForUsdPlus.s.sol -vvv --rpc-url $RPC_URL --private-key $PRIVATE_KEY --slow --broadcast"
 
 # Append chain-specific modifications
 if [ "$CHAIN_ID" == "98864" ] || [ "$CHAIN_ID" == "98865" ]; then
