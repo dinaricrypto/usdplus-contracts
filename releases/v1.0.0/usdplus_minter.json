@@ -2,7 +2,10 @@
   "name": "UsdPlusMinter",
   "version": "1.0.0",
   "deployments": {
-    "production": {},
+    "production": {
+      "98866": "0x57d2136A757617ec2234Def6f777Fb6fD52473c3",
+      "98867": "0x57d2136A757617ec2234Def6f777Fb6fD52473c3"
+    },
     "staging": {
       "1": "0x003fa9D5D98814D0f4728fDECfA2533B96484Dd1",
       "7887": "0x003fa9D5D98814D0f4728fDECfA2533B96484Dd1",

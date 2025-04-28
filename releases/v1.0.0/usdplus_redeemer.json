@@ -2,7 +2,10 @@
   "name": "UsdPlusRedeemer",
   "version": "1.0.0",
   "deployments": {
-    "production": {},
+    "production": {
+      "98866": "0x66aB7B7B98D7129e367C8C21BFB7F6348Cb5f1A7",
+      "98867": "0x66aB7B7B98D7129e367C8C21BFB7F6348Cb5f1A7"
+    },
     "staging": {
       "1": "0x9259CFCe822fd5247C85Ff048F558Fc9D05BCb47",
       "7887": "0x9259CFCe822fd5247C85Ff048F558Fc9D05BCb47",
