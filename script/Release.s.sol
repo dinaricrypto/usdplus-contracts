@@ -7,7 +7,6 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
 import {console2} from "forge-std/console2.sol";
 import {VmSafe} from "forge-std/Vm.sol";
-import {JsonUtils} from "./utils/JsonUtils.sol";
 
 interface IVersioned {
     function publicVersion() external view returns (string memory);
@@ -59,11 +58,10 @@ contract Release is Script {
             deployedVersion = "";
         }
 
-        vm.startBroadcast();
-
         address previousDeploymentAddress =
             _getPreviousDeploymentAddress(configName, deployedVersion, environment, block.chainid);
 
+        vm.startBroadcast();
         if (previousDeploymentAddress == address(0)) {
             console2.log("Deploying contract");
             proxyAddress = _deployContract(contractName, _getInitData(configJson, contractName, false));
@@ -77,7 +75,6 @@ contract Release is Script {
                 );
             }
         }
-
         vm.stopBroadcast();
 
         // Write result using underscore format for file naming
@@ -118,7 +115,11 @@ contract Release is Script {
         returns (address)
     {
         string memory selector = string.concat(".", contractName, ".", paramName);
-        return JsonUtils.getAddressFromJson(vm, json, selector);
+        try vm.parseJsonAddress(json, selector) returns (address addr) {
+            return addr;
+        } catch {
+            revert(string.concat("Missing or invalid address at path: ", selector));
+        }
     }
 
     function _getInitData(string memory configJson, string memory contractName, bool isUpgrade)
@@ -286,7 +287,7 @@ contract Release is Script {
         string memory deployedVersion,
         string memory environment,
         uint256 chainId
-    ) internal returns (address) {
+    ) internal view returns (address) {
         if (bytes(deployedVersion).length == 0) return address(0);
 
         string memory deployedPath = string.concat("releases/v", deployedVersion, "/", configName, ".json");
