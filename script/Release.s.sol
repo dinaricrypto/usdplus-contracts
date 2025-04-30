@@ -61,6 +61,7 @@ contract Release is Script {
         address previousDeploymentAddress =
             _getPreviousDeploymentAddress(configName, deployedVersion, environment, block.chainid);
 
+        vm.startBroadcast();
         if (previousDeploymentAddress == address(0)) {
             console2.log("Deploying contract");
             proxyAddress = _deployContract(contractName, _getInitData(configJson, contractName, false));
@@ -74,6 +75,7 @@ contract Release is Script {
                 );
             }
         }
+        vm.stopBroadcast();
 
         // Write result using underscore format for file naming
         if (proxyAddress != address(0)) {
