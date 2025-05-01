@@ -9,6 +9,10 @@ clean:
 	rm -rf coverage/
 	rm -rf .gas-report
 	rm -rf sizes.txt
+	rm -rf artifacts
+	rm -rf broadcast
+	rm -rf cache
+	rm -rf out
 
 # Build the project
 build:
