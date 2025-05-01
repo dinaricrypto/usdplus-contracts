@@ -66,8 +66,6 @@ contract Release is Script {
             console2.log("Previous deployment found at %s", previousDeploymentAddress);
         }
 
-        vm.startBroadcast();
-
         // Pre-fetch init data for non-beacon contracts
         bytes memory initData = _getInitData(configJson, contractName, false);
         bytes memory upgradeData = _getInitData(configJson, contractName, true);
