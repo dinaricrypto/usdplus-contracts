@@ -52,27 +52,33 @@ contract Release is Script {
             string.concat("release_config/", environment, "/", vm.toString(block.chainid), ".json");
         string memory configJson = vm.readFile(configPath);
 
+        // Load deployed version
         try vm.envString("DEPLOYED_VERSION") returns (string memory v) {
             deployedVersion = v;
         } catch {
             deployedVersion = "";
         }
 
+        // Load previous deployment address
         address previousDeploymentAddress =
             _getPreviousDeploymentAddress(configName, deployedVersion, environment, block.chainid);
+        if (previousDeploymentAddress != address(0)) {
+            console2.log("Previous deployment found at %s", previousDeploymentAddress);
+        }
+
+        // Pre-fetch init data for non-beacon contracts
+        bytes memory initData = _getInitData(configJson, contractName, false);
+        bytes memory upgradeData = _getInitData(configJson, contractName, true);
 
         vm.startBroadcast();
         if (previousDeploymentAddress == address(0)) {
             console2.log("Deploying contract");
-            proxyAddress = _deployContract(contractName, _getInitData(configJson, contractName, false));
+            proxyAddress = _deployContract(contractName, initData);
         } else {
-            console2.log("Previous deployment found at %s", previousDeploymentAddress);
             bool shouldUpgrade = _shouldUpgrade(previousDeploymentAddress, currentVersion);
             if (shouldUpgrade) {
                 console2.log("Upgrading contract");
-                proxyAddress = _upgradeContract(
-                    contractName, previousDeploymentAddress, _getInitData(configJson, contractName, true)
-                );
+                proxyAddress = _upgradeContract(contractName, previousDeploymentAddress, upgradeData);
             }
         }
         vm.stopBroadcast();

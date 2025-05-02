@@ -16,18 +16,18 @@
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
   },
   "UsdPlusMinter": {
-    "usdPlus": "0xa228Ee2248e35Bc9138Aa79a0d085154c3b2941C",
-    "paymentRecipient": "0x400880b800410B2951Afd0503dC457aea8A4bAb5",
+    "usdPlus": "",
+    "paymentRecipient": "",
     "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
   },
   "UsdPlusRedeemer": {
-    "usdPlus": "0xa228Ee2248e35Bc9138Aa79a0d085154c3b2941C",
+    "usdPlus": "",
     "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
   },
   "WrappedUsdPlus": {
-    "usdPlus": "0xa228Ee2248e35Bc9138Aa79a0d085154c3b2941C",
+    "usdPlus": "",
     "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
   }
