@@ -10,7 +10,7 @@
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
   },
   "CCIPWaypoint": {
-    "usdPlus": "",
+    "usdPlus": "0x98C6616F1CC0D3E938A16200830DD55663dd7DD3",
     "router": "0x881e3A65B4d4a04dD529061dd0071cf975F58bCD",
     "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"

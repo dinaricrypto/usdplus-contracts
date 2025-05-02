@@ -1,6 +1,6 @@
 {
   "UsdPlus": {
-    "treasury": "",
+    "treasury": "0x400880b800410B2951Afd0503dC457aea8A4bAb5",
     "transferRestrictor": "",
     "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
@@ -10,7 +10,7 @@
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
   },
   "CCIPWaypoint": {
-    "usdPlus": "",
+    "usdPlus": "0x98C6616F1CC0D3E938A16200830DD55663dd7DD3",
     "router": "0x80226fc0Ee2b096224EeAc085Bb9a8cba1146f7D",
     "owner": "0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8",
     "upgrader": "0x6873a19fbbea962728432Bf968C62902c0533530"
