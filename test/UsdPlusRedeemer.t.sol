@@ -90,7 +90,7 @@ contract UsdPlusRedeemerTest is Test {
     function test_initialization() public {
         assertEq(redeemer.usdplus(), address(usdplus));
         assertEq(redeemer.nextTicket(), 0);
-        assertEq(redeemer.version(), 1);
+        assertEq(redeemer.version(), 2);
         assertEq(redeemer.publicVersion(), "1.0.0");
     }
 
