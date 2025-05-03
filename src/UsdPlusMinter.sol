@@ -88,7 +88,7 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
     }
 
     function version() public pure override returns (uint8) {
-        return 1;
+        return 2;
     }
 
     function publicVersion() public pure override returns (string memory) {
