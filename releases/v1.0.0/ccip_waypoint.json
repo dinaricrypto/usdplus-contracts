@@ -2,7 +2,17 @@
   "name": "CCIPWaypoint",
   "version": "1.0.0",
   "deployments": {
-    "production": {},
+    "production": {
+      "1": "0xF83042d4bbb1cB9C9e1042da4654585C60f6FFdc",
+      "7887": "",
+      "8453": "0x4528dDB6df3b726CA25E1C262Cf5548627012955",
+      "42161": "0x3A34b7Fa417B51af57936f72b8234C824F816907",
+      "84532": "",
+      "98866": "",
+      "98867": "",
+      "421614": "",
+      "11155111": "0xdA4f6b210C22A3bD831e5783731c3b0565167e0f"
+    },
     "staging": {
       "1": "0x2dEA19f731e39D4a1101eecdfe4650848991E88C",
       "7887": "0x2dEA19f731e39D4a1101eecdfe4650848991E88C",
