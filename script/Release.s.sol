@@ -7,7 +7,6 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
 import {console2} from "forge-std/console2.sol";
 import {VmSafe} from "forge-std/Vm.sol";
-import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 import {WrappedUsdPlus} from "../src/WrappedUsdPlus.sol";
 import {CCIPWaypoint} from "../src/bridge/CCIPWaypoint.sol";
@@ -74,7 +73,7 @@ contract Release is Script {
         bytes memory initData = _getInitData(configJson, contractName, false);
         bytes memory upgradeData = _getInitData(configJson, contractName, true);
 
-        vm.startPrank(address(0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8));
+        vm.startBroadcast();
         if (previousDeploymentAddress == address(0)) {
             console2.log("Deploying contract");
             proxyAddress = _deployContract(contractName, initData);
@@ -85,7 +84,7 @@ contract Release is Script {
                 proxyAddress = _upgradeContract(contractName, previousDeploymentAddress, upgradeData);
             }
         }
-        vm.stopPrank();
+        vm.stopBroadcast();
 
         // Write result using underscore format for file naming
         if (proxyAddress != address(0)) {
