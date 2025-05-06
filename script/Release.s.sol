@@ -7,7 +7,6 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
 import {console2} from "forge-std/console2.sol";
 import {VmSafe} from "forge-std/Vm.sol";
-import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
 
 import {WrappedUsdPlus} from "../src/WrappedUsdPlus.sol";
 import {CCIPWaypoint} from "../src/bridge/CCIPWaypoint.sol";
