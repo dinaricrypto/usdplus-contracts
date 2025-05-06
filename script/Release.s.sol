@@ -7,6 +7,10 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol";
 import {console2} from "forge-std/console2.sol";
 import {VmSafe} from "forge-std/Vm.sol";
+import {UUPSUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/proxy/utils/UUPSUpgradeable.sol";
+
+import {WrappedUsdPlus} from "../src/WrappedUsdPlus.sol";
+import {CCIPWaypoint} from "../src/bridge/CCIPWaypoint.sol";
 
 interface IVersioned {
     function publicVersion() external view returns (string memory);
@@ -70,7 +74,7 @@ contract Release is Script {
         bytes memory initData = _getInitData(configJson, contractName, false);
         bytes memory upgradeData = _getInitData(configJson, contractName, true);
 
-        vm.startBroadcast();
+        vm.startPrank(address(0x269e944aD9140fc6e21794e8eA71cE1AfBfe38c8));
         if (previousDeploymentAddress == address(0)) {
             console2.log("Deploying contract");
             proxyAddress = _deployContract(contractName, initData);
@@ -81,7 +85,7 @@ contract Release is Script {
                 proxyAddress = _upgradeContract(contractName, previousDeploymentAddress, upgradeData);
             }
         }
-        vm.stopBroadcast();
+        vm.stopPrank();
 
         // Write result using underscore format for file naming
         if (proxyAddress != address(0)) {
@@ -193,13 +197,13 @@ contract Release is Script {
         returns (bytes memory)
     {
         address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
         if (isUpgrade) {
-            return abi.encodeWithSignature("reinitialize(address)", upgrader);
+            return abi.encodeWithSelector(CCIPWaypoint.reinitialize.selector, owner, upgrader);
         }
 
         address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
         address router = _getAddressFromInitData(configJson, contractName, "router");
-        address owner = _getAddressFromInitData(configJson, contractName, "owner");
 
         return abi.encodeWithSignature("initialize(address,address,address,address)", usdPlus, router, owner, upgrader);
     }
@@ -246,7 +250,7 @@ contract Release is Script {
         address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         address owner = _getAddressFromInitData(configJson, contractName, "owner");
         if (isUpgrade) {
-            return abi.encodeWithSignature("reinitialize(address, address)", owner, upgrader);
+            return abi.encodeWithSelector(WrappedUsdPlus.reinitialize.selector, owner, upgrader);
         }
 
         address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
