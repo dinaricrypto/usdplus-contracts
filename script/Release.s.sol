@@ -8,6 +8,9 @@ import {ControlledUpgradeable} from "../src/deployment/ControlledUpgradeable.sol
 import {console2} from "forge-std/console2.sol";
 import {VmSafe} from "forge-std/Vm.sol";
 
+import {WrappedUsdPlus} from "../src/WrappedUsdPlus.sol";
+import {CCIPWaypoint} from "../src/bridge/CCIPWaypoint.sol";
+
 interface IVersioned {
     function publicVersion() external view returns (string memory);
 }
@@ -193,13 +196,13 @@ contract Release is Script {
         returns (bytes memory)
     {
         address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
+        address owner = _getAddressFromInitData(configJson, contractName, "owner");
         if (isUpgrade) {
-            return abi.encodeWithSignature("reinitialize(address)", upgrader);
+            return abi.encodeWithSelector(CCIPWaypoint.reinitialize.selector, owner, upgrader);
         }
 
         address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");
         address router = _getAddressFromInitData(configJson, contractName, "router");
-        address owner = _getAddressFromInitData(configJson, contractName, "owner");
 
         return abi.encodeWithSignature("initialize(address,address,address,address)", usdPlus, router, owner, upgrader);
     }
@@ -246,7 +249,7 @@ contract Release is Script {
         address upgrader = _getAddressFromInitData(configJson, contractName, "upgrader");
         address owner = _getAddressFromInitData(configJson, contractName, "owner");
         if (isUpgrade) {
-            return abi.encodeWithSignature("reinitialize(address, address)", owner, upgrader);
+            return abi.encodeWithSelector(WrappedUsdPlus.reinitialize.selector, owner, upgrader);
         }
 
         address usdPlus = _getAddressFromInitData(configJson, contractName, "usdPlus");

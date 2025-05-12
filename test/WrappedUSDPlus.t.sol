@@ -67,7 +67,7 @@ contract WrappedUsdPlusTest is Test {
 
     function test_deploymentConfig() public {
         assertEq(wrappedUsdplus.decimals(), 6);
-        assertEq(wrappedUsdplus.version(), 1);
+        assertEq(wrappedUsdplus.version(), 2);
         assertEq(wrappedUsdplus.publicVersion(), "1.0.0");
     }
 
