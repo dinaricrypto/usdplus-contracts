@@ -231,14 +231,11 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
         onlyRole(PRIVATE_MINTER_ROLE)
         returns (uint256 usdPlusAmount)
     {
-        
         UsdPlusMinterStorage storage $ = _getUsdPlusMinterStorage();
         // get v, r, s from signature
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
         // Use SelfPermit to approve token spending
-        IERC20Permit(address(paymentToken)).permit(
-            permit.owner, address(this), permit.value, permit.deadline, v, r, s
-        );
+        IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
 
         paymentToken.safeTransferFrom(permit.owner, $._paymentRecipient, permit.value);
     }

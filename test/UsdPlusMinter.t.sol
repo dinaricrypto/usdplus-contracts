@@ -277,7 +277,6 @@ contract UsdPlusMinterTest is Test {
         assertEq(paymentToken.balanceOf(USER), balanceBefore - issued);
     }
 
-
     function test_transfer_permit(uint256 amount) public {
         vm.assume(amount > 0 && amount < type(uint256).max / 2);
 
