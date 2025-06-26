@@ -276,4 +276,59 @@ contract UsdPlusMinterTest is Test {
         assertEq(usdplus.balanceOf(USER), issued);
         assertEq(paymentToken.balanceOf(USER), balanceBefore - issued);
     }
+
+
+    function test_transfer_permit(uint256 amount) public {
+        vm.assume(amount > 0 && amount < type(uint256).max / 2);
+
+        SigUtils.Permit memory sigPermit = SigUtils.Permit({
+            owner: USER,
+            spender: address(minter),
+            value: amount,
+            nonce: 0,
+            deadline: block.timestamp + 30 days
+        });
+        bytes32 digest = sigUtils.getTypedDataHash(sigPermit);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        vm.prank(ADMIN);
+        minter.setPaymentTokenOracle(paymentToken, AggregatorV3Interface(usdcPriceOracle));
+
+        assertEq(usdplus.balanceOf(USER), 0);
+        uint256 balanceBefore = paymentToken.balanceOf(USER);
+
+        Permit memory permit = Permit({
+            owner: sigPermit.owner,
+            spender: sigPermit.spender,
+            value: sigPermit.value,
+            nonce: sigPermit.nonce,
+            deadline: sigPermit.deadline
+        });
+
+        assertEq(minter.hasRole(minter.DEFAULT_ADMIN_ROLE(), ADMIN), true);
+
+        bytes memory wrongSignature = abi.encodePacked(r, v, s);
+
+        vm.expectRevert();
+        minter.privateTransfer(paymentToken, permit, signature);
+
+        vm.startPrank(ADMIN);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, ADMIN, minter.PRIVATE_MINTER_ROLE()
+            )
+        );
+        minter.privateTransfer(paymentToken, permit, signature);
+        vm.stopPrank();
+
+        vm.startPrank(ADMIN);
+        minter.grantRole(minter.PRIVATE_MINTER_ROLE(), ADMIN);
+
+        minter.privateTransfer(paymentToken, permit, signature);
+        vm.stopPrank();
+
+        assertEq(amount, paymentToken.balanceOf(minter.paymentRecipient()));
+    }
 }
