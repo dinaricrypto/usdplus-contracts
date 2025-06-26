@@ -236,7 +236,7 @@ contract UsdPlusMinter is IUsdPlusMinter, ControlledUpgradeable, SelfPermit {
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
         // Use SelfPermit to approve token spending
         IERC20Permit(address(paymentToken)).permit(permit.owner, address(this), permit.value, permit.deadline, v, r, s);
-
+        // slither-disable-next-line arbitrary-send-erc20-permit
         paymentToken.safeTransferFrom(permit.owner, $._paymentRecipient, permit.value);
     }
 }

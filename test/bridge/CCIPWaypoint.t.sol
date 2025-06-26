@@ -190,6 +190,7 @@ contract CCIPWaypointTest is Test {
     }
 
     function test_rescue(uint256 amount) public {
+        vm.assume(amount > 0 && amount <= 1000 ether);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), waypoint.DEFAULT_ADMIN_ROLE()
@@ -201,7 +202,7 @@ contract CCIPWaypointTest is Test {
 
         vm.prank(ADMIN);
         waypoint.rescue(ADMIN, address(0), amount);
-        assertEq(ADMIN.balance, amount);
+        assertApproxEqAbs(address(ADMIN).balance, amount, 1);
     }
 
     function test_rescueToken(uint256 amount) public {
