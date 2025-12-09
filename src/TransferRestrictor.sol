@@ -23,7 +23,6 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
     event Unrestricted(address indexed account);
 
     /// ------------------ Constants ------------------ ///
-
     bytes32 private constant TRANSFER_RESTRICTOR_STORAGE_LOCATION =
         0xbac1ed68b71f55caab6cd9be1e2e97a07e4f1b72103add3e5df1512b4068d902;
 
@@ -64,6 +63,17 @@ contract TransferRestrictor is ControlledUpgradeable, ITransferRestrictor {
         TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
         $.isBlacklisted[account] = true;
         emit Restricted(account);
+    }
+
+    /// @notice Restrict multiple accounts from sending or receiving tokens
+    /// @dev Does not check if `account` is restricted
+    /// Can only be called by `RESTRICTOR_ROLE`
+    function restrict(address[] memory accounts) external onlyRole(RESTRICTOR_ROLE) {
+        TransferRestrictorStorage storage $ = _getTransferRestrictorStorage();
+        for (uint256 i = 0; i < accounts.length; i++) {
+            $.isBlacklisted[accounts[i]] = true;
+            emit Restricted(accounts[i]);
+        }
     }
 
     /// @notice Unrestrict `account` from sending or receiving tokens
