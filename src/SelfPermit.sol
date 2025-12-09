@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import {MulticallUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/MulticallUpgradeable.sol";
 import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 struct Permit {
     address owner;
@@ -15,6 +16,8 @@ struct Permit {
 /// @notice Allows contract to call permit before other methods in the same transaction
 /// @author Dinari (https://github.com/dinaricrypto/usdplus-contracts/blob/main/src/SelfPermit.sol)
 abstract contract SelfPermit is MulticallUpgradeable {
+    error PermitFailure();
+
     /// @notice Permits this contract to spend a given token from `msg.sender`
     /// @dev The `spender` is always address(this).
     /// @param token The address of the token spent
@@ -27,6 +30,16 @@ abstract contract SelfPermit is MulticallUpgradeable {
     function selfPermit(address token, address owner, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
         public
     {
-        IERC20Permit(token).permit(owner, address(this), value, deadline, v, r, s);
+        try IERC20Permit(token).permit(owner, address(this), value, deadline, v, r, s) {
+            // success
+            return;
+        } catch {
+            // Permit potentially got front-run. Continue if allowance is sufficient.
+            if (IERC20(token).allowance(owner, address(this)) >= value) {
+                return;
+            }
+        }
+
+        revert PermitFailure();
     }
 }
